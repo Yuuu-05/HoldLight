@@ -1,0 +1,63 @@
+const mongoose = require('mongoose');
+
+const routeHoldSchema = new mongoose.Schema(
+  {
+    id: { type: String, required: true },
+    label: { type: String, required: true },
+    color: { type: String, required: true },
+    xPct: { type: Number, required: true },
+    yPct: { type: Number, required: true },
+    confidence: { type: Number, required: true },
+    role: { type: String, default: 'intermediate' },
+    size: { type: String, default: 'm' },
+  },
+  { _id: false },
+);
+
+const routePlanSchema = new mongoose.Schema(
+  {
+    id: { type: String, required: true },
+    scanId: { type: String, required: true },
+    color: { type: String, required: true },
+    difficultyPreference: { type: String, required: true },
+    holdIds: [{ type: String, required: true }],
+    holds: { type: [routeHoldSchema], default: [] },
+    summary: { type: String, default: '' },
+    estimatedMoves: { type: Number, default: 0 },
+  },
+  { _id: false },
+);
+
+const climbSessionSchema = new mongoose.Schema(
+  {
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+    scanId: { type: String, required: true },
+    routeId: { type: String, default: '' },
+    selectedColor: { type: String, required: true },
+    difficulty: { type: String, required: true },
+    startedAt: { type: Date, required: true },
+    endedAt: { type: Date, default: null },
+    cueIndex: { type: Number, default: 0 },
+    completed: { type: Boolean, default: false },
+    elapsedSeconds: { type: Number, default: 0 },
+    currentTargetHoldId: { type: String, default: '' },
+    status: {
+      type: String,
+      enum: ['draft', 'guiding', 'paused', 'completed'],
+      default: 'draft',
+    },
+    plannedRoute: { type: routePlanSchema, default: null },
+    summaryStats: {
+      holdsReached: { type: Number, default: 0 },
+      totalHolds: { type: Number, default: 0 },
+      cueCount: { type: Number, default: 0 },
+      recalibrationCount: { type: Number, default: 0 },
+      source: { type: String, default: 'demo' },
+    },
+  },
+  {
+    timestamps: true,
+  },
+);
+
+module.exports = mongoose.model('ClimbSession', climbSessionSchema);

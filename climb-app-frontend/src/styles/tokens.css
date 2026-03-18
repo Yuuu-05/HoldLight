@@ -1,0 +1,75 @@
+@import url("https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;600;700;800&display=swap");
+
+:root {
+  --bg: #f8f4e8;
+  --bg-deep: #f1ecde;
+  --surface: rgba(255, 255, 255, 0.72);
+  --surface-strong: rgba(255, 255, 255, 0.84);
+  --surface-muted: rgba(255, 248, 241, 0.82);
+  --surface-soft: rgba(255, 255, 255, 0.62);
+  --text: #111111;
+  --text-soft: rgba(17, 17, 17, 0.72);
+  --text-faint: rgba(17, 17, 17, 0.48);
+  --primary: #ef5b2a;
+  --primary-strong: #d74415;
+  --accent-purple: #ef5b2a;
+  --accent-blue: #ffffff;
+  --accent-blue-alt: #111111;
+  --accent-blue-soft: rgba(255, 255, 255, 0.68);
+  --accent-yellow: #ff7a21;
+  --accent-yellow-strong: #d84b16;
+  --accent-yellow-soft: rgba(255, 122, 33, 0.18);
+  --accent-red: #ef5b2a;
+  --accent-red-strong: #cb3910;
+  --accent-red-soft: rgba(239, 91, 42, 0.2);
+  --accent-green: #111111;
+  --accent-green-strong: #111111;
+  --accent-green-soft: rgba(17, 17, 17, 0.08);
+  --gray-strong: #111111;
+  --gray-soft: #e6ded2;
+  --border: rgba(17, 17, 17, 0.08);
+  --border-strong: #111111;
+  --success: #111111;
+  --error: #cb3910;
+  --shadow: 0 18px 48px rgba(52, 37, 18, 0.08);
+  --shadow-soft: 0 10px 26px rgba(52, 37, 18, 0.06);
+  --press-shadow: 2px 2px 0 rgba(17, 17, 17, 0.82);
+  --press-shadow-soft: 1px 1px 0 rgba(17, 17, 17, 0.76);
+  --radius: 24px 28px 20px 30px / 24px 22px 28px 20px;
+  --font-scale: 1;
+}
+
+:root[data-contrast="high"] {
+  --bg: #0d0d0d;
+  --bg-deep: #1a1a1a;
+  --surface: rgba(18, 18, 18, 0.98);
+  --surface-strong: rgba(24, 24, 24, 1);
+  --surface-muted: rgba(38, 24, 24, 0.96);
+  --surface-soft: rgba(20, 20, 20, 0.92);
+  --text: #ffffff;
+  --text-soft: #f2f2f2;
+  --text-faint: #d4d4d4;
+  --primary: #ff8b55;
+  --primary-strong: #ff8b55;
+  --accent-purple: #ff8b55;
+  --accent-blue: #0d0d0d;
+  --accent-blue-alt: #ffffff;
+  --accent-blue-soft: rgba(255, 255, 255, 0.16);
+  --accent-yellow: #ff8b55;
+  --accent-yellow-strong: #ffd2bf;
+  --accent-yellow-soft: rgba(255, 139, 85, 0.24);
+  --accent-red: #ff8b55;
+  --accent-red-strong: #ffd2bf;
+  --accent-red-soft: rgba(255, 139, 85, 0.24);
+  --accent-green: #ffffff;
+  --accent-green-strong: #ffffff;
+  --accent-green-soft: rgba(255, 255, 255, 0.18);
+  --gray-strong: #ffffff;
+  --gray-soft: rgba(255, 255, 255, 0.3);
+  --border: rgba(255, 255, 255, 0.42);
+  --border-strong: #ffffff;
+  --shadow: 0 0 0 rgba(0, 0, 0, 0);
+  --shadow-soft: 0 0 0 rgba(0, 0, 0, 0);
+  --press-shadow: 2px 2px 0 rgba(255, 255, 255, 0.96);
+  --press-shadow-soft: 1px 1px 0 rgba(255, 255, 255, 0.92);
+}
