@@ -16,13 +16,10 @@ const guidanceLogRoutes = require('./routes/guidanceLogs');
 const visionRoutes = require('./routes/vision');
 
 const app = express();
+const PORT = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json({ limit: process.env.BODY_LIMIT || '12mb' }));
-
-mongoose.connect(process.env.MONGO_URI, { tlsAllowInvalidCertificates: true })
-  .then(() => console.log('MongoDB connected successfully'))
-  .catch((err) => console.error('MongoDB connection error:', err));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
@@ -44,5 +41,19 @@ app.get('/', (_req, res) => {
   res.send('Climb App Backend is running!');
 });
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+async function startServer() {
+  try {
+    await mongoose.connect(process.env.MONGO_URI, {
+      serverSelectionTimeoutMS: 10000,
+      tlsAllowInvalidCertificates: true,
+    });
+    console.log('MongoDB connected successfully');
+
+    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+  } catch (err) {
+    console.error('MongoDB connection error:', err);
+    process.exit(1);
+  }
+}
+
+startServer();

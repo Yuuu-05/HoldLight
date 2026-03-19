@@ -106,9 +106,8 @@ function serializeRoom(_doc, ret) {
 roomSchema.set('toJSON', { transform: serializeRoom });
 roomSchema.set('toObject', { transform: serializeRoom });
 
-roomSchema.pre('save', function updateTimestamp(next) {
+roomSchema.pre('save', function updateTimestamp() {
   this.updatedAt = new Date();
-  next();
 });
 
 module.exports = mongoose.model('Room', roomSchema);

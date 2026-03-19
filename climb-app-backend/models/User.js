@@ -105,9 +105,8 @@ function sanitizeUser(_doc, ret) {
 userSchema.set('toJSON', { transform: sanitizeUser });
 userSchema.set('toObject', { transform: sanitizeUser });
 
-userSchema.pre('save', function updateTimestamp(next) {
+userSchema.pre('save', function updateTimestamp() {
   this.updatedAt = new Date();
-  next();
 });
 
 module.exports = mongoose.model('User', userSchema);

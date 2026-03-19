@@ -47,9 +47,8 @@ function serializeVolunteerPost(_doc, ret) {
 volunteerPostSchema.set('toJSON', { transform: serializeVolunteerPost });
 volunteerPostSchema.set('toObject', { transform: serializeVolunteerPost });
 
-volunteerPostSchema.pre('save', function updateTimestamp(next) {
+volunteerPostSchema.pre('save', function updateTimestamp() {
   this.updatedAt = new Date();
-  next();
 });
 
 module.exports = mongoose.model('VolunteerPost', volunteerPostSchema);

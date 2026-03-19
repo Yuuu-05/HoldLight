@@ -43,9 +43,8 @@ function sanitizePost(_doc, ret) {
 postSchema.set('toJSON', { transform: sanitizePost });
 postSchema.set('toObject', { transform: sanitizePost });
 
-postSchema.pre('save', function updateTimestamp(next) {
+postSchema.pre('save', function updateTimestamp() {
   this.updatedAt = new Date();
-  next();
 });
 
 module.exports = mongoose.model('Post', postSchema);

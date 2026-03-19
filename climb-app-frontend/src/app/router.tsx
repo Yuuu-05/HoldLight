@@ -40,13 +40,8 @@ import ContactIntentPage from '../features/volunteer/pages/ContactIntentPage';
 import FirstLoginProfilePage from '../features/onboarding/pages/FirstLoginProfilePage';
 import ProtectedRoute from './guards/ProtectedRoute';
 import GuestRoute from './guards/GuestRoute';
-import OnboardingGuard from './guards/OnboardingGuard';
 
-const withProtected = (element: JSX.Element) => (
-  <ProtectedRoute>
-    <OnboardingGuard>{element}</OnboardingGuard>
-  </ProtectedRoute>
-);
+const withProtected = (element: JSX.Element) => <ProtectedRoute>{element}</ProtectedRoute>;
 
 export const router = createBrowserRouter([
   {
