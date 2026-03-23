@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { useAuth } from '../../../app/providers/AuthProvider';
 import { useLanguage } from '../../../app/providers/LanguageProvider';
 import { addCommentApi, getPostByIdApi, toggleLikePostApi } from '../../../shared/api/posts.api';
@@ -15,6 +15,8 @@ import { formatDate } from '../../../shared/utils/formatDate';
 import CommentInput from '../components/CommentInput';
 import CommentList from '../components/CommentList';
 import LikeButton from '../components/LikeButton';
+import TransitionLink from '../../../shared/components/layout/TransitionLink';
+import SocialEmptyState from '../components/SocialEmptyState';
 
 export default function PostDetailPage() {
   const { postId } = useParams();
@@ -31,9 +33,12 @@ export default function PostDetailPage() {
 
   if (!post) {
     return (
-      <Card title={t('Discussion')}>
-        <p>{t('Post not found.')}</p>
-      </Card>
+      <SocialEmptyState
+        title={t('Discussion')}
+        body={t('Post not found.')}
+        action={<TransitionLink className="social-featured-link" to={routes.socialFeed}>{t('Back to feed')}</TransitionLink>}
+        pose="tilt"
+      />
     );
   }
 
@@ -75,7 +80,10 @@ export default function PostDetailPage() {
 
   return (
     <section className="stack-lg">
-      <div className="page-card stack-md">
+      <div
+        className="page-card stack-md community-detail-hero"
+        style={{ viewTransitionName: `post-card-${currentPost.id}` }}
+      >
         <div className="stack-sm">
           <p className="subtle-text">{t('Community discussion')}</p>
           <h1>{currentPost.title}</h1>
@@ -98,9 +106,9 @@ export default function PostDetailPage() {
 
         <div className="inline-actions wrap">
           <LikeButton count={currentPost.likedBy.length} active={liked} onClick={handleToggleLike} />
-          <Link to={routes.socialFeed}>
+          <TransitionLink to={routes.socialFeed}>
             <Button variant="ghost">{t('Back to feed')}</Button>
-          </Link>
+          </TransitionLink>
         </div>
 
         {feedback ? <SuccessBanner message={feedback} /> : null}

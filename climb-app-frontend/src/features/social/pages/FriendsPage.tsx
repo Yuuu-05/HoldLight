@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../app/providers/AuthProvider';
 import { useLanguage } from '../../../app/providers/LanguageProvider';
-import EmptyState from '../../../shared/components/feedback/EmptyState';
 import ErrorState from '../../../shared/components/feedback/ErrorState';
 import SuccessBanner from '../../../shared/components/feedback/SuccessBanner';
 import Badge from '../../../shared/components/ui/Badge';
@@ -11,6 +10,7 @@ import Card from '../../../shared/components/ui/Card';
 import { routes } from '../../../shared/constants/routes';
 import { usePageTitle } from '../../../shared/hooks/usePageTitle';
 import { getRoleLabel } from '../../../shared/utils/getRoleLabel';
+import SocialEmptyState from '../components/SocialEmptyState';
 import { useFriends } from '../hooks/useFriends';
 import { useRooms } from '../hooks/useRooms';
 
@@ -156,7 +156,11 @@ export default function FriendsPage() {
             ))}
           </div>
         ) : (
-          <EmptyState title={t('No pending requests')} body={t('When someone adds you, the request will appear here.')} />
+          <SocialEmptyState
+            title={t('No pending requests')}
+            body={t('When someone adds you, the request will appear here.')}
+            pose="tilt"
+          />
         )}
       </Card>
 
@@ -177,7 +181,11 @@ export default function FriendsPage() {
             ))}
           </div>
         ) : (
-          <EmptyState title={t('No outgoing requests')} body={t('Requests you send will stay here until the other user responds.')} />
+          <SocialEmptyState
+            title={t('No outgoing requests')}
+            body={t('Requests you send will stay here until the other user responds.')}
+            pose="tilt"
+          />
         )}
       </Card>
 
@@ -211,7 +219,11 @@ export default function FriendsPage() {
             ))}
           </div>
         ) : (
-          <EmptyState title={t('No friends yet')} body={t('Accept a request or send one to start building your climbing network.')} />
+          <SocialEmptyState
+            title={t('No friends yet')}
+            body={t('Accept a request or send one to start building your climbing network.')}
+            pose="nod"
+          />
         )}
       </Card>
 
@@ -229,7 +241,11 @@ export default function FriendsPage() {
             ))}
           </div>
         ) : (
-          <EmptyState title={t('No suggestions')} body={t('Everyone in the current frontend demo is already connected or has a request in progress.')} />
+          <SocialEmptyState
+            title={t('No suggestions')}
+            body={t('Everyone in the current frontend demo is already connected or has a request in progress.')}
+            pose="tilt"
+          />
         )}
       </Card>
 
@@ -244,7 +260,11 @@ export default function FriendsPage() {
             ))}
           </div>
         ) : (
-          <EmptyState title={t('No request history')} body={t('Friend request decisions will appear here.')} />
+          <SocialEmptyState
+            title={t('No request history')}
+            body={t('Friend request decisions will appear here.')}
+            pose="tilt"
+          />
         )}
       </Card>
     </section>

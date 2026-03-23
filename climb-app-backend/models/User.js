@@ -32,6 +32,7 @@ const accessibilityPreferenceSchema = new mongoose.Schema(
     simplifiedMode: { type: Boolean, default: false },
     voiceCommandsEnabled: { type: Boolean, default: false },
     speechRate: { type: Number, default: 1 },
+    speechVolume: { type: Number, default: 1 },
     fontScale: { type: Number, default: 1 },
   },
   { _id: false },
@@ -49,6 +50,16 @@ const notificationPreferencesSchema = new mongoose.Schema(
   {
     readIds: [{ type: String, trim: true }],
     updatedAt: { type: Date, default: null },
+  },
+  { _id: false },
+);
+
+const onboardingPreferencesSchema = new mongoose.Schema(
+  {
+    completed: { type: Boolean, default: false },
+    accessibilitySetupCompleted: { type: Boolean, default: false },
+    guideCompleted: { type: Boolean, default: false },
+    completedAt: { type: Date, default: null },
   },
   { _id: false },
 );
@@ -71,6 +82,10 @@ const preferencesSchema = new mongoose.Schema(
     notifications: {
       type: notificationPreferencesSchema,
       default: () => ({ readIds: [] }),
+    },
+    onboarding: {
+      type: onboardingPreferencesSchema,
+      default: () => ({}),
     },
   },
   { _id: false },

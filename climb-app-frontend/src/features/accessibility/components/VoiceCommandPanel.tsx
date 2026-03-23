@@ -4,8 +4,8 @@ import { useAccessibility } from '../../../app/providers/AccessibilityProvider';
 import { useLanguage } from '../../../app/providers/LanguageProvider';
 import { useSpeech } from '../../../app/providers/SpeechProvider';
 import VoiceCommandButton from '../../../shared/components/accessibility/VoiceCommandButton';
-import { canUseSpeechRecognition, getSpeechRecognitionCtor } from '../../../shared/lib/speechRecognition';
 import { routes } from '../../../shared/constants/routes';
+import { canUseSpeechRecognition, getSpeechRecognitionCtor } from '../../../shared/lib/speechRecognition';
 
 const commandMap: Record<string, string> = {
   'start scan': routes.scanWall,
@@ -51,14 +51,18 @@ export default function VoiceCommandPanel() {
 
       const target = Object.entries(commandMap).find(([command]) => text.includes(command))?.[1];
       if (target) {
-        const message = language === 'zh' ? `${t('Voice command heard:')} ${text}。${t('Opening the requested page.')}` : `${t('Voice command heard:')} ${text}. ${t('Opening the requested page.')}`;
+        const message = language === 'zh'
+          ? `${t('Voice command heard:')} ${text}。${t('Opening the requested page.')}`
+          : `${t('Voice command heard:')} ${text}. ${t('Opening the requested page.')}`;
         announce(message);
         speak(message);
         navigate(target);
         return;
       }
 
-      const message = language === 'zh' ? `${t('Voice command heard:')} ${text}。${t('No matching command was found.')}` : `${t('Voice command heard:')} ${text}. ${t('No matching command was found.')}`;
+      const message = language === 'zh'
+        ? `${t('Voice command heard:')} ${text}。${t('No matching command was found.')}`
+        : `${t('Voice command heard:')} ${text}. ${t('No matching command was found.')}`;
       announce(message);
       speak(message);
     };

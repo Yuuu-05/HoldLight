@@ -10,7 +10,7 @@ export default function ContinueTutorialCard() {
   const { language, t } = useLanguage();
 
   return (
-    <Card title={t('Continue tutorials')} className="continue-card">
+    <Card title={t('Continue tutorials')} className="continue-card dashboard-mini-card dashboard-mini-card-tutorial">
       <p>
         {isComplete
           ? t('You have completed the full beginner tutorial path.')

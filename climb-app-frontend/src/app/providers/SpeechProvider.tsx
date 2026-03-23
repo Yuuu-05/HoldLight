@@ -16,6 +16,7 @@ export default function SpeechProvider({ children }: PropsWithChildren) {
   const {
     speechEnabled,
     speechRate,
+    speechVolume,
     lastAnnouncement,
     setLastAnnouncement,
     announce,
@@ -29,17 +30,17 @@ export default function SpeechProvider({ children }: PropsWithChildren) {
         if (!speechEnabled || !text) return;
 
         setLastAnnouncement(text);
-        if (!speakText(text, { rate: speechRate })) {
+        if (!speakText(text, { rate: speechRate, volume: speechVolume })) {
           announce('Speech synthesis is not supported on this device.');
         }
       },
       repeat: () => {
         if (!speechEnabled || !lastAnnouncement) return;
-        speakText(lastAnnouncement, { rate: speechRate });
+        speakText(lastAnnouncement, { rate: speechRate, volume: speechVolume });
       },
       stop: stopSpeaking,
     }),
-    [announce, lastAnnouncement, setLastAnnouncement, speechEnabled, speechRate],
+    [announce, lastAnnouncement, setLastAnnouncement, speechEnabled, speechRate, speechVolume],
   );
 
   return <SpeechContext.Provider value={value}>{children}</SpeechContext.Provider>;

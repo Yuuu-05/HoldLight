@@ -3,5 +3,5 @@ interface EncouragementBannerProps {
 }
 
 export default function EncouragementBanner({ text }: EncouragementBannerProps) {
-  return <p className="success-banner">{text}</p>;
+  return <p className="success-banner assist-encouragement-banner">{text}</p>;
 }

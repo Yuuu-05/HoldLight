@@ -1,4 +1,5 @@
 import type { RoleValue } from '../constants/roles';
+import type { UserPreferences } from './preferences';
 
 export interface UserBadgeWall {
   ownedBadgeIds?: string[];
@@ -22,6 +23,7 @@ export interface User {
   email: string;
   role: RoleValue;
   profile?: UserProfile;
+  preferences?: UserPreferences;
   createdAt?: string;
   updatedAt?: string;
 }

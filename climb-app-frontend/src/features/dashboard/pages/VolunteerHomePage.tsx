@@ -11,7 +11,7 @@ export default function VolunteerHomePage() {
         {
           title: t('Find support'),
           description: t('Browse current support requests from climbers who need guidance.'),
-          to: routes.scanWall,
+          to: routes.volunteerBoard,
           buttonLabel: t('Find support'),
         },
         {

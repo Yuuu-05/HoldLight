@@ -9,7 +9,7 @@ export default function RoleAwareHome() {
   const roleLabel = t(getRoleLabel(user?.role));
 
   return (
-    <Card title={t('Your role overview')} className="role-overview-card">
+    <Card title={t('Your role overview')} className="role-overview-card dashboard-role-card">
       <div className="stack-sm">
         <span className="role-chip">{roleLabel}</span>
         <p>

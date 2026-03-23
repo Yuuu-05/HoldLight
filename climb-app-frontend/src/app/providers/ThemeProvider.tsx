@@ -2,7 +2,7 @@ import { useEffect, type PropsWithChildren } from 'react';
 
 export default function ThemeProvider({ children }: PropsWithChildren) {
   useEffect(() => {
-    document.documentElement.dataset.theme = 'light';
+    document.documentElement.dataset.theme = 'calm';
   }, []);
 
   return <>{children}</>;

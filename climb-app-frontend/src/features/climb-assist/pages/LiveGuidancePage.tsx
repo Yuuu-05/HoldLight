@@ -6,7 +6,6 @@ import VoiceCuePanel from '../components/VoiceCuePanel';
 import EncouragementBanner from '../components/EncouragementBanner';
 import PositionHintCard from '../components/PositionHintCard';
 import Card from '../../../shared/components/ui/Card';
-import Button from '../../../shared/components/ui/Button';
 import { routes } from '../../../shared/constants/routes';
 import { buildCueLabel } from '../../../shared/utils/routeVoiceText';
 import { useGuidanceEngine } from '../hooks/useGuidanceEngine';
@@ -15,6 +14,7 @@ import type { ClimbSession } from '../../../shared/types/climb';
 export default function LiveGuidancePage() {
   const { speak, repeat } = useSpeech();
   const [session, setSession] = useState<ClimbSession | null>(null);
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const navigate = useNavigate();
   const guidance = useGuidanceEngine(session?.plannedRoute, session?.cueIndex ?? 0);
 
@@ -29,7 +29,23 @@ export default function LiveGuidancePage() {
     speak(buildCueLabel(guidance.cueIndex, guidance.cues.length, guidance.currentCue.message));
   }, [guidance.cueIndex, guidance.cues.length, guidance.currentCue, speak]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+      return undefined;
+    }
+
+    const interval = window.setInterval(() => {
+      setIsSpeaking(window.speechSynthesis.speaking);
+    }, 120);
+
+    return () => window.clearInterval(interval);
+  }, []);
+
   const cue = useMemo(() => guidance.currentCue?.message ?? 'No cue available', [guidance.currentCue]);
+  const spokenCue = useMemo(
+    () => buildCueLabel(guidance.cueIndex, guidance.cues.length, cue),
+    [cue, guidance.cueIndex, guidance.cues.length],
+  );
 
   async function handleNext() {
     if (!session || !session.plannedRoute) return;
@@ -91,19 +107,25 @@ export default function LiveGuidancePage() {
   if (!session?.plannedRoute) return <Card title="Live guidance"><p>Select a route first.</p></Card>;
 
   return (
-    <div className="stack-lg">
+    <div className="stack-lg assist-guidance-shell assist-live-page">
       <EncouragementBanner text="Great job. Keep your movement smooth and steady." />
-      <PositionHintCard cue={cue} targetLabel={guidance.currentHold?.label} />
-      <Card title="Spoken guidance">
-        <VoiceCuePanel
+      <div className="assist-live-stage">
+        <PositionHintCard
           cue={cue}
+          targetLabel={guidance.currentHold?.label}
           progressLabel={guidance.currentCue?.progressLabel}
-          onSpeak={() => speak(cue)}
-          onRepeat={repeat}
-          onNext={() => void handleNext()}
+          isSpeaking={isSpeaking}
         />
-        <Button onClick={() => void handleFinish()}>Finish climb</Button>
-      </Card>
+      </div>
+      <VoiceCuePanel
+        cue={cue}
+        progressLabel={guidance.currentCue?.progressLabel}
+        isSpeaking={isSpeaking}
+        onSpeak={() => speak(spokenCue)}
+        onRepeat={repeat}
+        onNext={() => void handleNext()}
+        onFinish={() => void handleFinish()}
+      />
     </div>
   );
 }

@@ -66,13 +66,13 @@ function uniq(values: string[]) {
   return [...new Set(values.filter(Boolean))];
 }
 
-export function getDerivedBadgeIds(user: User | null | undefined, isOnboarded: boolean) {
+export function getDerivedBadgeIds(user: User | null | undefined, isProfileComplete: boolean) {
   if (!user) return [];
 
   const derived = ['first-grip'];
   const profile = user.profile ?? {};
 
-  if (isOnboarded) {
+  if (isProfileComplete) {
     derived.push('steady-core');
   }
 
@@ -95,13 +95,13 @@ export function getDerivedBadgeIds(user: User | null | undefined, isOnboarded: b
   return uniq(derived);
 }
 
-export function getOwnedBadgeIds(user: User | null | undefined, isOnboarded: boolean) {
+export function getOwnedBadgeIds(user: User | null | undefined, isProfileComplete: boolean) {
   const saved = user?.profile?.badgeWall?.ownedBadgeIds ?? [];
-  return uniq([...getDerivedBadgeIds(user, isOnboarded), ...saved]);
+  return uniq([...getDerivedBadgeIds(user, isProfileComplete), ...saved]);
 }
 
-export function getVisibleBadgeIds(user: User | null | undefined, isOnboarded: boolean) {
-  const owned = getOwnedBadgeIds(user, isOnboarded);
+export function getVisibleBadgeIds(user: User | null | undefined, isProfileComplete: boolean) {
+  const owned = getOwnedBadgeIds(user, isProfileComplete);
   const savedVisible = user?.profile?.badgeWall?.visibleBadgeIds;
 
   if (!savedVisible) {

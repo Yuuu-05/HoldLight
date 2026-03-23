@@ -3,11 +3,11 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../../../app/providers/AuthProvider';
 import { useLanguage } from '../../../app/providers/LanguageProvider';
 import { getPostsApi } from '../../../shared/api/posts.api';
-import EmptyState from '../../../shared/components/feedback/EmptyState';
 import Button from '../../../shared/components/ui/Button';
 import { routes } from '../../../shared/constants/routes';
 import type { PostItem } from '../../../shared/types/post';
 import PostCard from '../components/PostCard';
+import SocialEmptyState from '../components/SocialEmptyState';
 
 export default function MyPostsPage() {
   const { user } = useAuth();
@@ -36,9 +36,11 @@ export default function MyPostsPage() {
           {mine.map((post) => <PostCard key={post.id} post={post} />)}
         </div>
       ) : (
-        <EmptyState
+        <SocialEmptyState
           title={t('No posts yet')}
           body={t('Create your first community post to appear here.')}
+          action={<Link className="social-featured-link" to={routes.createPost}>{t('Create post')}</Link>}
+          pose="tilt"
         />
       )}
     </section>

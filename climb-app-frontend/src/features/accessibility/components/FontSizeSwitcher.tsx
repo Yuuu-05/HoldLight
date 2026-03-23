@@ -8,7 +8,7 @@ export default function FontSizeSwitcher() {
     <label className="field">
       <span className="field-label">{t('Font size')}</span>
       <input
-        className="field-input"
+        className="field-input slider-control"
         type="range"
         min="1"
         max="1.4"

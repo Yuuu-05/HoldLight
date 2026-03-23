@@ -24,13 +24,14 @@ export default function MyVolunteerSessionsPage() {
         <h1>{t('My volunteer sessions')}</h1>
         <p>{t('Review requests you created and support sessions where you already expressed interest.')}</p>
         <div className="inline-actions wrap">
+          <Link to={routes.socialFeed}><Button variant="ghost">{t('Back to community')}</Button></Link>
           <Link to={routes.volunteerBoard}><Button>{t('Volunteer board')}</Button></Link>
           <Link to={routes.contactIntent}><Button variant="secondary">{t('View all contact intents')}</Button></Link>
         </div>
       </div>
 
       {items.length ? (
-        <div className="stack-lg">
+        <div className="community-request-grid">
           {items.map((item) => <VolunteerCard key={item.id} item={item} />)}
         </div>
       ) : (

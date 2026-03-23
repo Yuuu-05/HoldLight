@@ -38,6 +38,7 @@ import VolunteerPostDetailPage from '../features/volunteer/pages/VolunteerPostDe
 import MyVolunteerSessionsPage from '../features/volunteer/pages/MyVolunteerSessionsPage';
 import ContactIntentPage from '../features/volunteer/pages/ContactIntentPage';
 import FirstLoginProfilePage from '../features/onboarding/pages/FirstLoginProfilePage';
+import VisionModeDebugPage from '../features/onboarding/pages/VisionModeDebugPage';
 import ProtectedRoute from './guards/ProtectedRoute';
 import GuestRoute from './guards/GuestRoute';
 
@@ -70,6 +71,7 @@ export const router = createBrowserRouter([
       },
       { path: 'logout', element: withProtected(<LogoutPage />) },
       { path: 'onboarding', element: <ProtectedRoute><FirstLoginProfilePage /></ProtectedRoute> },
+      { path: 'onboarding/vision', element: <ProtectedRoute><VisionModeDebugPage /></ProtectedRoute> },
       { path: 'dashboard', element: withProtected(<DashboardPage />) },
       { path: 'profile', element: withProtected(<ProfilePage />) },
       { path: 'profile/edit', element: withProtected(<EditProfilePage />) },
@@ -93,6 +95,11 @@ export const router = createBrowserRouter([
       { path: 'social/friends', element: withProtected(<FriendsPage />) },
       { path: 'social/rooms', element: withProtected(<RoomsPage />) },
       { path: 'social/rooms/:roomId', element: withProtected(<RoomDetailPage />) },
+      { path: 'social/volunteer', element: withProtected(<VolunteerBoardPage />) },
+      { path: 'social/volunteer/new', element: withProtected(<CreateVolunteerPostPage />) },
+      { path: 'social/volunteer/my-sessions', element: withProtected(<MyVolunteerSessionsPage />) },
+      { path: 'social/volunteer/contact-intent', element: withProtected(<ContactIntentPage />) },
+      { path: 'social/volunteer/:postId', element: withProtected(<VolunteerPostDetailPage />) },
       { path: 'social/:postId', element: withProtected(<PostDetailPage />) },
       { path: 'volunteer', element: withProtected(<VolunteerBoardPage />) },
       { path: 'volunteer/new', element: withProtected(<CreateVolunteerPostPage />) },

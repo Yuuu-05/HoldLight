@@ -3,10 +3,12 @@ import { Link } from 'react-router-dom';
 import { useAccessibility } from '../../../app/providers/AccessibilityProvider';
 import { useLanguage } from '../../../app/providers/LanguageProvider';
 import { useSpeech } from '../../../app/providers/SpeechProvider';
-import { usePageTitle } from '../../../shared/hooks/usePageTitle';
+import GuideMascot from '../../../shared/components/illustration/GuideMascot';
 import Button from '../../../shared/components/ui/Button';
+import { usePageTitle } from '../../../shared/hooks/usePageTitle';
 import { routes } from '../../../shared/constants/routes';
 import FontSizeSwitcher from '../components/FontSizeSwitcher';
+import SpeechVolumeSwitcher from '../components/SpeechVolumeSwitcher';
 import VoiceCommandPanel from '../components/VoiceCommandPanel';
 
 export default function AccessibilityHubPage() {
@@ -37,25 +39,37 @@ export default function AccessibilityHubPage() {
     const nextValue = !currentValue;
     setter(nextValue);
 
-    const message =
-      language === 'zh'
-        ? `${label}${nextValue ? '已开启。' : '已关闭。'}`
-        : `${label} ${nextValue ? 'enabled.' : 'disabled.'}`;
+    const message = language === 'zh'
+      ? `${label}${nextValue ? '已开启。' : '已关闭。'}`
+      : `${label} ${nextValue ? 'enabled.' : 'disabled.'}`;
+
     announce(message);
     speak(message);
   };
 
   return (
-    <section className="stack-lg">
-      <div className="page-card stack-lg">
+    <section className="stack-lg accessibility-shell">
+      <div className="page-card stack-lg accessibility-hero-card">
         <div className="stack-sm">
           <p className="subtle-text">{t('Accessibility system')}</p>
           <h1>{t('Accessibility hub')}</h1>
           <p>{t('Manage the main accessibility options for reading, focus guidance, and voice interaction. This page is designed to show that accessibility is part of the system, not an extra decoration.')}</p>
         </div>
 
-        <div className="stack-md">
-          <div className="page-card stack-sm">
+        <div className="guide-callout-card accessibility-mascot-card">
+          <GuideMascot className="guide-mascot" pose="nod" />
+          <div className="stack-sm">
+            <strong>{language === 'zh' ? '先从最舒服的模式开始' : 'Pick the calmest mode first'}</strong>
+            <p>
+              {language === 'zh'
+                ? '阅读、语音和焦点引导放在同一组里，方便用户一眼理解每一种支持方式。'
+                : 'Reading, voice, and focus guidance sit in the same space so users can understand each support mode at a glance.'}
+            </p>
+          </div>
+        </div>
+
+        <div className="accessibility-tile-grid">
+          <div className="page-card stack-sm accessibility-tile accessibility-tile-reading">
             <h2>{t('Reading and visibility')}</h2>
             <p>{t('Turn on stronger visual support and simpler reading settings.')}</p>
 
@@ -78,28 +92,26 @@ export default function AccessibilityHubPage() {
             <FontSizeSwitcher />
           </div>
 
-          <div className="page-card stack-sm">
+          <div className="page-card stack-sm accessibility-tile accessibility-tile-feedback">
             <h2>{t('Feedback support')}</h2>
             <p>{t('Enable or disable spoken feedback when the user performs an action.')}</p>
 
             <Button
               variant={feedbackEnabled ? 'primary' : 'secondary'}
               aria-pressed={feedbackEnabled}
-              onClick={() =>
-                handleToggle(t('Operation feedback'), feedbackEnabled, setFeedbackEnabled)
-              }
+              onClick={() => handleToggle(t('Operation feedback'), feedbackEnabled, setFeedbackEnabled)}
             >
-              {feedbackEnabled
-                ? t('Turn off operation feedback')
-                : t('Turn on operation feedback')}
+              {feedbackEnabled ? t('Turn off operation feedback') : t('Turn on operation feedback')}
             </Button>
 
             <Button variant="ghost" onClick={repeat}>
               {t('Repeat last prompt')}
             </Button>
+
+            <SpeechVolumeSwitcher />
           </div>
 
-          <div className="page-card stack-sm">
+          <div className="page-card stack-sm accessibility-tile accessibility-tile-simplified">
             <h2>{t('Simplified interface')}</h2>
             <p>{t('Reduce visual complexity and keep the current step clear.')}</p>
 
@@ -112,16 +124,14 @@ export default function AccessibilityHubPage() {
             </Button>
           </div>
 
-          <div className="page-card stack-sm">
+          <div className="page-card stack-sm accessibility-tile accessibility-tile-voice">
             <h2>{t('Preview voice interaction')}</h2>
             <p>{t('Open the demo page to test fixed voice-style commands such as start scan, repeat hint, and go home.')}</p>
 
             <Button
               variant={voiceCommandsEnabled ? 'primary' : 'secondary'}
               aria-pressed={voiceCommandsEnabled}
-              onClick={() =>
-                handleToggle(t('Voice commands'), voiceCommandsEnabled, setVoiceCommandsEnabled)
-              }
+              onClick={() => handleToggle(t('Voice commands'), voiceCommandsEnabled, setVoiceCommandsEnabled)}
             >
               {voiceCommandsEnabled ? t('Turn off voice commands') : t('Turn on voice commands')}
             </Button>
@@ -133,7 +143,7 @@ export default function AccessibilityHubPage() {
             </Link>
           </div>
 
-          <div className="page-card stack-sm">
+          <div className="page-card stack-sm accessibility-tile accessibility-tile-focus">
             <h2>{t('Preview focus guidance')}</h2>
             <p>{t('Open a simple focus flow page to simulate VoiceOver-style navigation and focus announcements.')}</p>
             <Link className="text-link" to={routes.focusPreview}>

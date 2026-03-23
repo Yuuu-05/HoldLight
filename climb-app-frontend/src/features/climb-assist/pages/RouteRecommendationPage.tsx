@@ -1,17 +1,20 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Card from '../../../shared/components/ui/Card';
 import RouteCanvas from '../components/RouteCanvas';
 import Button from '../../../shared/components/ui/Button';
+import Card from '../../../shared/components/ui/Card';
+import AssistBottomSheet from '../components/AssistBottomSheet';
 import { getClimbSessionApi, getLatestClimbScanApi, saveGuidanceLogsApi, updateClimbSessionApi } from '../../../shared/api/climbing.api';
 import { routes } from '../../../shared/constants/routes';
 import { usePageTitle } from '../../../shared/hooks/usePageTitle';
+import { triggerHaptic } from '../../../shared/lib/haptics';
 import type { ClimbScan, ClimbSession } from '../../../shared/types/climb';
 
 export default function RouteRecommendationPage() {
   const [scan, setScan] = useState<ClimbScan | null>(null);
   const [session, setSession] = useState<ClimbSession | null>(null);
   const navigate = useNavigate();
+  const hasBuzzedRef = useRef(false);
   usePageTitle('Route recommendation');
 
   useEffect(() => {
@@ -20,6 +23,15 @@ export default function RouteRecommendationPage() {
       setSession(activeSession);
     });
   }, []);
+
+  useEffect(() => {
+    if (hasBuzzedRef.current || !session?.plannedRoute) {
+      return;
+    }
+
+    triggerHaptic(50);
+    hasBuzzedRef.current = true;
+  }, [session?.plannedRoute]);
 
   async function handleStartGuidance() {
     if (!session) return;
@@ -48,18 +60,16 @@ export default function RouteRecommendationPage() {
   }
 
   return (
-    <div className="stack-lg">
-      <Card title={`Recommended ${session.selectedColor.toUpperCase()} route`}>
-        <p>{session.plannedRoute.summary}</p>
-        {scan.wallMap.analysis ? <p className="subtle-text">Provider: {scan.wallMap.analysis.provider}. This route only appears because the scan cleared the confidence gate.</p> : null}
-        <div className="stats-grid">
-          <div><strong>{session.difficulty}</strong><span>Guidance level</span></div>
-          <div><strong>{session.plannedRoute.holds.length}</strong><span>Route holds</span></div>
-          <div><strong>{session.plannedRoute.estimatedMoves}</strong><span>Estimated moves</span></div>
+    <div className="assist-route-page assist-route-review-page">
+      <div className="sr-only" aria-live="polite" aria-atomic="true">
+        {`Recommended ${session.selectedColor.toUpperCase()} route is ready. Slide the details drawer up to review the route before starting live guidance.`}
+      </div>
+      <div className="assist-route-preview-card">
+        <div className="assist-route-preview-copy">
+          <p className="assist-route-preview-kicker">Recommendation ready</p>
+          <h1>{session.selectedColor.toUpperCase()} route highlighted</h1>
+          <p>Review the highlighted holds first, then slide up the drawer to launch live guidance.</p>
         </div>
-      </Card>
-
-      <Card title="Wall map and route highlight">
         <RouteCanvas
           wallMap={scan.wallMap}
           backgroundImageUrl={scan.coverImageUrl}
@@ -67,9 +77,20 @@ export default function RouteRecommendationPage() {
           currentHoldId={session.plannedRoute.holds[0]?.id}
           helperText="Original wall image with detected hold overlays. Highlighted boxes belong to the route you selected for guidance."
         />
-      </Card>
+      </div>
 
-      <Card title="Route review">
+      <AssistBottomSheet
+        title={`Recommended ${session.selectedColor.toUpperCase()} route`}
+        className="assist-recommendation-card"
+        bodyClassName="stack-md"
+      >
+        <p>{session.plannedRoute.summary}</p>
+        {scan.wallMap.analysis ? <p className="subtle-text">Provider: {scan.wallMap.analysis.provider}. This route only appears because the scan cleared the confidence gate.</p> : null}
+        <div className="stats-grid">
+          <div><strong>{session.difficulty}</strong><span>Guidance level</span></div>
+          <div><strong>{session.plannedRoute.holds.length}</strong><span>Route holds</span></div>
+          <div><strong>{session.plannedRoute.estimatedMoves}</strong><span>Estimated moves</span></div>
+        </div>
         <ol className="numbered-list">
           <li>Verify that the highlighted holds match the intended route.</li>
           <li>If the scan looks wrong, go back and rescan or upload a clearer image.</li>
@@ -79,7 +100,7 @@ export default function RouteRecommendationPage() {
           <Button onClick={() => void handleStartGuidance()}>Start live guidance</Button>
           <Button variant="secondary" onClick={() => navigate(routes.selectDifficulty)}>Adjust route settings</Button>
         </div>
-      </Card>
+      </AssistBottomSheet>
     </div>
   );
 }

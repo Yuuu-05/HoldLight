@@ -9,7 +9,7 @@ const levels = ['Beginner', 'Intermediate', 'Advanced'];
 
 export default function DifficultySelector({ value, onChange }: DifficultySelectorProps) {
   return (
-    <div className="segmented-control">
+    <div className="segmented-control assist-difficulty-selector" role="group" aria-label="Choose guidance difficulty">
       {levels.map((level) => (
         <Button key={level} variant={value === level ? 'primary' : 'secondary'} onClick={() => onChange(level)}>
           {level}

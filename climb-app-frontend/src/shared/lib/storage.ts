@@ -3,6 +3,7 @@ import { env } from '../../app/config/env';
 export const storageKeys = {
   token: `${env.storagePrefix}:token`,
   user: `${env.storagePrefix}:user`,
+  onboardingOverride: `${env.storagePrefix}:onboarding-override`,
   devAuthRole: `${env.storagePrefix}:dev-auth-role`,
   socialUsers: `${env.storagePrefix}:social-users`,
   friendRequests: `${env.storagePrefix}:friend-requests`,

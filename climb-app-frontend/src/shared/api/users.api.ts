@@ -1,6 +1,6 @@
 import { apiClient } from './client';
 import type { User, UserProfile } from '../types/user';
-import type { UserPreferences } from '../types/preferences';
+import type { UserPreferences, UserPreferencesUpdate } from '../types/preferences';
 
 export async function getCurrentUserApi() {
   const { data } = await apiClient.get<{ success: boolean; user: User }>('/users/me');
@@ -22,7 +22,7 @@ export async function getUserPreferencesApi() {
   return data.preferences;
 }
 
-export async function updateUserPreferencesApi(payload: Partial<UserPreferences>) {
+export async function updateUserPreferencesApi(payload: UserPreferencesUpdate) {
   const { data } = await apiClient.patch<{ success: boolean; preferences: UserPreferences }>(
     '/users/me/preferences',
     payload,

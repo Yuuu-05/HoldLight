@@ -50,18 +50,18 @@ function buildCompletionMessage(scan: ClimbScan) {
   const analysis = scan.wallMap.analysis;
 
   if (!analysis) {
-    return `Wall scan complete. ${scan.wallMap.holds.length} holds and ${scan.availableColors.length} route colors are ready.`;
+    return `Wall scan complete. ${scan.wallMap.holds.length} holds and ${scan.availableColors.length} route colors are ready for route setup.`;
   }
 
   if (analysis.shouldAllowAutonomousGuidance) {
-    return `Automatic scan ready. ${analysis.detectionSummary.holdCount} holds and ${analysis.detectionSummary.routeCount} route candidates passed the accessibility gate.`;
+    return `The wall looks clear enough for route setup. ${analysis.detectionSummary.holdCount} holds and ${analysis.detectionSummary.routeCount} route candidates passed the accessibility gate.`;
   }
 
   if (analysis.suggestedAction === 'companion') {
-    return 'Recognition is partially stable, but companion mode is safer than autonomous guidance right now.';
+    return 'Recognition is partly stable, but companion mode will keep the next step safer.';
   }
 
-  return 'Recognition confidence is too low for autonomous guidance. Please retake the photo or change the camera angle.';
+  return 'Recognition confidence is still low for autonomous guidance. Please retake the photo or try a clearer angle.';
 }
 
 export function useScanSession() {
@@ -89,13 +89,13 @@ export function useScanSession() {
           throw new Error('The live camera preview is not ready yet.');
         }
 
-        setScanProgress({ status: 'scanning', progress: 8, message: 'Capturing a wall frame from the live camera.', error: null });
+        setScanProgress({ status: 'scanning', progress: 8, message: 'Capturing a calm wall frame from the live camera.', error: null });
         const inferenceImage = captureElementPreview(videoElement, { maxDimension: 1280, quality: 0.84 });
         const previewImage = captureElementPreview(videoElement, { maxDimension: 640, quality: 0.58 });
         if (!inferenceImage || !previewImage) {
           throw new Error('The live camera frame could not be captured yet.');
         }
-        setScanProgress({ status: 'scanning', progress: 38, message: 'Sending the wall image to the backend vision service.', error: null });
+        setScanProgress({ status: 'scanning', progress: 38, message: 'Handing the frame over to route recognition.', error: null });
         const result = await runVisionFullApi({
           imageDataUrl: inferenceImage,
           source: 'camera',
@@ -103,7 +103,7 @@ export function useScanSession() {
           filename: 'camera-capture.jpg',
         });
         const wallMap = result.wallMap;
-        setScanProgress({ status: 'saving', progress: 86, message: 'Saving the scanned wall map.', error: null });
+        setScanProgress({ status: 'saving', progress: 86, message: 'Saving the scanned wall map for the next step.', error: null });
         payload = buildScanPayloadFromWallMap(wallMap, gymName, previewImage);
       } else if (uploadType === 'image') {
         if (!imageElement) {
@@ -116,7 +116,7 @@ export function useScanSession() {
         if (!inferenceImage || !previewImage) {
           throw new Error('The uploaded image preview is not ready yet.');
         }
-        setScanProgress({ status: 'scanning', progress: 38, message: 'Sending the wall photo to the backend vision service.', error: null });
+        setScanProgress({ status: 'scanning', progress: 38, message: 'Sending the wall photo to route recognition.', error: null });
         const result = await runVisionFullApi({
           imageDataUrl: inferenceImage,
           source: 'upload',
@@ -124,20 +124,20 @@ export function useScanSession() {
           filename: 'uploaded-wall-photo.jpg',
         });
         const wallMap = result.wallMap;
-        setScanProgress({ status: 'saving', progress: 86, message: 'Saving the uploaded image wall map.', error: null });
+        setScanProgress({ status: 'saving', progress: 86, message: 'Saving the uploaded wall map.', error: null });
         payload = buildScanPayloadFromWallMap(wallMap, gymName, previewImage);
       } else if (uploadType === 'video') {
         if (!uploadedVideoElement) {
           throw new Error('The uploaded video preview is not ready yet.');
         }
 
-        setScanProgress({ status: 'scanning', progress: 8, message: 'Capturing a representative frame from the uploaded video.', error: null });
+        setScanProgress({ status: 'scanning', progress: 8, message: 'Capturing a clear frame from the uploaded video.', error: null });
         const inferenceImage = captureElementPreview(uploadedVideoElement, { maxDimension: 1280, quality: 0.84 });
         const previewImage = captureElementPreview(uploadedVideoElement, { maxDimension: 640, quality: 0.58 });
         if (!inferenceImage || !previewImage) {
           throw new Error('Pause the uploaded video on a clear wall frame before scanning.');
         }
-        setScanProgress({ status: 'scanning', progress: 38, message: 'Sending the captured video frame to the backend vision service.', error: null });
+        setScanProgress({ status: 'scanning', progress: 38, message: 'Sending the captured frame to route recognition.', error: null });
         const result = await runVisionFullApi({
           imageDataUrl: inferenceImage,
           source: 'upload',
@@ -145,10 +145,10 @@ export function useScanSession() {
           filename: 'uploaded-video-frame.jpg',
         });
         const wallMap = result.wallMap;
-        setScanProgress({ status: 'saving', progress: 86, message: 'Saving the uploaded video wall map.', error: null });
+        setScanProgress({ status: 'saving', progress: 86, message: 'Saving the uploaded wall map.', error: null });
         payload = buildScanPayloadFromWallMap(wallMap, gymName, previewImage);
       } else {
-        setScanProgress({ status: 'scanning', progress: 10, message: 'Loading demo wall map.', error: null });
+        setScanProgress({ status: 'scanning', progress: 10, message: 'Loading the demo wall map.', error: null });
         await delay(200);
         setScanProgress({ status: 'saving', progress: 82, message: 'Saving the demo wall map.', error: null });
         payload = buildScanPayload(source, gymName);
@@ -165,7 +165,7 @@ export function useScanSession() {
       return scan;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to scan the wall.';
-      setScanProgress({ status: 'error', progress: 0, message: 'Scan failed.', error: message });
+      setScanProgress({ status: 'error', progress: 0, message: 'We could not finish this scan.', error: message });
       return null;
     }
   }, []);

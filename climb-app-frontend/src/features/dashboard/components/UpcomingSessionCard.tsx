@@ -12,7 +12,7 @@ export default function UpcomingSessionCard() {
   const { t } = useLanguage();
 
   return (
-    <Card title={t('Upcoming session')} className="session-card">
+    <Card title={t('Upcoming session')} className="session-card dashboard-mini-card dashboard-mini-card-session">
       {nextSession ? (
         <>
           <p><strong>{nextSession.title}</strong></p>

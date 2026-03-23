@@ -20,7 +20,9 @@ type AccessibilityContextType = {
   simplifiedMode: boolean;
   voiceCommandsEnabled: boolean;
   speechRate: number;
+  speechVolume: number;
   fontScale: number;
+  hydrated: boolean;
   lastAnnouncement: string;
   liveMessage: string;
   toggleSpeechEnabled: () => void;
@@ -36,7 +38,9 @@ type AccessibilityContextType = {
   setSimplifiedMode: (enabled: boolean) => void;
   setVoiceCommandsEnabled: (enabled: boolean) => void;
   setSpeechRate: (rate: number) => void;
+  setSpeechVolume: (volume: number) => void;
   setFontScale: (scale: number) => void;
+  applyVisualImpairmentPreset: () => void;
   setLastAnnouncement: (text: string) => void;
   announce: (text: string) => void;
 };
@@ -53,16 +57,21 @@ const defaultSettings: AccessibilityPreferences = {
   simplifiedMode: false,
   voiceCommandsEnabled: false,
   speechRate: 1,
+  speechVolume: 1,
   fontScale: DEFAULT_FONT_SCALE,
 };
 
 function getInitialSettings() {
-  return readStorage<AccessibilityPreferences>(storageKeys.accessibility, defaultSettings);
+  return {
+    ...defaultSettings,
+    ...readStorage<AccessibilityPreferences>(storageKeys.accessibility, defaultSettings),
+  };
 }
 
 export function AccessibilityProvider({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isUsingDevAuth, loading } = useAuth();
   const [settings, setSettings] = useState<AccessibilityPreferences>(getInitialSettings);
+  const [hydrated, setHydrated] = useState(false);
   const [lastAnnouncement, setLastAnnouncement] = useState('');
   const [liveMessage, setLiveMessage] = useState('');
   const announceTimeoutRef = useRef<number | null>(null);
@@ -71,6 +80,7 @@ export function AccessibilityProvider({ children }: { children: React.ReactNode 
   useEffect(() => {
     writeStorage(storageKeys.accessibility, settings);
     const root = document.documentElement;
+    root.dataset.theme = settings.highContrast ? 'contrast' : 'calm';
     root.dataset.contrast = settings.highContrast ? 'high' : 'default';
     root.dataset.simplified = settings.simplifiedMode ? 'true' : 'false';
     root.style.setProperty('--font-scale', `${settings.fontScale}`);
@@ -90,6 +100,7 @@ export function AccessibilityProvider({ children }: { children: React.ReactNode 
 
     if (!isAuthenticated || isUsingDevAuth) {
       hydratedRef.current = true;
+      setHydrated(true);
       return;
     }
 
@@ -105,6 +116,7 @@ export function AccessibilityProvider({ children }: { children: React.ReactNode 
       .finally(() => {
         if (active) {
           hydratedRef.current = true;
+          setHydrated(true);
         }
       });
 
@@ -190,6 +202,11 @@ export function AccessibilityProvider({ children }: { children: React.ReactNode 
     commitSettings((current) => ({ ...current, speechRate: safeRate }));
   }, [commitSettings]);
 
+  const setSpeechVolume = useCallback((volume: number) => {
+    const safeVolume = Number.isFinite(volume) ? Math.min(1, Math.max(0.2, volume)) : 1;
+    commitSettings((current) => ({ ...current, speechVolume: safeVolume }));
+  }, [commitSettings]);
+
   const setFontScale = useCallback((scale: number) => {
     const safeScale = Number.isFinite(scale)
       ? Math.min(1.4, Math.max(DEFAULT_FONT_SCALE, scale))
@@ -198,6 +215,20 @@ export function AccessibilityProvider({ children }: { children: React.ReactNode 
       ...current,
       fontScale: safeScale,
       largeText: safeScale > DEFAULT_FONT_SCALE,
+    }));
+  }, [commitSettings]);
+
+  const applyVisualImpairmentPreset = useCallback(() => {
+    commitSettings((current) => ({
+      ...current,
+      speechEnabled: true,
+      feedbackEnabled: true,
+      highContrast: true,
+      largeText: true,
+      simplifiedMode: true,
+      voiceCommandsEnabled: true,
+      speechVolume: Math.max(current.speechVolume, 0.9),
+      fontScale: Math.max(current.fontScale, 1.2),
     }));
   }, [commitSettings]);
 
@@ -229,7 +260,9 @@ export function AccessibilityProvider({ children }: { children: React.ReactNode 
       simplifiedMode: settings.simplifiedMode,
       voiceCommandsEnabled: settings.voiceCommandsEnabled,
       speechRate: settings.speechRate,
+      speechVolume: settings.speechVolume,
       fontScale: settings.fontScale,
+      hydrated,
       lastAnnouncement,
       liveMessage,
       toggleSpeechEnabled,
@@ -245,12 +278,16 @@ export function AccessibilityProvider({ children }: { children: React.ReactNode 
       setSimplifiedMode,
       setVoiceCommandsEnabled,
       setSpeechRate,
+      setSpeechVolume,
       setFontScale,
+      applyVisualImpairmentPreset,
       setLastAnnouncement,
       announce,
     }),
     [
       announce,
+      applyVisualImpairmentPreset,
+      hydrated,
       lastAnnouncement,
       liveMessage,
       setFeedbackEnabled,
@@ -260,6 +297,7 @@ export function AccessibilityProvider({ children }: { children: React.ReactNode 
       setSimplifiedMode,
       setSpeechEnabled,
       setSpeechRate,
+      setSpeechVolume,
       setVoiceCommandsEnabled,
       settings.feedbackEnabled,
       settings.fontScale,
@@ -268,6 +306,7 @@ export function AccessibilityProvider({ children }: { children: React.ReactNode 
       settings.simplifiedMode,
       settings.speechEnabled,
       settings.speechRate,
+      settings.speechVolume,
       settings.voiceCommandsEnabled,
       toggleFeedbackEnabled,
       toggleHighContrast,

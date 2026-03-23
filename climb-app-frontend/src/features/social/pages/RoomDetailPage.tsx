@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useAuth } from '../../../app/providers/AuthProvider';
 import { useLanguage } from '../../../app/providers/LanguageProvider';
-import EmptyState from '../../../shared/components/feedback/EmptyState';
 import ErrorState from '../../../shared/components/feedback/ErrorState';
 import SuccessBanner from '../../../shared/components/feedback/SuccessBanner';
+import GuideMascot from '../../../shared/components/illustration/GuideMascot';
 import Badge from '../../../shared/components/ui/Badge';
 import Button from '../../../shared/components/ui/Button';
 import Card from '../../../shared/components/ui/Card';
@@ -14,17 +14,26 @@ import { routes } from '../../../shared/constants/routes';
 import type { ClimbingRoom } from '../../../shared/types/room';
 import { getRoleLabel } from '../../../shared/utils/getRoleLabel';
 import { formatDate } from '../../../shared/utils/formatDate';
+import SocialEmptyState from '../components/SocialEmptyState';
 import { useFriends } from '../hooks/useFriends';
 import { useRooms } from '../hooks/useRooms';
 
-function buildNamedFeedback(language: 'en' | 'zh', prefix: string, name: string) {
-  return language === 'zh' ? `${prefix}${name}。` : `${prefix} ${name}.`;
+function buildNamedFeedback(prefix: string, name: string) {
+  return `${prefix} ${name}`.trim();
+}
+
+function getInitials(name: string) {
+  return name
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? '')
+    .join('');
 }
 
 export default function RoomDetailPage() {
   const { roomId } = useParams();
   const { user } = useAuth();
-  const { language, t } = useLanguage();
+  const { t } = useLanguage();
   const { friends } = useFriends();
   const { joinRoom, inviteFriend, sendMessage, respondToInvitation, withdrawInvitation, markAsRead } = useRooms();
   const [room, setRoom] = useState<ClimbingRoom | null>(null);
@@ -64,9 +73,14 @@ export default function RoomDetailPage() {
 
   if (!room) {
     return (
-      <Card title={t('Climbing room')}>
-        <p>{t('Room not found.')}</p>
-      </Card>
+      <section className="social-shell stack-lg">
+        <SocialEmptyState
+          title={t('Climbing room')}
+          body={t('Room not found.')}
+          action={<Link className="social-featured-link" to={routes.socialRooms}>{t('Back to rooms')}</Link>}
+          pose="tilt"
+        />
+      </section>
     );
   }
 
@@ -91,7 +105,7 @@ export default function RoomDetailPage() {
       const updated = await inviteFriend(currentRoom.id, friendUserId);
       if (updated) {
         setRoom(updated);
-        setFeedback(buildNamedFeedback(language, t('Invitation sent to'), friendName));
+        setFeedback(buildNamedFeedback(t('Invitation sent to'), friendName));
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : t('Unable to invite friend.'));
@@ -104,7 +118,7 @@ export default function RoomDetailPage() {
       const updated = await withdrawInvitation(currentRoom.id, invitationId);
       if (updated) {
         setRoom(updated);
-        setFeedback(buildNamedFeedback(language, t('Invitation withdrawn for'), friendName));
+        setFeedback(buildNamedFeedback(t('Invitation withdrawn for'), friendName));
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : t('Unable to withdraw invitation.'));
@@ -146,111 +160,147 @@ export default function RoomDetailPage() {
   }
 
   return (
-    <section className="stack-lg">
-      <div className="page-card stack-md">
-        <div className="stack-sm">
-          <p className="subtle-text">{t('Gym social space')}</p>
-          <h1>{currentRoom.title}</h1>
-          <p>{currentRoom.description}</p>
+    <section className="social-shell stack-lg">
+      <div className="social-room-detail-hero">
+        <div className="social-room-cover">
+          <span className="social-room-cover-badge social-mini-pill">{currentRoom.gymName}</span>
+          <span className="social-featured-note social-room-cover-note">Monkey is guarding the warm-up corner.</span>
+          <GuideMascot className="social-room-cover-mascot" pose={isMember ? 'nod' : 'tilt'} />
         </div>
-        <div className="inline-actions wrap">
-          <Badge>{currentRoom.gymName}</Badge>
-          <Badge>{currentRoom.region}</Badge>
-          <Badge>{language === 'zh' ? `${currentRoom.members.length}${t('members')}` : `${currentRoom.members.length} ${t('members')}`}</Badge>
-        </div>
-        <div className="inline-actions wrap">
-          <Link to={routes.socialRooms}><Button variant="ghost">{t('Back to rooms')}</Button></Link>
-          {!isMember ? <Button onClick={() => void handleJoin()}>{t('Join room')}</Button> : null}
-        </div>
-        {pendingInvite ? (
-          <div className="inline-actions wrap">
-            <Badge>{t('Invitation pending your response')}</Badge>
-            <Button onClick={() => void handleInvitation('accepted')}>{t('Accept invitation')}</Button>
-            <Button variant="secondary" onClick={() => void handleInvitation('declined')}>{t('Decline invitation')}</Button>
+
+        <div className="social-room-detail-panel stack-md">
+          <div className="stack-sm">
+            <p className="social-eyebrow">Room detail</p>
+            <h1>{currentRoom.title}</h1>
+            <p>{currentRoom.description}</p>
           </div>
-        ) : null}
-        {feedback ? <SuccessBanner message={feedback} /> : null}
-        {error ? <ErrorState message={error} /> : null}
+
+          <div className="inline-actions wrap">
+            <Badge>{currentRoom.gymName}</Badge>
+            <Badge>{currentRoom.region}</Badge>
+            <Badge>{currentRoom.members.length} {t(currentRoom.members.length === 1 ? 'member' : 'members')}</Badge>
+          </div>
+
+          <div className="social-room-member-strip">
+            <div className="social-room-avatar-stack" aria-hidden="true">
+              {currentRoom.members.slice(0, 5).map((member) => (
+                <span key={member.userId} className="social-avatar-bubble">{getInitials(member.userName)}</span>
+              ))}
+            </div>
+            <p className="subtle-text">{hasUnreadMessages ? t('Unread messages') : t('All messages read')}</p>
+          </div>
+
+          <div className="inline-actions wrap">
+            <Link to={routes.socialRooms}><Button variant="ghost">{t('Back to rooms')}</Button></Link>
+            {!isMember ? <Button onClick={() => void handleJoin()}>{t('Join room')}</Button> : null}
+          </div>
+
+          {pendingInvite ? (
+            <div className="inline-actions wrap">
+              <Badge>{t('Invitation pending your response')}</Badge>
+              <Button onClick={() => void handleInvitation('accepted')}>{t('Accept invitation')}</Button>
+              <Button variant="secondary" onClick={() => void handleInvitation('declined')}>{t('Decline invitation')}</Button>
+            </div>
+          ) : null}
+
+          {feedback ? <SuccessBanner message={feedback} /> : null}
+          {error ? <ErrorState message={error} /> : null}
+        </div>
       </div>
 
-      <div className="grid-2">
-        <Card title={t('Members')}>
+      <div className="grid-2 social-room-detail-grid">
+        <Card title={t('Members')} className="social-room-member-card">
           <div className="stack-sm">
             {currentRoom.members.map((member) => (
-              <div key={member.userId} className="list-item stack-sm">
-                <strong>{member.userName}</strong>
-                <p>{t(getRoleLabel(member.role))}</p>
-                <p className="subtle-text">{t('Joined')} {formatDate(member.joinedAt)}</p>
+              <div key={member.userId} className="social-member-row">
+                <div className="social-avatar-bubble" aria-hidden="true">{getInitials(member.userName)}</div>
+                <div className="stack-sm social-member-copy">
+                  <strong>{member.userName}</strong>
+                  <p>{t(getRoleLabel(member.role))}</p>
+                  <p className="subtle-text">{t('Joined')} {formatDate(member.joinedAt)}</p>
+                </div>
               </div>
             ))}
           </div>
         </Card>
 
-        <Card title={t('Invite friends')}>
+        <Card title={t('Invite friends')} className="social-room-invite-card">
           {isMember ? (
             invitableFriends.length ? (
-              <div className="stack-sm">
+              <div className="social-note-board">
                 {invitableFriends.map((friend) => (
-                  <div key={friend.userId} className="list-item stack-sm">
-                    <strong>{friend.username}</strong>
-                    <p>{t(getRoleLabel(friend.role))}</p>
+                  <article key={friend.userId} className="intent-note intent-note-request">
+                    <span className="intent-note-pin" aria-hidden="true" />
+                    <p className="social-eyebrow">{t(getRoleLabel(friend.role))}</p>
+                    <h3>{friend.username}</h3>
+                    <p>Invite this climber into your room for route planning, help, and meetups.</p>
                     <Button variant="secondary" onClick={() => void handleInvite(friend.userId, friend.username)}>
                       {t('Invite to room')}
                     </Button>
-                  </div>
+                  </article>
                 ))}
               </div>
             ) : (
-              <EmptyState title={t('No friends to invite')} body={t('Add more friends or switch users in dev mode to test invitations.')} />
+              <SocialEmptyState
+                title={t('No friends to invite')}
+                body={t('Add more friends or switch users in dev mode to test invitations.')}
+                action={<Link className="social-featured-link" to={routes.socialFriends}>{t('Open friends')}</Link>}
+                pose="tilt"
+              />
             )
           ) : (
-            <p>{t('Join the room first to invite friends.')}</p>
+            <SocialEmptyState
+              title={t('Join the room first to invite friends.')}
+              body={t('You can enter the room now, then invite people once you are inside.')}
+              pose="nod"
+            />
           )}
         </Card>
       </div>
 
-      <Card title={t('Invitation status')}>
+      <Card title={t('Invitation status')} className="social-room-status-card">
         {currentRoom.invitations.length ? (
-          <div className="stack-sm">
+          <div className="social-note-board">
             {currentRoom.invitations.map((invite) => {
               const canWithdraw =
                 invite.status === 'pending' &&
                 (invite.invitedById === userId || currentRoom.createdById === userId);
 
               return (
-                <div key={invite.id} className="list-item stack-sm">
-                  <div className="inline-actions wrap">
-                    <strong>{invite.invitedUserName}</strong>
-                    <Badge>
-                      {invite.status === 'pending'
-                        ? t('Pending')
-                        : invite.status === 'accepted'
-                          ? t('Accepted')
-                          : t('Declined')}
-                    </Badge>
-                  </div>
+                <article key={invite.id} className={`intent-note intent-note-${invite.status}`.trim()}>
+                  <span className="intent-note-pin" aria-hidden="true" />
+                  <p className="social-eyebrow">
+                    {invite.status === 'pending'
+                      ? t('Pending')
+                      : invite.status === 'accepted'
+                        ? t('Accepted')
+                        : t('Declined')}
+                  </p>
+                  <h3>{invite.invitedUserName}</h3>
                   <p>{t('Invited by')} {invite.invitedByName}</p>
                   <p className="subtle-text">
                     {t('Sent')} {formatDate(invite.createdAt)}
-                    {invite.respondedAt ? ` | ${t('Responded')} ${formatDate(invite.respondedAt)}` : ''}
+                    {invite.respondedAt ? ` • ${t('Responded')} ${formatDate(invite.respondedAt)}` : ''}
                   </p>
                   {canWithdraw ? (
-                    <div className="inline-actions wrap">
-                      <Button variant="ghost" onClick={() => void handleWithdrawInvitation(invite.id, invite.invitedUserName)}>
-                        {t('Withdraw invitation')}
-                      </Button>
-                    </div>
+                    <Button variant="ghost" onClick={() => void handleWithdrawInvitation(invite.id, invite.invitedUserName)}>
+                      {t('Withdraw invitation')}
+                    </Button>
                   ) : null}
-                </div>
+                </article>
               );
             })}
           </div>
         ) : (
-          <EmptyState title={t('No invitations yet')} body={t('Invite friends into this room to build a climbing group.')} />
+          <SocialEmptyState
+            title={t('No invitations yet')}
+            body={t('Invite friends into this room to build a climbing group.')}
+            pose="tilt"
+          />
         )}
       </Card>
 
-      <Card title={t('Room chat')}>
+      <Card title={t('Room chat')} className="social-room-chat-card">
         {isMember ? (
           <div className="stack-md">
             <div className="inline-actions wrap">
@@ -259,16 +309,16 @@ export default function RoomDetailPage() {
                 {t('Last read:')} {lastReadAt ? formatDate(lastReadAt) : t('Not recorded yet')}
               </p>
             </div>
-            <div className="stack-sm">
+            <div className="social-room-chat-list">
               {currentRoom.messages.map((item) => (
-                <div key={item.id} className="list-item stack-sm">
+                <article key={item.id} className={`room-chat-note room-chat-note-${item.type}`.trim()}>
                   <div className="inline-actions wrap">
                     <strong>{item.userName}</strong>
                     <Badge>{item.type}</Badge>
                   </div>
                   <p>{item.body}</p>
                   <p className="subtle-text">{formatDate(item.createdAt)}</p>
-                </div>
+                </article>
               ))}
             </div>
 
@@ -289,7 +339,11 @@ export default function RoomDetailPage() {
             </div>
           </div>
         ) : (
-          <EmptyState title={t('Join to chat')} body={t('You need to join the room before sending messages or asking for help.')} />
+          <SocialEmptyState
+            title={t('Join to chat')}
+            body={t('You need to join the room before sending messages or asking for help.')}
+            pose="nod"
+          />
         )}
       </Card>
     </section>

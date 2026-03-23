@@ -24,28 +24,44 @@ export default function ProfileBusinessCardPreview({
   const { t } = useLanguage();
   const roleLabel = t(getRoleLabel(user.role));
   const experience = user.profile?.climbingExperience || t('Not set yet');
+  const accessibilityNote = user.profile?.accessibilityNeeds;
 
   return (
-    <Modal open={open} onClose={onClose} title={t('Profile card preview')}>
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={t('Profile card preview')}
+      description={t('This preview shows the badge wall and identity details currently selected on your profile card.')}
+      variant="sheet"
+      panelClassName="profile-sheet profile-card-sheet"
+    >
+      <div className="profile-sheet-grabber" aria-hidden="true" />
+
       <div className="profile-card-preview-shell">
+        <p className="profile-sheet-kicker">{t('Climber card')}</p>
+
         <article className="profile-card-preview">
+          <span className="profile-card-preview-compass" aria-hidden="true" />
+          <span className="profile-card-preview-ridge" aria-hidden="true" />
+
           <div className="profile-card-preview-header">
             <div className="profile-card-preview-avatar" aria-hidden="true">
               {getUserInitials(user.username)}
             </div>
 
-            <div className="stack-sm">
+            <div className="stack-sm profile-card-preview-copy">
               <p className="profile-card-preview-kicker">{t('Climber card')}</p>
               <h3>{user.username}</h3>
-              <p>{roleLabel}</p>
+              <p className="profile-card-preview-role">{roleLabel}</p>
             </div>
           </div>
 
+          <div className="profile-card-preview-ribbon">
+            <span>{t('Experience')}</span>
+            <strong>{experience}</strong>
+          </div>
+
           <div className="profile-card-preview-meta">
-            <div>
-              <span>{t('Experience')}</span>
-              <strong>{experience}</strong>
-            </div>
             <div>
               <span>{t('Email')}</span>
               <strong>{user.email}</strong>
@@ -54,7 +70,18 @@ export default function ProfileBusinessCardPreview({
               <span>{t('Updated')}</span>
               <strong>{lastUpdated}</strong>
             </div>
+            <div>
+              <span>{t('Displayed badges')}</span>
+              <strong>{badges.length}</strong>
+            </div>
           </div>
+
+          {accessibilityNote ? (
+            <section className="profile-card-preview-note">
+              <span>{t('Accessibility preferences')}</span>
+              <strong>{accessibilityNote}</strong>
+            </section>
+          ) : null}
 
           <section className="profile-card-preview-wall">
             <header className="profile-card-preview-wall-header">
@@ -80,10 +107,6 @@ export default function ProfileBusinessCardPreview({
             )}
           </section>
         </article>
-
-        <p className="subtle-text">
-          {t('This preview shows the badge wall and identity details currently selected on your profile card.')}
-        </p>
       </div>
     </Modal>
   );

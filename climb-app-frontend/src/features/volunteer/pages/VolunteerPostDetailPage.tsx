@@ -13,11 +13,12 @@ import ApplyVolunteerButton from '../components/ApplyVolunteerButton';
 import ContactIntentModal from '../components/ContactIntentModal';
 import SessionStatusBadge from '../components/SessionStatusBadge';
 import { useAuth } from '../../../app/providers/AuthProvider';
-import { Link } from 'react-router-dom';
 import { routes } from '../../../shared/constants/routes';
 import Button from '../../../shared/components/ui/Button';
 import { getUserId } from '../../../shared/types/user';
 import { formatDate } from '../../../shared/utils/formatDate';
+import TransitionLink from '../../../shared/components/layout/TransitionLink';
+import SocialEmptyState from '../../social/components/SocialEmptyState';
 
 export default function VolunteerPostDetailPage() {
   const { postId } = useParams();
@@ -39,7 +40,16 @@ export default function VolunteerPostDetailPage() {
     void loadPost();
   }, [loadPost]);
 
-  if (!item) return <Card title={t('Volunteer request')}><p>{t('Request not found.')}</p></Card>;
+  if (!item) {
+    return (
+      <SocialEmptyState
+        title={t('Volunteer request')}
+        body={t('Request not found.')}
+        action={<TransitionLink className="social-featured-link" to={routes.volunteerBoard}>{t('Volunteer board')}</TransitionLink>}
+        pose="tilt"
+      />
+    );
+  }
 
   const isAuthor = currentUserId === item.authorId;
   const currentApplication = item.applicants.find((application) => application.userId === currentUserId) ?? null;
@@ -122,7 +132,12 @@ export default function VolunteerPostDetailPage() {
   );
 
   return (
-    <Card title={item.title} actions={<SessionStatusBadge count={activeApplicants.length} />}>
+    <Card
+      title={item.title}
+      actions={<SessionStatusBadge count={activeApplicants.length} />}
+      className="community-detail-hero"
+      style={{ viewTransitionName: `volunteer-card-${item.id}` }}
+    >
       {feedback ? (
         <div className={feedback.type === 'success' ? 'success-banner' : 'error-banner'}>
           {feedback.message}
@@ -135,7 +150,7 @@ export default function VolunteerPostDetailPage() {
       {currentApplication ? (
         <div className="list-item stack-sm">
           <strong>{t('Your status:')}</strong>
-          <p>{t(currentApplication.status)}</p>
+          <p aria-live="polite" aria-atomic="true">{t(currentApplication.status)}</p>
           <p className="subtle-text">{currentApplication.message}</p>
         </div>
       ) : null}
@@ -150,7 +165,9 @@ export default function VolunteerPostDetailPage() {
                 <div key={application.id} className="list-item stack-sm">
                   <div className="inline-actions wrap">
                     <strong>{application.userName}</strong>
-                    <span className="subtle-text">{t('Status:')} {t(application.status)}</span>
+                    <span className="subtle-text" aria-live="polite" aria-atomic="true">
+                      {t('Status:')} {t(application.status)}
+                    </span>
                   </div>
                   <p>{application.message}</p>
                   <p className="subtle-text">
@@ -180,9 +197,9 @@ export default function VolunteerPostDetailPage() {
       </div>
 
       {canApply ? <ApplyVolunteerButton onClick={() => setOpen(true)} /> : null}
-      <Link className="text-link" to={routes.contactIntent}>
+      <TransitionLink className="text-link" to={routes.contactIntent}>
         {t('View all contact intents')}
-      </Link>
+      </TransitionLink>
       <ContactIntentModal
         open={open}
         onClose={() => setOpen(false)}

@@ -7,9 +7,11 @@ import Card from '../../../shared/components/ui/Card';
 import EmptyState from '../../../shared/components/feedback/EmptyState';
 import { routes } from '../../../shared/constants/routes';
 import { usePageTitle } from '../../../shared/hooks/usePageTitle';
+import { triggerHaptic } from '../../../shared/lib/haptics';
 import type { ClimbScan } from '../../../shared/types/climb';
 import VolunteerCard from '../../volunteer/components/VolunteerCard';
 import { useVolunteerBoard } from '../../volunteer/hooks/useVolunteerBoard';
+import AssistMascotSticker from '../components/AssistMascotSticker';
 import CameraPreview from '../components/CameraPreview';
 import RouteCanvas from '../components/RouteCanvas';
 import ScanPermissionNotice from '../components/ScanPermissionNotice';
@@ -33,6 +35,7 @@ export default function ScanWallPage() {
   const [uploadType, setUploadType] = useState<'image' | 'video' | null>(null);
   const hasSecureContext = typeof window === 'undefined' ? true : window.isSecureContext;
   const scanBusy = scanProgress.status === 'scanning' || scanProgress.status === 'saving';
+  const previousScanStatusRef = useRef(scanProgress.status);
 
   usePageTitle('Assist');
 
@@ -40,6 +43,13 @@ export default function ScanWallPage() {
     if (!latestScan) return;
     setActiveScan(latestScan);
   }, [latestScan]);
+
+  useEffect(() => {
+    if (scanProgress.status === 'done' && previousScanStatusRef.current !== 'done') {
+      triggerHaptic(18);
+    }
+    previousScanStatusRef.current = scanProgress.status;
+  }, [scanProgress.status]);
 
   useEffect(() => {
     return () => {
@@ -102,14 +112,51 @@ export default function ScanWallPage() {
   const isReadyForAutonomousGuidance = Boolean(
     displayScan && (displayScan.wallMap.source === 'demo' || scanAnalysis?.shouldAllowAutonomousGuidance),
   );
+  const shouldSuggestVolunteer = Boolean(
+    scanProgress.error
+      || (scanAnalysis && !scanAnalysis.shouldAllowAutonomousGuidance),
+  );
+  const fallbackDescription = scanProgress.error
+    ? 'The wall is a little tricky right now. Try again with a steadier phone or brighter light.'
+    : scanAnalysis?.suggestedAction === 'companion'
+      ? 'The wall is partly readable, but a companion will make the next step safer.'
+      : 'Recognition is still too dim or noisy for autonomous guidance.';
+  const scanAnnouncement = scanProgress.status === 'error'
+    ? `Scan paused. ${scanProgress.error ?? 'We could not finish this scan.'}`
+    : scanProgress.message;
 
   return (
-    <section className="stack-lg">
-      <Card title={t('Assist')} className="tone-blue">
-        <p>{t('Open the wall scanning flow to prepare climbing guidance.')}</p>
+    <section className="stack-lg assist-shell">
+      <Card title={t('Assist')} className="tone-blue assist-hero-card assist-scan-hero-card" bodyClassName="stack-md">
+        <div className="assist-scan-intro">
+          <p className="subtle-text">{t('Open the wall scanning flow to prepare climbing guidance.')}</p>
+          <p className="assist-scan-note">
+            Frame the whole wall like a sticker photo and keep the phone steady for a cleaner route match.
+          </p>
+        </div>
         <ScanPermissionNotice supported={supported} hasSecureContext={hasSecureContext} />
-        <CameraPreview stream={stream} videoRef={videoRef} />
-        <div className="inline-actions wrap">
+        <CameraPreview
+          stream={stream}
+          videoRef={videoRef}
+          className="assist-camera-stage"
+          label="A rounded polaroid-style live view for wall recognition."
+        >
+          {scanBusy ? (
+            <div className="assist-camera-loader" role="status" aria-hidden="true">
+              <div className="assist-camera-loader-card">
+                <AssistMascotSticker variant="observe" className="assist-camera-loader-mascot" />
+                <div className="stack-sm">
+                  <strong>Small monkey is checking the wall map</strong>
+                  <p>Hold the phone steady while route recognition finishes its pass.</p>
+                </div>
+              </div>
+            </div>
+          ) : null}
+        </CameraPreview>
+        <div className="sr-only" aria-live="polite" aria-atomic="true">
+          {scanAnnouncement}
+        </div>
+        <div className="inline-actions wrap assist-action-row">
           <Button onClick={() => requestAccess()} disabled={!supported || !hasSecureContext || scanBusy}>
             {t('Allow camera')}
           </Button>
@@ -122,8 +169,14 @@ export default function ScanWallPage() {
         </div>
       </Card>
 
-      <Card title="Upload a wall photo or video" className="tone-yellow">
-        <p>Upload a wall photo, or pause a short video on a clear frame, and run the same recognition pipeline without using the live camera.</p>
+      <Card
+        title="Upload a wall photo or video"
+        className="tone-yellow assist-bottom-sheet assist-upload-sheet"
+        bodyClassName="stack-md"
+      >
+        <p>
+          Upload a wall photo, or pause a short video on a clear frame, and run the same recognition pipeline without using the live camera.
+        </p>
         <input
           ref={imageInputRef}
           type="file"
@@ -159,19 +212,56 @@ export default function ScanWallPage() {
             )}
           </div>
         ) : (
-          <div className="camera-placeholder">Upload a wall photo or video to test recognition without the live camera.</div>
+          <div className="camera-placeholder camera-placeholder-assist">
+            Upload a wall photo or video to test recognition without the live camera.
+          </div>
         )}
       </Card>
 
-      <Card title="Current scan status">
-        <p><strong>{scanProgress.message}</strong></p>
-        <p className="subtle-text">Progress: {scanProgress.progress}%</p>
-        {scanProgress.error ? <p className="error-banner">{scanProgress.error}</p> : null}
+      <Card title="Scan pulse" className="assist-bottom-sheet assist-status-sheet" bodyClassName="stack-md">
+        <div className="assist-status-head">
+          <p className="assist-status-copy">
+            <strong>{scanProgress.message}</strong>
+          </p>
+          <span className="assist-status-progress">{scanProgress.progress}%</span>
+        </div>
+        <div
+          className="assist-progress-track"
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={scanProgress.progress}
+          aria-valuetext={scanProgress.message}
+        >
+          <span className="assist-progress-bar" style={{ width: `${scanProgress.progress}%` }} />
+        </div>
+        {shouldSuggestVolunteer ? (
+          <div className="assist-soft-warning-card" role="note" aria-live="polite">
+            <AssistMascotSticker variant="flashlight" className="assist-warning-mascot" />
+            <div className="stack-sm">
+              <strong>That wall is a little dim right now</strong>
+              <p>{fallbackDescription}</p>
+              <div className="inline-actions wrap">
+                <Button onClick={() => navigate(routes.volunteerBoard)}>Go to volunteer help</Button>
+                <Button variant="secondary" onClick={() => navigate(routes.scanWall)}>Retake scan</Button>
+              </div>
+            </div>
+          </div>
+        ) : null}
         {scanCoverage ? (
           <div className="stats-grid">
-            <div><strong>{scanCoverage.holdCount}</strong><span>Detected holds</span></div>
-            <div><strong>{scanCoverage.colorCount}</strong><span>Detected route colors</span></div>
-            <div><strong>{scanCoverage.source}</strong><span>Scan source</span></div>
+            <div>
+              <strong>{scanCoverage.holdCount}</strong>
+              <span>Detected holds</span>
+            </div>
+            <div>
+              <strong>{scanCoverage.colorCount}</strong>
+              <span>Detected route colors</span>
+            </div>
+            <div>
+              <strong>{scanCoverage.source}</strong>
+              <span>Scan source</span>
+            </div>
           </div>
         ) : null}
         {displayScan?.wallMap.scanNotes.length ? (
@@ -184,7 +274,7 @@ export default function ScanWallPage() {
       </Card>
 
       {displayScan ? (
-        <Card title="Detection overlay preview">
+        <Card title="Wall overlay preview" className="assist-bottom-sheet assist-route-sheet" bodyClassName="stack-md">
           <RouteCanvas
             wallMap={displayScan.wallMap}
             backgroundImageUrl={displayScan.coverImageUrl}
@@ -194,20 +284,29 @@ export default function ScanWallPage() {
       ) : null}
 
       {displayScan ? (
-        <Card title="Autonomous readiness gate">
+        <Card title="Route readiness" className="assist-bottom-sheet assist-readiness-sheet" bodyClassName="stack-md">
           {scanAnalysis ? (
             <>
               <p>
                 {scanAnalysis.shouldAllowAutonomousGuidance
-                  ? 'Automatic recognition is stable enough to continue to route setup.'
+                  ? 'The wall looks stable enough to continue to route setup.'
                   : scanAnalysis.suggestedAction === 'companion'
                     ? 'The wall is partially recognized, but this scan should be used with a companion or volunteer.'
                     : 'Recognition is not stable enough for autonomous guidance yet. Retake the scan from a clearer angle.'}
               </p>
               <div className="stats-grid">
-                <div><strong>{Math.round(scanAnalysis.confidence * 100)}%</strong><span>Overall confidence</span></div>
-                <div><strong>{scanAnalysis.detectionSummary.holdCount}</strong><span>Detected holds</span></div>
-                <div><strong>{scanAnalysis.detectionSummary.routeCount}</strong><span>Route candidates</span></div>
+                <div>
+                  <strong>{Math.round(scanAnalysis.confidence * 100)}%</strong>
+                  <span>Overall confidence</span>
+                </div>
+                <div>
+                  <strong>{scanAnalysis.detectionSummary.holdCount}</strong>
+                  <span>Detected holds</span>
+                </div>
+                <div>
+                  <strong>{scanAnalysis.detectionSummary.routeCount}</strong>
+                  <span>Route candidates</span>
+                </div>
               </div>
               <p className="subtle-text">Active provider: {scanAnalysis.provider}</p>
               <ol className="numbered-list subtle-text">
@@ -217,7 +316,9 @@ export default function ScanWallPage() {
               </ol>
               {scanAnalysis.routeCandidates.length ? (
                 <div className="stack-sm">
-                  <p><strong>Detected route candidates</strong></p>
+                  <p>
+                    <strong>Detected route candidates</strong>
+                  </p>
                   <ol className="numbered-list subtle-text">
                     {scanAnalysis.routeCandidates.slice(0, 3).map((candidate) => (
                       <li key={candidate.id}>
@@ -246,14 +347,22 @@ export default function ScanWallPage() {
         </Card>
       ) : null}
 
-      <Card title={t('Volunteer board')} className="tone-yellow">
+      <Card
+        title={t('Volunteer board')}
+        className="tone-yellow assist-bottom-sheet assist-community-sheet"
+        bodyClassName="stack-md"
+      >
         <p>{t('Request help, browse upcoming support sessions, and express contact intent with low friction.')}</p>
         <div className="inline-actions wrap">
-          <Link to={routes.volunteerCreate}><Button>{t('Create request')}</Button></Link>
-          <Link to={routes.volunteerMySessions}>
-            <Button variant="secondary">{t('My sessions')}</Button>
+          <Link to={routes.volunteerCreate} className="btn btn-primary" onClick={() => triggerHaptic(10)}>
+            {t('Create request')}
           </Link>
-          <Link to={routes.contactIntent}><Button variant="ghost">{t('Contact intents')}</Button></Link>
+          <Link to={routes.volunteerMySessions} className="btn btn-secondary" onClick={() => triggerHaptic(10)}>
+            {t('My sessions')}
+          </Link>
+          <Link to={routes.contactIntent} className="btn btn-ghost" onClick={() => triggerHaptic(10)}>
+            {t('Contact intents')}
+          </Link>
         </div>
       </Card>
 
@@ -262,7 +371,7 @@ export default function ScanWallPage() {
           <p>{t('Loading support posts...')}</p>
         </Card>
       ) : items.length ? (
-        <div className="stack-lg">
+        <div className="community-request-grid">
           {items.map((item) => <VolunteerCard key={item.id} item={item} />)}
         </div>
       ) : (

@@ -12,13 +12,22 @@ const defaultAccessibilityPreferences = {
   simplifiedMode: false,
   voiceCommandsEnabled: false,
   speechRate: 1,
+  speechVolume: 1,
   fontScale: 1,
+};
+
+const defaultOnboardingPreferences = {
+  completed: false,
+  accessibilitySetupCompleted: false,
+  guideCompleted: false,
+  completedAt: null,
 };
 
 function buildUserPreferences(user) {
   const preferences = user.preferences?.toObject?.() ?? user.preferences ?? {};
   const tutorialProgress = preferences.tutorialProgress ?? {};
   const notifications = preferences.notifications ?? {};
+  const onboarding = preferences.onboarding ?? {};
 
   return {
     language: preferences.language || 'en',
@@ -33,6 +42,11 @@ function buildUserPreferences(user) {
     notifications: {
       readIds: notifications.readIds ?? [],
       updatedAt: notifications.updatedAt ?? null,
+    },
+    onboarding: {
+      ...defaultOnboardingPreferences,
+      ...(onboarding ?? {}),
+      completedAt: onboarding.completedAt ?? null,
     },
   };
 }
@@ -151,7 +165,7 @@ router.get('/me/preferences', auth, async (req, res) => {
 
 router.patch('/me/preferences', auth, async (req, res) => {
   try {
-    const { language, accessibility, tutorialProgress, notifications } = req.body;
+    const { language, accessibility, tutorialProgress, notifications, onboarding } = req.body;
     const user = await User.findById(req.user.id);
 
     if (!user) {
@@ -185,6 +199,17 @@ router.patch('/me/preferences', auth, async (req, res) => {
               updatedAt: new Date(),
             }
           : current.notifications,
+      onboarding:
+        onboarding && typeof onboarding === 'object'
+          ? {
+              ...current.onboarding,
+              ...onboarding,
+              completedAt:
+                (onboarding.completed ?? current.onboarding.completed)
+                  ? onboarding.completedAt ?? current.onboarding.completedAt ?? new Date()
+                  : null,
+            }
+          : current.onboarding,
     };
 
     user.preferences = nextPreferences;

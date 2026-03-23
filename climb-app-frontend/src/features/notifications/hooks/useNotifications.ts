@@ -96,7 +96,7 @@ function buildBackendNotification(
 }
 
 export function useNotifications() {
-  const { isAuthenticated, isOnboarded, isUsingDevAuth } = useAuth();
+  const { isAuthenticated, isProfileComplete, isUsingDevAuth } = useAuth();
   const { t } = useLanguage();
   const tutorialProgress = useTutorialProgress();
   const feed = useFeed();
@@ -117,12 +117,12 @@ export function useNotifications() {
     const items: NotificationDraft[] = [];
     const tutorialTotal = tutorialProgress.completedCount + tutorialProgress.remainingCount;
 
-    if (!isOnboarded) {
+    if (!isProfileComplete) {
       items.push({
         id: 'profile-incomplete',
         title: t('Complete your profile'),
         body: t('Add your basic details so role-based guidance and accessibility settings work properly.'),
-        to: routes.onboarding,
+        to: routes.profileEdit,
       });
     }
 
@@ -191,7 +191,7 @@ export function useNotifications() {
     feed.postsWithActivity,
     friends.incoming,
     isAuthenticated,
-    isOnboarded,
+    isProfileComplete,
     rooms.invitations,
     t,
     tutorialProgress.completedCount,

@@ -29,7 +29,7 @@ function buildNotifications({ user, postsWithActivity, pendingRequests, myVolunt
     notifications.push({
       id: 'profile-incomplete',
       type: 'profile_incomplete',
-      to: '/onboarding',
+      to: '/profile/edit',
       data: {},
     });
   }
@@ -72,7 +72,7 @@ function buildNotifications({ user, postsWithActivity, pendingRequests, myVolunt
     notifications.push({
       id: `volunteer-interest:${myVolunteerPosts.length}`,
       type: 'volunteer_interest',
-      to: '/volunteer/contact-intent',
+      to: '/social/volunteer/contact-intent',
       data: {
         count: myVolunteerPosts.length,
       },
@@ -83,7 +83,7 @@ function buildNotifications({ user, postsWithActivity, pendingRequests, myVolunt
     notifications.push({
       id: `upcoming-session:${upcomingSession._id.toString()}:${new Date(upcomingSession.sessionTime).toISOString()}`,
       type: 'upcoming_session',
-      to: '/volunteer/my-sessions',
+      to: '/social/volunteer/my-sessions',
       data: {
         title: upcomingSession.title,
         sessionTime: upcomingSession.sessionTime,

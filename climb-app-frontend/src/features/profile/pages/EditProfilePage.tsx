@@ -24,29 +24,48 @@ export default function EditProfilePage() {
   }
 
   return (
-    <section className="page-card stack-lg">
-      <div className="stack-sm">
-        <h1>{t('Edit profile')}</h1>
-        <p>{t('Update personal details, climbing experience, and accessibility support needs.')}</p>
+    <section className="page-card stack-lg profile-edit-page" aria-labelledby="profile-edit-heading">
+      <div className="profile-edit-hero">
+        <div className="stack-sm">
+          <p className="subtle-text">{t('Climbing passport')}</p>
+          <h1 id="profile-edit-heading">{t('Edit profile')}</h1>
+          <p>{t('Update personal details, climbing experience, and accessibility support needs.')}</p>
+        </div>
+
+        <div className="profile-edit-stamp" aria-hidden="true">
+          <span>EDIT</span>
+        </div>
       </div>
 
-      <label className="field">
-        <span className="field-label">{t('Username')}</span>
-        <input
-          className="field-input"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-        />
-      </label>
+      <form
+        className="profile-edit-form"
+        onSubmit={(event) => {
+          event.preventDefault();
+          void handleSave();
+        }}
+      >
+        <section className="profile-edit-section">
+          <label className="field">
+            <span className="field-label">{t('Username')}</span>
+            <input
+              className="field-input"
+              value={username}
+              onChange={(event) => setUsername(event.target.value)}
+            />
+          </label>
+        </section>
 
-      <BasicProfileForm profile={profile} setProfile={setProfile} />
+        <section className="profile-edit-section">
+          <BasicProfileForm profile={profile} setProfile={setProfile} />
+        </section>
 
-      <div className="inline-actions wrap">
-        <Button onClick={handleSave}>{t('Save changes')}</Button>
-        <Button variant="ghost" onClick={() => navigate(routes.profile)}>
-          {t('Cancel')}
-        </Button>
-      </div>
+        <div className="profile-edit-actions">
+          <Button type="submit">{t('Save changes')}</Button>
+          <Button type="button" variant="ghost" onClick={() => navigate(routes.profile)}>
+            {t('Cancel')}
+          </Button>
+        </div>
+      </form>
     </section>
   );
 }

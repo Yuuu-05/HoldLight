@@ -16,11 +16,15 @@ interface RoleActionCardsProps {
 
 export default function RoleActionCards({ intro, items }: RoleActionCardsProps) {
   return (
-    <div className="stack-lg">
-      <p>{intro}</p>
-      <div className="grid-2">
-        {items.map((item) => (
-          <Card key={item.to} title={item.title}>
+    <div className="stack-lg dashboard-role-actions">
+      <p className="subtle-text">{intro}</p>
+      <div className="grid-2 dashboard-role-grid">
+        {items.map((item, index) => (
+          <Card
+            key={`${item.to}-${index}`}
+            title={item.title}
+            className={`dashboard-role-action-card dashboard-role-action-card-${index % 4}`.trim()}
+          >
             <p>{item.description}</p>
             <Link to={item.to}>
               <Button fullWidth>{item.buttonLabel}</Button>

@@ -29,7 +29,7 @@ export default function VisuallyImpairedHomePage() {
         {
           title: t('Find support'),
           description: t('Browse volunteer support requests and lightweight contact intent options.'),
-          to: routes.scanWall,
+          to: routes.volunteerBoard,
           buttonLabel: t('Find support'),
         },
       ]}

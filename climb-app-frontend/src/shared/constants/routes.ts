@@ -1,9 +1,12 @@
+const socialVolunteerBase = '/social/volunteer';
+
 export const routes = {
   home: '/',
   login: '/login',
   register: '/register',
   logout: '/logout',
   onboarding: '/onboarding',
+  onboardingVision: '/onboarding/vision',
   dashboard: '/dashboard',
   profile: '/profile',
   profileEdit: '/profile/edit',
@@ -26,9 +29,10 @@ export const routes = {
   myPosts: '/social/my',
   socialFriends: '/social/friends',
   socialRooms: '/social/rooms',
-  volunteerBoard: '/volunteer',
-  volunteerCreate: '/volunteer/new',
-  volunteerMySessions: '/volunteer/my-sessions',
-  contactIntent: '/volunteer/contact-intent',
+  volunteerBoard: socialVolunteerBase,
+  volunteerCreate: `${socialVolunteerBase}/new`,
+  volunteerMySessions: `${socialVolunteerBase}/my-sessions`,
+  contactIntent: `${socialVolunteerBase}/contact-intent`,
+  volunteerPostDetail: (postId: string) => `${socialVolunteerBase}/${postId}`,
   forbidden: '/403',
 };

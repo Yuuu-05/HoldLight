@@ -9,6 +9,7 @@ import { routes } from '../../../shared/constants/routes';
 import { useLanguage } from '../../../app/providers/LanguageProvider';
 import PasswordField from './PasswordField';
 import RoleSelector from './RoleSelector';
+import { getOnboardingStartRoute } from '../../../shared/utils/onboarding';
 
 export default function RegisterForm() {
   const { register } = useAuth();
@@ -28,7 +29,7 @@ export default function RegisterForm() {
 
     try {
       await register({ username, email, password, role });
-      navigate(routes.onboarding);
+      navigate(getOnboardingStartRoute(role), { replace: true });
     } catch (err) {
       const message = err instanceof Error ? err.message : t('Unable to create account.');
       setError(message);

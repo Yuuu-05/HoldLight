@@ -74,19 +74,11 @@ export default function RouteCanvas({
   return (
     <div className="stack-sm">
       <div
-        onClick={handleCanvasClick}
+        className={`route-canvas assist-route-canvas ${backgroundImageUrl ? 'has-image' : 'is-empty'} ${onCanvasSelect ? 'is-clickable' : ''}`.trim()}
+        onClick={onCanvasSelect ? handleCanvasClick : undefined}
         style={{
-          position: 'relative',
-          width: '100%',
           aspectRatio,
           minHeight: '340px',
-          borderRadius: '18px',
-          border: '1px dashed var(--border-strong)',
-          background: backgroundImageUrl
-            ? 'linear-gradient(180deg, rgba(255,255,255,0.04), rgba(15,23,42,0.08))'
-            : 'linear-gradient(180deg, rgba(255,255,255,0.82), rgba(225,232,240,0.88))',
-          overflow: 'hidden',
-          cursor: onCanvasSelect ? 'crosshair' : 'default',
         }}
       >
         {backgroundImageUrl ? (
@@ -98,7 +90,7 @@ export default function RouteCanvas({
               inset: 0,
               width: '100%',
               height: '100%',
-              objectFit: 'fill',
+              objectFit: 'cover',
               pointerEvents: 'none',
               userSelect: 'none',
             }}
@@ -109,7 +101,7 @@ export default function RouteCanvas({
           style={{
             position: 'absolute',
             inset: 0,
-            background: backgroundImageUrl ? 'rgba(15, 23, 42, 0.06)' : 'transparent',
+            background: backgroundImageUrl ? 'rgba(20, 26, 42, 0.12)' : 'transparent',
             pointerEvents: 'none',
           }}
         />
@@ -136,66 +128,86 @@ export default function RouteCanvas({
                 ? `${holdColor}dd`
                 : 'rgba(15, 23, 42, 0.28)';
           const labelVisible = Boolean(backgroundImageUrl && hasBox && showDetectionLabels);
+          const holdTitle = `${hold.label} (${hold.color})`;
+          const holdLabel = `${hold.label}, ${hold.color}, ${Math.round(hold.confidence * 100)} percent confidence`;
+          const holdStyle = {
+            position: 'absolute' as const,
+            left: hasBox ? `${hold.x1Pct}%` : `${hold.xPct}%`,
+            top: hasBox ? `${hold.y1Pct}%` : `${hold.yPct}%`,
+            width: hasBox ? `${boxWidthPct}%` : `${pixelSize}px`,
+            height: hasBox ? `${boxHeightPct}%` : `${pixelSize}px`,
+            marginLeft: hasBox ? '0' : `${pixelSize / -2}px`,
+            marginTop: hasBox ? '0' : `${pixelSize / -2}px`,
+            padding: 0,
+            appearance: 'none' as const,
+            WebkitAppearance: 'none' as const,
+            borderRadius: hasBox ? '14px' : '999px',
+            border: `${hasBox || isHighlighted || isSelected ? 3 : 1.5}px solid ${borderColor}`,
+            background: hasBox
+              ? (isHighlighted ? `${holdColor}22` : 'transparent')
+              : holdColor,
+            boxShadow: isSelected
+              ? '0 0 0 6px rgba(255, 70, 56, 0.2)'
+              : isCompleted
+                ? '0 0 0 4px rgba(34,197,94,0.25)'
+                : isCurrent
+                  ? `0 0 0 5px ${holdColor}44`
+                  : hasBox && backgroundImageUrl
+                    ? `0 2px 10px ${holdColor}20`
+                    : 'none',
+            opacity: hasHighlights ? (isHighlighted ? 1 : 0.48) : 1,
+            transform: isHighlighted || isSelected ? 'scale(1.03)' : 'scale(1)',
+            cursor: onHoldSelect ? 'pointer' : 'default',
+            backdropFilter: hasBox ? 'saturate(1.05)' : undefined,
+          };
 
-          return (
+          const content = labelVisible ? (
             <div
-              key={hold.id}
-              title={`${hold.label} (${hold.color})`}
-              onClick={(event) => {
-                event.stopPropagation();
-                onHoldSelect?.(hold);
-              }}
+              className="assist-route-hold-badge"
               style={{
                 position: 'absolute',
-                left: hasBox ? `${hold.x1Pct}%` : `${hold.xPct}%`,
-                top: hasBox ? `${hold.y1Pct}%` : `${hold.yPct}%`,
-                width: hasBox ? `${boxWidthPct}%` : `${pixelSize}px`,
-                height: hasBox ? `${boxHeightPct}%` : `${pixelSize}px`,
-                marginLeft: hasBox ? '0' : `${pixelSize / -2}px`,
-                marginTop: hasBox ? '0' : `${pixelSize / -2}px`,
-                borderRadius: hasBox ? '14px' : '999px',
-                border: `${hasBox || isHighlighted || isSelected ? 3 : 1.5}px solid ${borderColor}`,
-                background: hasBox
-                  ? (isHighlighted ? `${holdColor}22` : 'transparent')
-                  : holdColor,
-                boxShadow: isSelected
-                  ? '0 0 0 6px rgba(255, 70, 56, 0.2)'
-                  : isCompleted
-                    ? '0 0 0 4px rgba(34,197,94,0.25)'
-                    : isCurrent
-                      ? `0 0 0 5px ${holdColor}44`
-                      : hasBox && backgroundImageUrl
-                        ? `0 2px 10px ${holdColor}20`
-                        : 'none',
-                opacity: hasHighlights ? (isHighlighted ? 1 : 0.48) : 1,
-                transform: isHighlighted || isSelected ? 'scale(1.03)' : 'scale(1)',
-                cursor: onHoldSelect ? 'pointer' : 'default',
-                backdropFilter: hasBox ? 'saturate(1.05)' : undefined,
+                left: '6px',
+                top: '6px',
+                maxWidth: 'calc(100% - 12px)',
+                padding: '4px 8px',
+                borderRadius: '999px',
+                background: 'rgba(255, 255, 255, 0.92)',
+                color: '#0f172a',
+                fontSize: '11px',
+                fontWeight: 700,
+                lineHeight: 1.2,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                boxShadow: '0 8px 18px rgba(15, 23, 42, 0.12)',
               }}
             >
-              {labelVisible ? (
-                <div
-                  style={{
-                    position: 'absolute',
-                    left: '6px',
-                    top: '6px',
-                    maxWidth: 'calc(100% - 12px)',
-                    padding: '2px 6px',
-                    borderRadius: '999px',
-                    background: 'rgba(255, 255, 255, 0.92)',
-                    color: '#0f172a',
-                    fontSize: '11px',
-                    fontWeight: 700,
-                    lineHeight: 1.2,
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    boxShadow: '0 1px 4px rgba(15, 23, 42, 0.12)',
-                  }}
-                >
-                  {hold.color} {Math.round(hold.confidence * 100)}%
-                </div>
-              ) : null}
+              {hold.color} {Math.round(hold.confidence * 100)}%
+            </div>
+          ) : null;
+
+          if (onHoldSelect) {
+            return (
+            <button
+                key={hold.id}
+                type="button"
+                className="assist-route-hold"
+                title={holdTitle}
+                aria-label={holdLabel}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onHoldSelect(hold);
+                }}
+                style={holdStyle}
+              >
+                {content}
+              </button>
+            );
+          }
+
+          return (
+            <div key={hold.id} className="assist-route-hold" title={holdTitle} style={holdStyle}>
+              {content}
             </div>
           );
         })}
