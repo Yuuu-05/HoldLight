@@ -7,7 +7,9 @@ function shouldUseVisionOnboarding(role?: RoleValue | null, accessibilitySetupCo
 }
 
 export function getOnboardingStartRoute(role?: RoleValue | null, accessibilitySetupCompleted = false) {
-  return shouldUseVisionOnboarding(role, accessibilitySetupCompleted) ? routes.onboardingVision : routes.onboarding;
+  return shouldUseVisionOnboarding(role, accessibilitySetupCompleted)
+    ? routes.onboardingVision
+    : routes.dashboard;
 }
 
 export function getOnboardingStartRouteForUser(user: User | null | undefined) {

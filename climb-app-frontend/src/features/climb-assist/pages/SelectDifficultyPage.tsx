@@ -96,10 +96,7 @@ export default function SelectDifficultyPage() {
     return (
       <Card title="Select route and guidance level">
         <p>Automatic recognition has not cleared the accessibility gate yet, so autonomous route selection is blocked for this scan.</p>
-        <div className="inline-actions wrap">
-          <Button onClick={() => navigate(routes.scanWall)}>Retake wall scan</Button>
-          <Button variant="secondary" onClick={() => navigate(routes.volunteerBoard)}>Open companion mode</Button>
-        </div>
+        <Button onClick={() => navigate(routes.scanWall)}>Retake wall scan</Button>
       </Card>
     );
   }

@@ -5,6 +5,7 @@ interface RouteCanvasProps {
   holds?: readonly string[];
   wallMap?: WallMap;
   backgroundImageUrl?: string;
+  plainImagePreview?: boolean;
   highlightHoldIds?: string[];
   completedHoldIds?: string[];
   currentHoldId?: string;
@@ -32,6 +33,7 @@ export default function RouteCanvas({
   holds,
   wallMap,
   backgroundImageUrl,
+  plainImagePreview = false,
   highlightHoldIds = [],
   completedHoldIds = [],
   currentHoldId,
@@ -70,27 +72,51 @@ export default function RouteCanvas({
   }
 
   const aspectRatio = `${Math.max(1, wallMap.width)} / ${Math.max(1, wallMap.height)}`;
+  const useStableOverlayPreview = plainImagePreview && Boolean(backgroundImageUrl);
+  const containerClassName = [
+    'route-canvas',
+    'assist-route-canvas',
+    useStableOverlayPreview ? 'assist-route-canvas-preview' : '',
+    backgroundImageUrl ? 'has-image' : 'is-empty',
+    onCanvasSelect ? 'is-clickable' : '',
+  ].filter(Boolean).join(' ');
+  const containerStyle = useStableOverlayPreview
+    ? {
+        position: 'relative' as const,
+        width: '100%',
+        aspectRatio,
+        minHeight: '340px',
+        contain: 'paint' as const,
+      }
+    : {
+        aspectRatio,
+        minHeight: '340px',
+      };
+  const previewOverlayColor = useStableOverlayPreview
+    ? 'rgba(15, 23, 42, 0.04)'
+    : 'rgba(20, 26, 42, 0.12)';
 
   return (
     <div className="stack-sm">
       <div
-        className={`route-canvas assist-route-canvas ${backgroundImageUrl ? 'has-image' : 'is-empty'} ${onCanvasSelect ? 'is-clickable' : ''}`.trim()}
+        className={containerClassName}
         onClick={onCanvasSelect ? handleCanvasClick : undefined}
-        style={{
-          aspectRatio,
-          minHeight: '340px',
-        }}
+        style={containerStyle}
       >
         {backgroundImageUrl ? (
           <img
             src={backgroundImageUrl}
             alt="Detected climbing wall"
+            decoding="async"
+            draggable={false}
             style={{
-              position: 'absolute',
-              inset: 0,
+              position: useStableOverlayPreview ? 'relative' : 'absolute',
+              inset: useStableOverlayPreview ? undefined : 0,
+              zIndex: 0,
+              display: 'block',
               width: '100%',
               height: '100%',
-              objectFit: 'cover',
+              objectFit: useStableOverlayPreview ? 'fill' : 'cover',
               pointerEvents: 'none',
               userSelect: 'none',
             }}
@@ -101,7 +127,8 @@ export default function RouteCanvas({
           style={{
             position: 'absolute',
             inset: 0,
-            background: backgroundImageUrl ? 'rgba(20, 26, 42, 0.12)' : 'transparent',
+            zIndex: 1,
+            background: backgroundImageUrl ? previewOverlayColor : 'transparent',
             pointerEvents: 'none',
           }}
         />
@@ -127,11 +154,17 @@ export default function RouteCanvas({
               : backgroundImageUrl
                 ? `${holdColor}dd`
                 : 'rgba(15, 23, 42, 0.28)';
-          const labelVisible = Boolean(backgroundImageUrl && hasBox && showDetectionLabels);
+          const labelVisible = Boolean(
+            backgroundImageUrl
+            && hasBox
+            && showDetectionLabels
+            && !useStableOverlayPreview,
+          );
           const holdTitle = `${hold.label} (${hold.color})`;
           const holdLabel = `${hold.label}, ${hold.color}, ${Math.round(hold.confidence * 100)} percent confidence`;
           const holdStyle = {
             position: 'absolute' as const,
+            zIndex: 2,
             left: hasBox ? `${hold.x1Pct}%` : `${hold.xPct}%`,
             top: hasBox ? `${hold.y1Pct}%` : `${hold.yPct}%`,
             width: hasBox ? `${boxWidthPct}%` : `${pixelSize}px`,
@@ -153,12 +186,18 @@ export default function RouteCanvas({
                 : isCurrent
                   ? `0 0 0 5px ${holdColor}44`
                   : hasBox && backgroundImageUrl
-                    ? `0 2px 10px ${holdColor}20`
+                    ? useStableOverlayPreview
+                      ? 'none'
+                      : `0 2px 10px ${holdColor}20`
                     : 'none',
             opacity: hasHighlights ? (isHighlighted ? 1 : 0.48) : 1,
-            transform: isHighlighted || isSelected ? 'scale(1.03)' : 'scale(1)',
+            transform: useStableOverlayPreview
+              ? 'none'
+              : isHighlighted || isSelected
+                ? 'scale(1.03)'
+                : 'scale(1)',
             cursor: onHoldSelect ? 'pointer' : 'default',
-            backdropFilter: hasBox ? 'saturate(1.05)' : undefined,
+            backdropFilter: useStableOverlayPreview || !hasBox ? undefined : 'saturate(1.05)',
           };
 
           const content = labelVisible ? (
@@ -179,7 +218,7 @@ export default function RouteCanvas({
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
-                boxShadow: '0 8px 18px rgba(15, 23, 42, 0.12)',
+                boxShadow: useStableOverlayPreview ? 'none' : '0 8px 18px rgba(15, 23, 42, 0.12)',
               }}
             >
               {hold.color} {Math.round(hold.confidence * 100)}%

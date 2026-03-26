@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../app/providers/AuthProvider';
 import { useLanguage } from '../../../app/providers/LanguageProvider';
 import GuideMascot, { type MascotPose } from '../../../shared/components/illustration/GuideMascot';
@@ -8,6 +8,7 @@ import { routes } from '../../../shared/constants/routes';
 import { tutorialModules } from '../../../shared/constants/tutorial';
 import { usePageTitle } from '../../../shared/hooks/usePageTitle';
 import { getRoleLabel } from '../../../shared/utils/getRoleLabel';
+import DashboardGuideCard from '../components/DashboardGuideCard';
 import { useTutorialProgress } from '../../tutorial/hooks/useTutorialProgress';
 import { useVolunteerBoard } from '../../volunteer/hooks/useVolunteerBoard';
 import { useRooms } from '../../social/hooks/useRooms';
@@ -192,10 +193,15 @@ function getHeroPose(type: DashboardScheduleType | 'empty'): MascotPose {
 export default function DashboardPage() {
   const { user, isProfileComplete } = useAuth();
   const { language, t } = useLanguage();
+  const location = useLocation();
+  const navigate = useNavigate();
   const { completedCount, completionRate, isComplete, nextModule } = useTutorialProgress();
   const { items, upcomingSessions } = useVolunteerBoard();
   const { rooms, invitations, unreadRoomIds, myRooms } = useRooms();
   const [selectedDayKey, setSelectedDayKey] = useState(() => toDayKey(new Date()));
+  const [manualGuideOpen, setManualGuideOpen] = useState(
+    () => new URLSearchParams(location.search).get('guide') === 'replay',
+  );
 
   usePageTitle('Dashboard');
 
@@ -203,12 +209,26 @@ export default function DashboardPage() {
   const today = useMemo(() => new Date(), []);
   const todayKey = toDayKey(today);
   const weekDays = useMemo(() => getWeekDays(language, today), [language, today]);
+  const replayGuideRequested = useMemo(
+    () => new URLSearchParams(location.search).get('guide') === 'replay',
+    [location.search],
+  );
+  const shouldAutoOpenGuide = !user?.preferences?.onboarding?.guideCompleted || manualGuideOpen;
 
   useEffect(() => {
     if (!weekDays.some((day) => day.key === selectedDayKey)) {
       setSelectedDayKey(todayKey);
     }
   }, [selectedDayKey, todayKey, weekDays]);
+
+  useEffect(() => {
+    if (!replayGuideRequested) {
+      return;
+    }
+
+    setManualGuideOpen(true);
+    navigate(routes.dashboard, { replace: true });
+  }, [navigate, replayGuideRequested]);
 
   const roleLabel = t(getRoleLabel(user?.role));
   const roleStatus = getRoleStatus(user?.role, isZh);
@@ -572,6 +592,11 @@ export default function DashboardPage() {
           <span className="dashboard-role-caption">{roleLabel}</span>
         </div>
       </header>
+
+      <DashboardGuideCard
+        autoOpen={shouldAutoOpenGuide}
+        onAutoOpenHandled={() => setManualGuideOpen(false)}
+      />
 
       <section className="dashboard-strip-shell" aria-label={isZh ? '本周日程轴' : 'Weekly schedule strip'}>
         <div className="dashboard-strip-intro">

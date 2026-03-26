@@ -91,26 +91,33 @@ const preferencesSchema = new mongoose.Schema(
   { _id: false },
 );
 
-const userSchema = new mongoose.Schema({
-  username: { type: String, required: true, unique: true, trim: true },
-  email: { type: String, required: true, unique: true, trim: true, lowercase: true },
-  passwordHash: { type: String, required: true },
-  role: {
-    type: String,
-    enum: ['new_user', 'experienced', 'visually_impaired', 'volunteer'],
-    required: true,
+const userSchema = new mongoose.Schema(
+  {
+    username: { type: String, required: true, unique: true, trim: true },
+    email: { type: String, required: true, unique: true, trim: true, lowercase: true },
+    passwordHash: { type: String, required: true },
+    role: {
+      type: String,
+      enum: ['new_user', 'experienced', 'visually_impaired', 'volunteer'],
+      required: true,
+    },
+    profile: { type: profileSchema, default: {} },
+    preferences: { type: preferencesSchema, default: () => ({}) },
+    posts: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Post' }],
+    likedPosts: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Post' }],
+    volunteerSessions: [{ type: mongoose.Schema.Types.ObjectId, ref: 'VolunteerPost' }],
+    tokenVersion: { type: Number, default: 0 },
+    createdAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date, default: Date.now },
   },
-  profile: { type: profileSchema, default: {} },
-  preferences: { type: preferencesSchema, default: () => ({}) },
-  posts: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Post' }],
-  likedPosts: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Post' }],
-  volunteerSessions: [{ type: mongoose.Schema.Types.ObjectId, ref: 'VolunteerPost' }],
-  tokenVersion: { type: Number, default: 0 },
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now },
-});
+  {
+    collection: 'users',
+  },
+);
 
 function sanitizeUser(_doc, ret) {
+  ret.id = ret._id.toString();
+  delete ret._id;
   delete ret.passwordHash;
   delete ret.__v;
   delete ret.tokenVersion;
@@ -124,4 +131,4 @@ userSchema.pre('save', function updateTimestamp() {
   this.updatedAt = new Date();
 });
 
-module.exports = mongoose.model('User', userSchema);
+module.exports = mongoose.models.User || mongoose.model('User', userSchema);

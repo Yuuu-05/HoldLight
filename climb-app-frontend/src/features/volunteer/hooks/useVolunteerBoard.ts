@@ -13,6 +13,8 @@ export function useVolunteerBoard() {
     try {
       const nextItems = await getVolunteerPostsApi();
       setItems(nextItems);
+    } catch {
+      setItems([]);
     } finally {
       setLoading(false);
     }

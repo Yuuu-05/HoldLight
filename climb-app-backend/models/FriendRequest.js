@@ -1,18 +1,23 @@
 const mongoose = require('mongoose');
 
-const friendRequestSchema = new mongoose.Schema({
-  fromUserId: { type: String, required: true, trim: true },
-  fromUserName: { type: String, required: true, trim: true },
-  toUserId: { type: String, required: true, trim: true },
-  toUserName: { type: String, required: true, trim: true },
-  status: {
-    type: String,
-    enum: ['pending', 'accepted', 'rejected'],
-    default: 'pending',
+const friendRequestSchema = new mongoose.Schema(
+  {
+    fromUserId: { type: String, required: true, trim: true },
+    fromUserName: { type: String, required: true, trim: true },
+    toUserId: { type: String, required: true, trim: true },
+    toUserName: { type: String, required: true, trim: true },
+    status: {
+      type: String,
+      enum: ['pending', 'accepted', 'rejected'],
+      default: 'pending',
+    },
+    createdAt: { type: Date, default: Date.now },
+    respondedAt: { type: Date, default: null },
   },
-  createdAt: { type: Date, default: Date.now },
-  respondedAt: { type: Date, default: null },
-});
+  {
+    collection: 'friendRequests',
+  },
+);
 
 friendRequestSchema.set('toJSON', {
   transform: (_doc, ret) => {
@@ -24,4 +29,4 @@ friendRequestSchema.set('toJSON', {
   },
 });
 
-module.exports = mongoose.model('FriendRequest', friendRequestSchema);
+module.exports = mongoose.models.FriendRequest || mongoose.model('FriendRequest', friendRequestSchema);

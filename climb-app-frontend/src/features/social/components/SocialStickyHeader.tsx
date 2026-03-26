@@ -12,6 +12,7 @@ interface SocialStickyHeaderProps {
   eyebrow?: string;
   title?: string;
   description?: string;
+  showContextNote?: boolean;
 }
 
 const socialTabs: Array<{ id: SocialTabId; to: string; label: string }> = [
@@ -37,10 +38,11 @@ export default function SocialStickyHeader({
   eyebrow,
   title,
   description,
+  showContextNote = true,
 }: SocialStickyHeaderProps) {
   const { t } = useLanguage();
   const socialContextCopy = {
-    feed: t('Share route notes, ask questions, and keep climbing conversations visible to the wider community.'),
+    feed: t('Social keeps feed posts, climbing rooms, and volunteer support in one calm community layer.'),
     rooms: t('Rooms live inside the same social layer, so partners can plan sessions, gym meetups, and lightweight help requests together.'),
     volunteer: t('Volunteer support is now grouped under Social, so requests, contact intents, and community coordination stay in one place.'),
   }[activeTab];
@@ -53,7 +55,7 @@ export default function SocialStickyHeader({
             {eyebrow ? <p className="social-eyebrow">{eyebrow}</p> : null}
             {title ? <h1 className="social-header-title">{title}</h1> : null}
             {description ? <p className="social-header-description">{description}</p> : null}
-            <p className="social-header-note">{socialContextCopy}</p>
+            {showContextNote ? <p className="social-header-note">{socialContextCopy}</p> : null}
           </div>
         ) : null}
 

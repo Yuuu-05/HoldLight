@@ -56,8 +56,25 @@ const climbSessionSchema = new mongoose.Schema(
     },
   },
   {
+    collection: 'climbSessions',
     timestamps: true,
   },
 );
 
-module.exports = mongoose.model('ClimbSession', climbSessionSchema);
+climbSessionSchema.set('toJSON', {
+  transform: (_doc, ret) => {
+    ret.id = ret._id.toString();
+    delete ret.__v;
+    return ret;
+  },
+});
+
+climbSessionSchema.set('toObject', {
+  transform: (_doc, ret) => {
+    ret.id = ret._id.toString();
+    delete ret.__v;
+    return ret;
+  },
+});
+
+module.exports = mongoose.models.ClimbSession || mongoose.model('ClimbSession', climbSessionSchema);

@@ -86,7 +86,7 @@ export default function ProfilePage() {
       toneClassName: 'profile-action-tone-sky',
     },
     {
-      to: `${routes.onboarding}?mode=guide&returnTo=profile`,
+      to: `${routes.dashboard}?guide=replay`,
       label: replayGuideLabel,
       copy: replayGuideHint,
       icon: 'guide' as const,

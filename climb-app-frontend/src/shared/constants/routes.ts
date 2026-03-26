@@ -1,4 +1,5 @@
 const socialVolunteerBase = '/social/volunteer';
+const socialVolunteerHub = '/social#social-volunteer';
 
 export const routes = {
   home: '/',
@@ -29,7 +30,7 @@ export const routes = {
   myPosts: '/social/my',
   socialFriends: '/social/friends',
   socialRooms: '/social/rooms',
-  volunteerBoard: socialVolunteerBase,
+  volunteerBoard: socialVolunteerHub,
   volunteerCreate: `${socialVolunteerBase}/new`,
   volunteerMySessions: `${socialVolunteerBase}/my-sessions`,
   contactIntent: `${socialVolunteerBase}/contact-intent`,

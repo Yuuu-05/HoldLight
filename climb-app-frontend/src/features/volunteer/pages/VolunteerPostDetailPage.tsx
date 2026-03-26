@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useLanguage } from '../../../app/providers/LanguageProvider';
 import {
@@ -19,28 +19,62 @@ import { getUserId } from '../../../shared/types/user';
 import { formatDate } from '../../../shared/utils/formatDate';
 import TransitionLink from '../../../shared/components/layout/TransitionLink';
 import SocialEmptyState from '../../social/components/SocialEmptyState';
+import { useVolunteerBoard } from '../hooks/useVolunteerBoard';
 
 export default function VolunteerPostDetailPage() {
   const { postId } = useParams();
   const { user } = useAuth();
   const { t } = useLanguage();
+  const { items: boardItems, loading: boardLoading } = useVolunteerBoard();
+  const boardItem = useMemo(
+    () => boardItems.find((entry) => entry.id === postId) ?? null,
+    [boardItems, postId],
+  );
   const [item, setItem] = useState<VolunteerPostItem | null>(null);
   const [open, setOpen] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
 
   const currentUserId = getUserId(user);
-  const loadPost = useCallback(async () => {
-    if (!postId) return;
-    const nextItem = await getVolunteerPostByIdApi(postId);
-    setItem(nextItem);
-  }, [postId]);
 
   useEffect(() => {
-    void loadPost();
-  }, [loadPost]);
+    if (item || !boardItem) {
+      return;
+    }
 
-  if (!item) {
+    setItem(boardItem);
+  }, [boardItem, item]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!postId || boardItem || boardLoading) {
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    void (async () => {
+      try {
+        const nextItem = await getVolunteerPostByIdApi(postId);
+        if (!cancelled && nextItem) {
+          setItem(nextItem);
+        }
+      } catch {
+        if (!cancelled) {
+          setItem(null);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [boardItem, boardLoading, postId]);
+
+  const resolvedItem = item ?? boardItem;
+
+  if (!resolvedItem) {
     return (
       <SocialEmptyState
         title={t('Volunteer request')}
@@ -51,9 +85,9 @@ export default function VolunteerPostDetailPage() {
     );
   }
 
-  const isAuthor = currentUserId === item.authorId;
-  const currentApplication = item.applicants.find((application) => application.userId === currentUserId) ?? null;
-  const activeApplicants = item.applicants.filter((application) => application.status !== 'cancelled');
+  const isAuthor = currentUserId === resolvedItem.authorId;
+  const currentApplication = resolvedItem.applicants.find((application) => application.userId === currentUserId) ?? null;
+  const activeApplicants = resolvedItem.applicants.filter((application) => application.status !== 'cancelled');
   const canApply = Boolean(user && !isAuthor && !currentApplication);
 
   const handleApplicationUpdate = async (
@@ -66,8 +100,8 @@ export default function VolunteerPostDetailPage() {
     try {
       const updated =
         nextStatus === 'cancelled'
-          ? await cancelVolunteerApplicationApi(item.id, application.id)
-          : await updateVolunteerApplicationStatusApi(item.id, application.id, nextStatus);
+          ? await cancelVolunteerApplicationApi(resolvedItem.id, application.id)
+          : await updateVolunteerApplicationStatusApi(resolvedItem.id, application.id, nextStatus);
 
       if (updated) {
         setItem(updated);
@@ -88,7 +122,7 @@ export default function VolunteerPostDetailPage() {
 
   const actionMap = useMemo(
     () =>
-      item.applicants.map((application) => {
+      resolvedItem.applicants.map((application) => {
         const actions: Array<{
           key: string;
           label: string;
@@ -128,25 +162,25 @@ export default function VolunteerPostDetailPage() {
           actions,
         };
       }),
-    [currentUserId, isAuthor, item.applicants, t],
+    [currentUserId, isAuthor, resolvedItem.applicants, t],
   );
 
   return (
     <Card
-      title={item.title}
+      title={resolvedItem.title}
       actions={<SessionStatusBadge count={activeApplicants.length} />}
       className="community-detail-hero"
-      style={{ viewTransitionName: `volunteer-card-${item.id}` }}
+      style={{ viewTransitionName: `volunteer-card-${resolvedItem.id}` }}
     >
       {feedback ? (
         <div className={feedback.type === 'success' ? 'success-banner' : 'error-banner'}>
           {feedback.message}
         </div>
       ) : null}
-      <p>{item.notes}</p>
-      <p><strong>{t('Location')}:</strong> {item.location}</p>
-      <p><strong>{t('Session time')}:</strong> {formatDate(item.sessionTime)}</p>
-      <p><strong>{t('Difficulty')}:</strong> {item.difficulty}</p>
+      <p>{resolvedItem.notes}</p>
+      <p><strong>{t('Location')}:</strong> {resolvedItem.location}</p>
+      <p><strong>{t('Session time')}:</strong> {formatDate(resolvedItem.sessionTime)}</p>
+      <p><strong>{t('Difficulty')}:</strong> {resolvedItem.difficulty}</p>
       {currentApplication ? (
         <div className="list-item stack-sm">
           <strong>{t('Your status:')}</strong>
@@ -157,9 +191,9 @@ export default function VolunteerPostDetailPage() {
 
       <div className="stack-sm">
         <strong>{t('Interested volunteers:')}</strong>
-        {item.applicants.length ? (
+        {resolvedItem.applicants.length ? (
           <div className="stack-sm">
-            {item.applicants.map((application) => {
+            {resolvedItem.applicants.map((application) => {
               const actions = actionMap.find((entry) => entry.applicationId === application.id)?.actions ?? [];
               return (
                 <div key={application.id} className="list-item stack-sm">
@@ -205,7 +239,7 @@ export default function VolunteerPostDetailPage() {
         onClose={() => setOpen(false)}
         onSubmit={async (message) => {
           if (!user) return;
-          const updated = await applyVolunteerIntentApi(item.id, {
+          const updated = await applyVolunteerIntentApi(resolvedItem.id, {
             userId: user._id || user.id || user.email,
             userName: user.username,
             message,

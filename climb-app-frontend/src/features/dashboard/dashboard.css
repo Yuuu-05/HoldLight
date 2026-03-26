@@ -128,6 +128,311 @@
   letter-spacing: 0.03em;
 }
 
+.dashboard-guide-card {
+  position: relative;
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+  overflow: hidden;
+  border: 1px solid rgba(45, 49, 66, 0.05);
+  border-radius: var(--card-radius-lg);
+  background:
+    radial-gradient(circle at top right, rgba(242, 169, 59, 0.16), transparent 26%),
+    radial-gradient(circle at bottom left, rgba(111, 164, 206, 0.12), transparent 24%),
+    rgba(255, 255, 255, 0.84);
+  box-shadow: var(--shadow-dashboard-soft);
+  backdrop-filter: blur(14px);
+}
+
+.dashboard-guide-card--collapsed {
+  display: inline-flex;
+  width: fit-content;
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.dashboard-guide-card--expanded {
+  display: grid;
+}
+
+.dashboard-guide-toggle-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 2.6rem;
+  padding: 0.38rem 0.9rem 0.38rem 0.7rem;
+  border: 1px solid rgba(45, 49, 66, 0.08);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: var(--shadow-dashboard-soft);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: transform 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
+}
+
+.dashboard-guide-toggle-button:hover {
+  transform: translateY(-1px);
+}
+
+.dashboard-guide-toggle-button:focus-visible,
+.dashboard-guide-collapse-button:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 3px rgba(242, 169, 59, 0.18),
+    0 10px 24px rgba(45, 49, 66, 0.08);
+}
+
+.dashboard-guide-toggle-kicker,
+.dashboard-guide-toggle-label {
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.dashboard-guide-toggle-kicker {
+  color: var(--text-secondary);
+}
+
+.dashboard-guide-toggle-label {
+  color: var(--text-primary);
+}
+
+.dashboard-guide-toggle-icon {
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 auto;
+}
+
+.dashboard-guide-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.dashboard-guide-card-controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.dashboard-guide-collapse-button {
+  width: 2.5rem;
+  height: 2.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(45, 49, 66, 0.08);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: 0 8px 20px rgba(45, 49, 66, 0.04);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: transform 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
+}
+
+.dashboard-guide-collapse-button:hover {
+  transform: translateY(-1px);
+}
+
+.dashboard-guide-card-copy {
+  display: grid;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.dashboard-guide-intro {
+  max-width: 36rem;
+  color: var(--text-secondary);
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.dashboard-guide-stage {
+  display: grid;
+  grid-template-columns: minmax(150px, 200px) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: stretch;
+}
+
+.dashboard-guide-mascot-panel {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 12rem;
+  padding: 0.9rem;
+  border-radius: 32px 28px 24px 30px / 26px 30px 28px 30px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.48));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  isolation: isolate;
+}
+
+.dashboard-guide-mascot-panel::before,
+.dashboard-guide-mascot-panel::after {
+  content: "";
+  position: absolute;
+  inset: auto;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.dashboard-guide-mascot-panel::before {
+  inset: auto 1rem 1rem;
+  height: 4.5rem;
+  border-radius: 999px;
+  background: var(--guide-accent, #f3a83d);
+  opacity: 0.14;
+}
+
+.dashboard-guide-mascot-panel::after {
+  top: 0.85rem;
+  right: 0.85rem;
+  width: 4.5rem;
+  height: 4.5rem;
+  border-radius: 46% 54% 50% 50%;
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.dashboard-guide-mascot {
+  width: min(100%, 170px);
+  height: auto;
+  filter: drop-shadow(0 16px 28px rgba(45, 49, 66, 0.08));
+}
+
+.dashboard-guide-dialog {
+  display: grid;
+  gap: 0.8rem;
+  padding: 1rem 1.05rem;
+  border-radius: 32px 28px 30px 24px / 26px 30px 28px 28px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 16px 34px rgba(45, 49, 66, 0.08);
+}
+
+.dashboard-guide-dialog-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.dashboard-guide-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.95rem;
+  padding: 0.34rem 0.74rem;
+  border-radius: 999px;
+  background: rgba(242, 169, 59, 0.14);
+  color: var(--text-primary);
+  font-size: 0.77rem;
+  font-weight: 900;
+}
+
+.dashboard-guide-step-count {
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.dashboard-guide-dialog-body {
+  display: grid;
+  gap: 0.5rem;
+  animation: dashboard-guide-step-enter 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.dashboard-guide-dialog-body h2 {
+  font-size: clamp(1.35rem, 4vw, 2rem);
+  line-height: 1.02;
+}
+
+.dashboard-guide-dialog-body p {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.dashboard-guide-helper {
+  color: var(--text-soft);
+  font-size: 0.84rem;
+}
+
+.dashboard-guide-progress {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.dashboard-guide-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.2rem;
+  padding: 0.45rem 0.8rem;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 8px 20px rgba(45, 49, 66, 0.04);
+  color: var(--text-secondary);
+  font-family: "Baloo 2", "Nunito", sans-serif;
+  font-size: 0.8rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    background-color 180ms ease,
+    color 180ms ease;
+}
+
+.dashboard-guide-pill:hover {
+  transform: translateY(-1px);
+}
+
+.dashboard-guide-pill:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 3px rgba(242, 169, 59, 0.18),
+    0 10px 24px rgba(45, 49, 66, 0.08);
+}
+
+.dashboard-guide-pill.is-active {
+  background: linear-gradient(180deg, rgba(242, 169, 59, 1), rgba(235, 150, 39, 0.96));
+  box-shadow: 0 14px 28px rgba(242, 169, 59, 0.22);
+  color: #ffffff;
+}
+
+.dashboard-guide-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.dashboard-guide-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.dashboard-guide-banner p {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.dashboard-guide-banner-mascot {
+  flex: 0 0 auto;
+  width: 4rem;
+  height: auto;
+}
+
 .dashboard-strip-shell,
 .dashboard-hero-card,
 .dashboard-action-card,
@@ -576,11 +881,15 @@
 
 .dashboard-secondary-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: 1rem;
+  align-items: stretch;
 }
 
 .dashboard-secondary-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
   border-radius: var(--card-radius);
   background: rgba(255, 255, 255, 0.82);
   box-shadow: var(--shadow-dashboard-soft);
@@ -595,6 +904,7 @@
 }
 
 .dashboard-secondary-card .card-body {
+  flex: 1;
   gap: 0.85rem;
 }
 
@@ -616,6 +926,18 @@
   from {
     opacity: 0;
     transform: translateY(16px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes dashboard-guide-step-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
   }
 
   to {
@@ -656,10 +978,42 @@
   }
 
   .dashboard-strip-shell,
+  .dashboard-guide-card,
   .dashboard-hero-card,
   .dashboard-action-card,
   .dashboard-secondary-card {
     border-radius: 26px;
+  }
+
+  .dashboard-guide-card-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .dashboard-guide-toggle-button {
+    min-height: 2.45rem;
+    padding-inline: 0.75rem;
+  }
+
+  .dashboard-guide-card-controls {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .dashboard-guide-stage {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-guide-mascot-panel {
+    min-height: 9.8rem;
+  }
+
+  .dashboard-guide-actions .btn {
+    flex: 1 1 10rem;
+  }
+
+  .dashboard-guide-banner {
+    align-items: flex-start;
   }
 
   .dashboard-hero-card {
@@ -675,8 +1029,7 @@
     flex-direction: column;
   }
 
-  .dashboard-actions-grid,
-  .dashboard-secondary-grid {
+  .dashboard-actions-grid {
     grid-template-columns: 1fr;
   }
 }

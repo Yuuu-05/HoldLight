@@ -1,11 +1,16 @@
 const mongoose = require('mongoose');
 
-const friendshipSchema = new mongoose.Schema({
-  userA: { type: String, required: true, trim: true },
-  userB: { type: String, required: true, trim: true },
-  pairKey: { type: String, required: true, unique: true, trim: true },
-  createdAt: { type: Date, default: Date.now },
-});
+const friendshipSchema = new mongoose.Schema(
+  {
+    userA: { type: String, required: true, trim: true },
+    userB: { type: String, required: true, trim: true },
+    pairKey: { type: String, required: true, unique: true, trim: true },
+    createdAt: { type: Date, default: Date.now },
+  },
+  {
+    collection: 'friendships',
+  },
+);
 
 friendshipSchema.set('toJSON', {
   transform: (_doc, ret) => {
@@ -16,4 +21,4 @@ friendshipSchema.set('toJSON', {
   },
 });
 
-module.exports = mongoose.model('Friendship', friendshipSchema);
+module.exports = mongoose.models.Friendship || mongoose.model('Friendship', friendshipSchema);
