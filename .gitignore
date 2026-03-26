@@ -12,9 +12,10 @@ build/
 .env.*
 !.env.example
 
-# local model weights
-climb-app-backend/vision_service/models/xiaoxiae/hold_detector/
-climb-app-backend/vision_service/models/xiaoxiae/route_triplet/
+# python environments
+.venv/
+
+# local python caches
 climb-app-backend/vision_service/__pycache__/
 
 # logs

@@ -1,0 +1,2 @@
+climb-app-backend/vision_service/models/xiaoxiae/hold_detector/model_final.pth filter=lfs diff=lfs merge=lfs -text
+climb-app-backend/vision_service/models/xiaoxiae/route_triplet/triplet_network_final.pt filter=lfs diff=lfs merge=lfs -text
