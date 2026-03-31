@@ -7,22 +7,18 @@
 每个队友都需要：
 
 - GitHub 仓库地址：`https://github.com/Yuuu-05/CPT208-ClimbApp.git`
-- 后端 `.env` 里的配置内容
+- 对这个私有仓库的访问权限
 
-如果需要运行完整视觉模型推理，还需要额外拿到：
+当前团队开发流程里，仓库已经直接跟踪了前后端 `.env` 文件，组员拉取最新代码后不需要再单独索要 `.env`。
 
-- `climb-app-backend/vision_service/models/xiaoxiae/hold_detector/model_final.pth`
-- `climb-app-backend/vision_service/models/xiaoxiae/route_triplet/triplet_network_final.pt`
-
-下面这个配置文件已经在 Git 仓库里，不需要单独发送：
-
-- `climb-app-backend/vision_service/models/xiaoxiae/experiment_config.yml`
+如果未来仓库改成公开仓库，必须立刻移除这些 `.env` 文件并轮换相关密钥。
 
 ### 2. 需要安装什么
 
 如果只是正常运行前后端开发环境，需要安装：
 
 - Git
+- Git LFS
 - Node.js 20
 - npm
 
@@ -37,51 +33,33 @@
 ### 3. 克隆仓库
 
 ```bash
+git lfs install
 git clone https://github.com/Yuuu-05/CPT208-ClimbApp.git
 cd CPT208-ClimbApp
+git lfs pull
 ```
 
-### 4. 前端 `.env` 怎么填
+### 4. `.env` 现在怎么处理
 
-在 `climb-app-frontend` 目录下创建 `.env` 文件：
+当前私有团队仓库已经直接包含：
 
-```env
-VITE_API_BASE_URL=http://localhost:5000/api
-```
+- `climb-app-frontend/.env`
+- `climb-app-backend/.env`
 
-可选配置：
+所以在现在这套团队协作方式下，组员拉取最新代码后一般不需要再手动创建 `.env`。
 
-```env
-VITE_ENABLE_DEV_AUTH_BYPASS=true
-```
+如果以后不想继续把真实配置提交到 Git，请改回使用：
 
-### 5. 后端 `.env` 怎么填
+- `climb-app-frontend/.env.example`
+- `climb-app-backend/.env.example`
 
-在 `climb-app-backend` 目录下，根据 `climb-app-backend/.env.example` 创建 `.env` 文件。
-
-最少需要填写这些内容：
-
-```env
-MONGO_URI=<向维护者获取 MongoDB 连接串>
-JWT_SECRET=<向维护者获取密钥，或本地自行设置一个开发密钥>
-JWT_EXPIRES_IN=7d
-PORT=5000
-BODY_LIMIT=12mb
-VISION_PROVIDER=heuristic
-VISION_PYTHON_COMMAND=python
-```
-
-说明：
-
-- `MONGO_URI` 必须是可用的 MongoDB 连接字符串。
-- `VISION_PYTHON_COMMAND` 必须按自己电脑的实际 Python 命令或路径填写，不要直接照抄别人的绝对路径。
-- 如果后续要启用完整模型推理，可以把 `VISION_PROVIDER` 改成 `auto` 或 `xiaoxiae`。
+然后把真实配置通过私下渠道发给组员。
 
 ### 6. 模型放到哪个目录
 
-只有在需要运行完整 xiaoxiae 视觉模型时，才需要放模型文件。
+完整 xiaoxiae 视觉模型文件现在通过 Git LFS 跟随仓库分发。
 
-请把模型文件放到下面这两个准确路径：
+组员完成 `git lfs install`、`git clone`、`git lfs pull` 后，模型文件应该出现在下面这两个准确路径：
 
 - `climb-app-backend/vision_service/models/xiaoxiae/hold_detector/model_final.pth`
 - `climb-app-backend/vision_service/models/xiaoxiae/route_triplet/triplet_network_final.pt`
@@ -102,46 +80,36 @@ climb-app-backend/
 
 ### 7. 安装依赖
 
-前端依赖安装：
+前端和后端 Node.js 依赖可以直接在仓库根目录安装：
 
 ```bash
-cd climb-app-frontend
-npm install
+npm run install:all
 ```
 
-后端依赖安装：
+如果使用 Python 的 heuristic 视觉模式，安装：
 
 ```bash
-cd climb-app-backend
-npm install
+python -m pip install -r climb-app-backend/requirements-heuristic.txt
 ```
 
-如果使用 Python 的 heuristic 视觉模式，再安装：
+如果要运行完整 xiaoxiae 模式，安装：
 
 ```bash
-pip install numpy opencv-python
+python -m pip install -r climb-app-backend/requirements-xiaoxiae.txt
 ```
-
-如果要运行完整 xiaoxiae 模式，还需要再安装与本机环境匹配版本的：
-
-- `torch`
-- `torchvision`
-- `detectron2`
 
 ### 8. 前后端分别怎么启动
 
 先启动后端：
 
 ```bash
-cd climb-app-backend
-npm run dev
+npm run dev:backend
 ```
 
 然后在另一个终端启动前端：
 
 ```bash
-cd climb-app-frontend
-npm run dev
+npm run dev:frontend
 ```
 
 默认本地地址：
