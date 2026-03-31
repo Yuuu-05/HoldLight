@@ -79,13 +79,16 @@ function checkProfileComplete(user: User | null) {
 
 function checkOnboarded(user: User | null) {
   if (!user) return false;
+  if (user.role === 'visually_impaired' && !user.preferences?.onboarding?.accessibilitySetupCompleted) {
+    return false;
+  }
   if (user.preferences?.onboarding?.completed) {
     return true;
   }
   if (hasOnboardingOverride(user)) {
     return true;
   }
-  return checkProfileComplete(user);
+  return true;
 }
 
 function buildDefaultPreferences(role: RoleValue = 'new_user', completed = false): UserPreferences {

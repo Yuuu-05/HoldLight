@@ -49,36 +49,36 @@ const encouragementPhrases = {
 
 const moduleVisuals: Record<string, ModuleVisual> = {
   rules: {
-    bg: '#f4fbff',
-    accent: '#4d82aa',
-    shadow: 'rgba(77, 130, 170, 0.22)',
+    bg: '#eef2f4',
+    accent: '#768c9a',
+    shadow: 'rgba(118, 140, 154, 0.13)',
     shortSummaryZh: '看懂起点、终点和线路节奏。',
     shortSummaryEn: 'Read starts, finishes, and route rhythm.',
     bubbleZh: '今天先学会看懂路线吧！',
     bubbleEn: 'Today we learn how to read a route.',
   },
   equipment: {
-    bg: '#f3fcf7',
-    accent: '#4f8565',
-    shadow: 'rgba(79, 133, 101, 0.22)',
+    bg: '#eff3ef',
+    accent: '#77897d',
+    shadow: 'rgba(119, 137, 125, 0.13)',
     shortSummaryZh: '认识鞋子、安全带和基础装备。',
     shortSummaryEn: 'Meet shoes, harnesses, and core gear.',
     bubbleZh: '今天我们来认识安全带吧！',
     bubbleEn: 'Today we are meeting the harness.',
   },
   terms: {
-    bg: '#fff9ee',
-    accent: '#bb7b33',
-    shadow: 'rgba(187, 123, 51, 0.22)',
+    bg: '#f3efe9',
+    accent: '#947b62',
+    shadow: 'rgba(148, 123, 98, 0.13)',
     shortSummaryZh: '先记住 hold、route 和 grade。',
     shortSummaryEn: 'Start with hold, route, and grade.',
     bubbleZh: '今天来记住几个常用术语。',
     bubbleEn: 'Today we keep a few key terms.',
   },
   safety: {
-    bg: '#fff8f1',
-    accent: '#d66d49',
-    shadow: 'rgba(214, 109, 73, 0.22)',
+    bg: '#f4efeb',
+    accent: '#a88579',
+    shadow: 'rgba(168, 133, 121, 0.13)',
     shortSummaryZh: '学会热身、检查和及时停止。',
     shortSummaryEn: 'Warm up, check the zone, and stop early.',
     bubbleZh: '先把安全感装进背包里吧。',
@@ -161,7 +161,7 @@ export default function TutorialHomePage() {
             activeLabel: '推荐下一步',
             futureLabel: '稍后学习',
             bubbleText,
-            journeyLabel: `学习路线：从 Basecamp 到终点旗帜。当前已完成 ${completedCount} / ${tutorialModules.length} 个模块，进度 ${completionRate}%。`,
+            journeyLabel: `学习路线：从 Basecamp 到终点标记。当前已完成 ${completedCount} / ${tutorialModules.length} 个模块，进度 ${completionRate}%。`,
             utilityRepeat: '重复语音介绍',
             utilityReset: '重置学习进度',
             utilityAccess: '无障碍支持',
@@ -188,7 +188,7 @@ export default function TutorialHomePage() {
             activeLabel: 'Next step',
             futureLabel: 'Later',
             bubbleText,
-            journeyLabel: `Learning route from basecamp to the finish flag. ${completedCount} of ${tutorialModules.length} modules completed. Progress ${completionRate} percent.`,
+            journeyLabel: `Learning route from basecamp to the finish marker. ${completedCount} of ${tutorialModules.length} modules completed. Progress ${completionRate} percent.`,
             utilityRepeat: 'Repeat voice intro',
             utilityReset: 'Reset progress',
             utilityAccess: 'Accessibility support',
@@ -293,9 +293,6 @@ export default function TutorialHomePage() {
     >
       <div className="tutorial-home-intro">
         <div className="tutorial-home-copy">
-          <p className="tutorial-home-kicker">
-            {language === 'zh' ? 'Tutorial Journey' : 'Tutorial Journey'}
-          </p>
           <h1 id="tutorial-home-title">{copy.greeting}</h1>
           <p id="tutorial-home-description">{copy.subtitle}</p>
         </div>
@@ -320,9 +317,6 @@ export default function TutorialHomePage() {
             <g transform="translate(4 72)">
               <BasecampIcon />
             </g>
-            <g transform="translate(236 10)">
-              <FlagIcon />
-            </g>
           </svg>
 
           <div
@@ -332,10 +326,10 @@ export default function TutorialHomePage() {
               top: `${mascotPoint.y}%`,
             }}
           >
+            <div className="tutorial-home-journey-bubble">{copy.bubbleText}</div>
             <div className="tutorial-home-journey-avatar">
               <GuideMascot pose={isComplete ? 'celebrate' : completedCount > 0 ? 'nod' : 'tilt'} />
             </div>
-            <div className="tutorial-home-journey-bubble">{copy.bubbleText}</div>
           </div>
         </div>
 
@@ -496,16 +490,6 @@ function BasecampIcon() {
       <path d="M 10 12 L 18 22 L 24 22 L 16 12 Z" fill="#f0c08a" />
       <path d="M 14 6 V 12" stroke="#7b5a3a" strokeWidth="2" strokeLinecap="round" />
       <path d="M 14 6 H 22 L 19 10 H 14 Z" fill="#ef8a57" />
-    </svg>
-  );
-}
-
-function FlagIcon() {
-  return (
-    <svg viewBox="0 0 28 28" className="tutorial-home-journey-pin">
-      <path d="M 8 24 V 6" stroke="#7b5a3a" strokeWidth="2.4" strokeLinecap="round" />
-      <path d="M 10 7 H 22 L 18 12 L 22 17 H 10 Z" fill="#ef8a57" />
-      <circle cx="8" cy="24" r="3" fill="#d3a349" />
     </svg>
   );
 }

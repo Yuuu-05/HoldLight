@@ -89,7 +89,6 @@ export default function RoomsPage() {
         search={search}
         onSearchChange={setSearch}
         placeholder={language === 'zh' ? '搜索岩馆、房间或地区...' : 'Search gyms, rooms, or nearby regions...'}
-        eyebrow="Cozy Basecamp"
         title={t('Climbing rooms')}
         description="A softer room hub for gym meetups, route planning, and lightweight climbing groups."
       />

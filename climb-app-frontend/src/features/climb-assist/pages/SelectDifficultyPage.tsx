@@ -4,7 +4,6 @@ import Button from '../../../shared/components/ui/Button';
 import Card from '../../../shared/components/ui/Card';
 import DifficultySelector from '../components/DifficultySelector';
 import RouteCanvas from '../components/RouteCanvas';
-import AssistBottomSheet from '../components/AssistBottomSheet';
 import { routes } from '../../../shared/constants/routes';
 import { usePageTitle } from '../../../shared/hooks/usePageTitle';
 import { createClimbSessionApi, getLatestClimbScanApi } from '../../../shared/api/climbing.api';
@@ -18,6 +17,7 @@ export default function SelectDifficultyPage() {
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
   const navigate = useNavigate();
   const hasBuzzedRef = useRef(false);
+
   usePageTitle('Select route');
 
   useEffect(() => {
@@ -46,15 +46,21 @@ export default function SelectDifficultyPage() {
   }, [difficulty, scan, selectedCandidate]);
 
   const scanAnalysis = scan?.wallMap.analysis;
-  const autonomousReady = Boolean(scan && (scan.wallMap.source === 'demo' || scanAnalysis?.shouldAllowAutonomousGuidance));
+  const autonomousReady = Boolean(
+    scan && (scan.wallMap.source === 'demo' || scanAnalysis?.shouldAllowAutonomousGuidance),
+  );
 
   useEffect(() => {
     if (hasBuzzedRef.current || !autonomousReady || availableCandidates.length === 0) {
       return;
     }
 
-    triggerHaptic(50);
-    hasBuzzedRef.current = true;
+    const timer = window.setTimeout(() => {
+      triggerHaptic(50);
+      hasBuzzedRef.current = true;
+    }, 150);
+
+    return () => window.clearTimeout(timer);
   }, [autonomousReady, availableCandidates.length]);
 
   async function handleContinue() {
@@ -95,43 +101,51 @@ export default function SelectDifficultyPage() {
   if (!autonomousReady) {
     return (
       <Card title="Select route and guidance level">
-        <p>Automatic recognition has not cleared the accessibility gate yet, so autonomous route selection is blocked for this scan.</p>
-        <div className="inline-actions wrap">
-          <Button onClick={() => navigate(routes.scanWall)}>Retake wall scan</Button>
-          <Button variant="secondary" onClick={() => navigate(routes.volunteerBoard)}>Open companion mode</Button>
-        </div>
+        <p>
+          Automatic recognition has not cleared the accessibility gate yet, so
+          autonomous route selection is blocked for this scan.
+        </p>
+        <Button onClick={() => navigate(routes.scanWall)}>Retake wall scan</Button>
       </Card>
     );
   }
 
   return (
     <div className="assist-route-page">
-      <div className="assist-route-preview-card">
+      <div className="assist-route-preview-card assist-stable-card">
         <div className="assist-route-preview-copy">
           <p className="assist-route-preview-kicker">Route matched</p>
-          <h1>Pick the route sticker that feels right</h1>
+          <h1>Pick the same-colour route that feels right</h1>
           <p>
-            The wall stays visible behind the drawer so you can compare the highlighted holds before moving on.
+            The wall stays visible in a stable preview so you can compare the highlighted holds
+            before moving on.
           </p>
         </div>
+
         <RouteCanvas
           wallMap={scan.wallMap}
           backgroundImageUrl={scan.coverImageUrl}
+          plainImagePreview
           highlightHoldIds={previewRoute?.holdIds ?? []}
           currentHoldId={previewRoute?.holds[0]?.id}
-          helperText="Overlay view of the scanned wall. Colored boxes show detected holds, and highlighted boxes show the currently selected route candidate."
+          helperText="Stable overlay preview of the scanned wall. Highlighted boxes show the currently selected same-colour route candidate."
         />
       </div>
 
-      <AssistBottomSheet
+      <Card
         title="Route recommendation"
-        className="assist-route-selection-card"
+        className="assist-route-selection-card assist-stable-card"
         bodyClassName="stack-md"
       >
-        <p>Choose a guidance intensity and then select one of the auto-detected route candidates that passed the backend confidence gate.</p>
+        <p>
+          Choose a guidance intensity and then select one of the same-colour route candidates
+          that passed the backend confidence gate.
+        </p>
+
         <DifficultySelector value={difficulty} onChange={setDifficulty} />
+
         <div className="segmented-control assist-route-pill-grid">
-          {availableCandidates.map((candidate) => (
+          {availableCandidates.slice(0, 5).map((candidate) => (
             <Button
               key={candidate.id}
               variant={selectedCandidateId === candidate.id ? 'primary' : 'secondary'}
@@ -142,16 +156,21 @@ export default function SelectDifficultyPage() {
             </Button>
           ))}
         </div>
+
         {selectedCandidate ? (
           <div className="assist-route-summary">
             <strong>{selectedCandidate.summary}</strong>
             <p className="subtle-text">
-              Confidence {Math.round(selectedCandidate.confidence * 100)}%. Estimated moves {selectedCandidate.estimatedMoves}.
+              Confidence {Math.round(selectedCandidate.confidence * 100)}%.
+              {' '}Estimated moves {selectedCandidate.estimatedMoves}.
             </p>
           </div>
         ) : null}
-        <Button onClick={() => void handleContinue()} disabled={!selectedCandidate}>Review route recommendation</Button>
-      </AssistBottomSheet>
+
+        <Button onClick={() => void handleContinue()} disabled={!selectedCandidate}>
+          Review route recommendation
+        </Button>
+      </Card>
     </div>
   );
 }

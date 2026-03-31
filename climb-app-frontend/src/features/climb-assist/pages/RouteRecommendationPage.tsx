@@ -3,8 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import RouteCanvas from '../components/RouteCanvas';
 import Button from '../../../shared/components/ui/Button';
 import Card from '../../../shared/components/ui/Card';
-import AssistBottomSheet from '../components/AssistBottomSheet';
-import { getClimbSessionApi, getLatestClimbScanApi, saveGuidanceLogsApi, updateClimbSessionApi } from '../../../shared/api/climbing.api';
+import {
+  getClimbSessionApi,
+  getLatestClimbScanApi,
+  saveGuidanceLogsApi,
+  updateClimbSessionApi,
+} from '../../../shared/api/climbing.api';
 import { routes } from '../../../shared/constants/routes';
 import { usePageTitle } from '../../../shared/hooks/usePageTitle';
 import { triggerHaptic } from '../../../shared/lib/haptics';
@@ -15,13 +19,16 @@ export default function RouteRecommendationPage() {
   const [session, setSession] = useState<ClimbSession | null>(null);
   const navigate = useNavigate();
   const hasBuzzedRef = useRef(false);
+
   usePageTitle('Route recommendation');
 
   useEffect(() => {
-    Promise.all([getLatestClimbScanApi(), getClimbSessionApi()]).then(([latestScan, activeSession]) => {
-      setScan(latestScan);
-      setSession(activeSession);
-    });
+    Promise.all([getLatestClimbScanApi(), getClimbSessionApi()]).then(
+      ([latestScan, activeSession]) => {
+        setScan(latestScan);
+        setSession(activeSession);
+      },
+    );
   }, []);
 
   useEffect(() => {
@@ -29,8 +36,12 @@ export default function RouteRecommendationPage() {
       return;
     }
 
-    triggerHaptic(50);
-    hasBuzzedRef.current = true;
+    const timer = window.setTimeout(() => {
+      triggerHaptic(50);
+      hasBuzzedRef.current = true;
+    }, 150);
+
+    return () => window.clearTimeout(timer);
   }, [session?.plannedRoute]);
 
   async function handleStartGuidance() {
@@ -42,6 +53,7 @@ export default function RouteRecommendationPage() {
     });
 
     setSession(nextSession);
+
     await saveGuidanceLogsApi([
       {
         id: `log_${Date.now()}`,
@@ -52,55 +64,86 @@ export default function RouteRecommendationPage() {
         payload: { routeId: nextSession.routeId },
       },
     ]);
+
     navigate(routes.liveGuidance);
   }
 
   if (!scan || !session?.plannedRoute) {
-    return <Card title="Route recommendation"><p>Scan the wall and select a route first.</p></Card>;
+    return (
+      <Card title="Route recommendation">
+        <p>Scan the wall and select a route first.</p>
+      </Card>
+    );
   }
 
   return (
     <div className="assist-route-page assist-route-review-page">
       <div className="sr-only" aria-live="polite" aria-atomic="true">
-        {`Recommended ${session.selectedColor.toUpperCase()} route is ready. Slide the details drawer up to review the route before starting live guidance.`}
+        {`Recommended ${session.selectedColor.toUpperCase()} route is ready. Review the route before starting live guidance.`}
       </div>
-      <div className="assist-route-preview-card">
+
+      <div className="assist-route-preview-card assist-stable-card">
         <div className="assist-route-preview-copy">
           <p className="assist-route-preview-kicker">Recommendation ready</p>
           <h1>{session.selectedColor.toUpperCase()} route highlighted</h1>
-          <p>Review the highlighted holds first, then slide up the drawer to launch live guidance.</p>
+          <p>
+            Review the highlighted same-colour holds first, then continue to live guidance
+            with professional voice cues.
+          </p>
         </div>
+
         <RouteCanvas
           wallMap={scan.wallMap}
           backgroundImageUrl={scan.coverImageUrl}
+          plainImagePreview
           highlightHoldIds={session.plannedRoute.holdIds}
           currentHoldId={session.plannedRoute.holds[0]?.id}
-          helperText="Original wall image with detected hold overlays. Highlighted boxes belong to the route you selected for guidance."
+          helperText="Stable preview of the original wall image with detected hold overlays. Highlighted boxes belong to the selected same-colour route."
         />
       </div>
 
-      <AssistBottomSheet
+      <Card
         title={`Recommended ${session.selectedColor.toUpperCase()} route`}
-        className="assist-recommendation-card"
+        className="assist-recommendation-card assist-stable-card"
         bodyClassName="stack-md"
       >
         <p>{session.plannedRoute.summary}</p>
-        {scan.wallMap.analysis ? <p className="subtle-text">Provider: {scan.wallMap.analysis.provider}. This route only appears because the scan cleared the confidence gate.</p> : null}
+
+        {scan.wallMap.analysis ? (
+          <p className="subtle-text">
+            Provider: {scan.wallMap.analysis.provider}. This route only appears because the scan
+            cleared the confidence gate.
+          </p>
+        ) : null}
+
         <div className="stats-grid">
-          <div><strong>{session.difficulty}</strong><span>Guidance level</span></div>
-          <div><strong>{session.plannedRoute.holds.length}</strong><span>Route holds</span></div>
-          <div><strong>{session.plannedRoute.estimatedMoves}</strong><span>Estimated moves</span></div>
+          <div>
+            <strong>{session.difficulty}</strong>
+            <span>Guidance level</span>
+          </div>
+          <div>
+            <strong>{session.plannedRoute.holds.length}</strong>
+            <span>Route holds</span>
+          </div>
+          <div>
+            <strong>{session.plannedRoute.estimatedMoves}</strong>
+            <span>Estimated moves</span>
+          </div>
         </div>
+
         <ol className="numbered-list">
           <li>Verify that the highlighted holds match the intended route.</li>
           <li>If the scan looks wrong, go back and rescan or upload a clearer image.</li>
           <li>If the route looks right, continue to live guidance.</li>
         </ol>
+
         <div className="inline-actions wrap">
           <Button onClick={() => void handleStartGuidance()}>Start live guidance</Button>
-          <Button variant="secondary" onClick={() => navigate(routes.selectDifficulty)}>Adjust route settings</Button>
+          <Button variant="secondary" onClick={() => navigate(routes.selectDifficulty)}>
+            Adjust route settings
+          </Button>
         </div>
-      </AssistBottomSheet>
+      </Card>
     </div>
   );
 }

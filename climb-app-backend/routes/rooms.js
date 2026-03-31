@@ -292,7 +292,9 @@ router.patch('/:roomId/invitations/:invitationId', auth, async (req, res) => {
     }
 
     const userId = user._id.toString();
-    const invitation = room.invitations.id(req.params.invitationId);
+    const invitation = room.invitations.find(
+      (item) => String(item._id ?? item.id) === String(req.params.invitationId),
+    );
 
     if (!invitation || invitation.invitedUserId !== userId) {
       return res.status(404).json({
@@ -351,7 +353,10 @@ router.delete('/:roomId/invitations/:invitationId', auth, async (req, res) => {
     }
 
     const userId = user._id.toString();
-    const invitation = room.invitations.id(req.params.invitationId);
+    const invitationIndex = room.invitations.findIndex(
+      (item) => String(item._id ?? item.id) === String(req.params.invitationId),
+    );
+    const invitation = invitationIndex >= 0 ? room.invitations[invitationIndex] : null;
 
     if (!invitation || invitation.status !== 'pending') {
       return res.status(404).json({
@@ -372,7 +377,7 @@ router.delete('/:roomId/invitations/:invitationId', auth, async (req, res) => {
     }
 
     const invitedUserName = invitation.invitedUserName;
-    invitation.deleteOne();
+    room.invitations.splice(invitationIndex, 1);
 
     room.messages.push({
       userId,

@@ -44,8 +44,25 @@ const climbScanSchema = new mongoose.Schema(
     coverImageUrl: { type: String, default: '' },
   },
   {
+    collection: 'climbScans',
     timestamps: true,
   },
 );
 
-module.exports = mongoose.model('ClimbScan', climbScanSchema);
+climbScanSchema.set('toJSON', {
+  transform: (_doc, ret) => {
+    ret.id = ret._id.toString();
+    delete ret.__v;
+    return ret;
+  },
+});
+
+climbScanSchema.set('toObject', {
+  transform: (_doc, ret) => {
+    ret.id = ret._id.toString();
+    delete ret.__v;
+    return ret;
+  },
+});
+
+module.exports = mongoose.models.ClimbScan || mongoose.model('ClimbScan', climbScanSchema);

@@ -46,20 +46,25 @@ const readStateSchema = new mongoose.Schema(
   { _id: false },
 );
 
-const roomSchema = new mongoose.Schema({
-  title: { type: String, required: true, trim: true, maxlength: 120 },
-  gymName: { type: String, required: true, trim: true, maxlength: 120 },
-  region: { type: String, required: true, trim: true, maxlength: 120 },
-  description: { type: String, required: true, trim: true, maxlength: 2000 },
-  createdById: { type: String, required: true, trim: true },
-  createdByName: { type: String, required: true, trim: true },
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now },
-  members: [memberSchema],
-  invitations: [invitationSchema],
-  messages: [messageSchema],
-  readStates: [readStateSchema],
-});
+const roomSchema = new mongoose.Schema(
+  {
+    title: { type: String, required: true, trim: true, maxlength: 120 },
+    gymName: { type: String, required: true, trim: true, maxlength: 120 },
+    region: { type: String, required: true, trim: true, maxlength: 120 },
+    description: { type: String, required: true, trim: true, maxlength: 2000 },
+    createdById: { type: String, required: true, trim: true },
+    createdByName: { type: String, required: true, trim: true },
+    createdAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date, default: Date.now },
+    members: [memberSchema],
+    invitations: [invitationSchema],
+    messages: [messageSchema],
+    readStates: [readStateSchema],
+  },
+  {
+    collection: 'rooms',
+  },
+);
 
 function serializeRoom(_doc, ret) {
   ret.id = ret._id.toString();
@@ -110,4 +115,4 @@ roomSchema.pre('save', function updateTimestamp() {
   this.updatedAt = new Date();
 });
 
-module.exports = mongoose.model('Room', roomSchema);
+module.exports = mongoose.models.Room || mongoose.model('Room', roomSchema);

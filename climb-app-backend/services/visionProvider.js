@@ -1,7 +1,16 @@
+const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
 
-const PYTHON_COMMAND = process.env.VISION_PYTHON_COMMAND || 'python';
+const WORKSPACE_ROOT = path.join(__dirname, '..', '..');
+const DEFAULT_VENV_CANDIDATES = [
+  path.join(WORKSPACE_ROOT, '.venv', 'bin', 'python'),
+  path.join(WORKSPACE_ROOT, '.venv-1', 'bin', 'python'),
+];
+const PYTHON_COMMAND =
+  process.env.VISION_PYTHON_COMMAND
+  || DEFAULT_VENV_CANDIDATES.find((candidate) => fs.existsSync(candidate))
+  || 'python';
 const PROVIDER_NAMES = {
   auto: 'python-auto',
   heuristic: 'python-opencv-heuristic',
@@ -17,15 +26,15 @@ function normalizeProviderMode(value) {
   throw new Error(`Unsupported VISION_PROVIDER "${value}".`);
 }
 
-function runPythonInference(payload, providerMode) {
+function runPythonScript(scriptFilename, payload, providerMode) {
   return new Promise((resolve, reject) => {
-    const scriptPath = path.join(__dirname, '..', 'vision_service', 'infer.py');
+    const scriptPath = path.join(__dirname, '..', 'vision_service', scriptFilename);
     const child = spawn(PYTHON_COMMAND, [scriptPath], {
       cwd: path.join(__dirname, '..'),
       stdio: ['pipe', 'pipe', 'pipe'],
       env: {
         ...process.env,
-        VISION_PROVIDER_MODE: providerMode,
+        ...(providerMode ? { VISION_PROVIDER_MODE: providerMode } : {}),
       },
     });
 
@@ -67,6 +76,10 @@ function runPythonInference(payload, providerMode) {
   });
 }
 
+function runPythonInference(payload, providerMode) {
+  return runPythonScript('infer.py', payload, providerMode);
+}
+
 function getVisionProvider() {
   const providerMode = normalizeProviderMode(process.env.VISION_PROVIDER || 'auto');
   return {
@@ -84,7 +97,16 @@ async function runVisionInference(payload) {
   };
 }
 
+async function runVisionCalibration(payload) {
+  const result = await runPythonScript('calibrate.py', payload, null);
+  return {
+    provider: 'python-opencv-planar-calibration',
+    ...result,
+  };
+}
+
 module.exports = {
   getVisionProvider,
   runVisionInference,
+  runVisionCalibration,
 };

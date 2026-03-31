@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router-dom';
+import { createBrowserRouter, Navigate, useParams } from 'react-router-dom';
 import AppShell from '../shared/components/layout/AppShell';
 import LandingPage from '../pages/LandingPage';
 import NotFoundPage from '../pages/NotFoundPage';
@@ -32,7 +32,6 @@ import MyPostsPage from '../features/social/pages/MyPostsPage';
 import FriendsPage from '../features/social/pages/FriendsPage';
 import RoomsPage from '../features/social/pages/RoomsPage';
 import RoomDetailPage from '../features/social/pages/RoomDetailPage';
-import VolunteerBoardPage from '../features/volunteer/pages/VolunteerBoardPage';
 import CreateVolunteerPostPage from '../features/volunteer/pages/CreateVolunteerPostPage';
 import VolunteerPostDetailPage from '../features/volunteer/pages/VolunteerPostDetailPage';
 import MyVolunteerSessionsPage from '../features/volunteer/pages/MyVolunteerSessionsPage';
@@ -41,8 +40,30 @@ import FirstLoginProfilePage from '../features/onboarding/pages/FirstLoginProfil
 import VisionModeDebugPage from '../features/onboarding/pages/VisionModeDebugPage';
 import ProtectedRoute from './guards/ProtectedRoute';
 import GuestRoute from './guards/GuestRoute';
+import { routes } from '../shared/constants/routes';
 
 const withProtected = (element: JSX.Element) => <ProtectedRoute>{element}</ProtectedRoute>;
+
+function LegacyVolunteerBoardRedirect() {
+  return <Navigate to={routes.volunteerBoard} replace />;
+}
+
+function LegacyVolunteerCreateRedirect() {
+  return <Navigate to={routes.volunteerCreate} replace />;
+}
+
+function LegacyVolunteerSessionsRedirect() {
+  return <Navigate to={routes.volunteerMySessions} replace />;
+}
+
+function LegacyContactIntentRedirect() {
+  return <Navigate to={routes.contactIntent} replace />;
+}
+
+function LegacyVolunteerPostRedirect() {
+  const { postId } = useParams();
+  return <Navigate to={postId ? routes.volunteerPostDetail(postId) : routes.volunteerBoard} replace />;
+}
 
 export const router = createBrowserRouter([
   {
@@ -95,17 +116,17 @@ export const router = createBrowserRouter([
       { path: 'social/friends', element: withProtected(<FriendsPage />) },
       { path: 'social/rooms', element: withProtected(<RoomsPage />) },
       { path: 'social/rooms/:roomId', element: withProtected(<RoomDetailPage />) },
-      { path: 'social/volunteer', element: withProtected(<VolunteerBoardPage />) },
+      { path: 'social/volunteer', element: withProtected(<Navigate to={routes.volunteerBoard} replace />) },
       { path: 'social/volunteer/new', element: withProtected(<CreateVolunteerPostPage />) },
       { path: 'social/volunteer/my-sessions', element: withProtected(<MyVolunteerSessionsPage />) },
       { path: 'social/volunteer/contact-intent', element: withProtected(<ContactIntentPage />) },
       { path: 'social/volunteer/:postId', element: withProtected(<VolunteerPostDetailPage />) },
       { path: 'social/:postId', element: withProtected(<PostDetailPage />) },
-      { path: 'volunteer', element: withProtected(<VolunteerBoardPage />) },
-      { path: 'volunteer/new', element: withProtected(<CreateVolunteerPostPage />) },
-      { path: 'volunteer/my-sessions', element: withProtected(<MyVolunteerSessionsPage />) },
-      { path: 'volunteer/contact-intent', element: withProtected(<ContactIntentPage />) },
-      { path: 'volunteer/:postId', element: withProtected(<VolunteerPostDetailPage />) },
+      { path: 'volunteer', element: withProtected(<LegacyVolunteerBoardRedirect />) },
+      { path: 'volunteer/new', element: withProtected(<LegacyVolunteerCreateRedirect />) },
+      { path: 'volunteer/my-sessions', element: withProtected(<LegacyVolunteerSessionsRedirect />) },
+      { path: 'volunteer/contact-intent', element: withProtected(<LegacyContactIntentRedirect />) },
+      { path: 'volunteer/:postId', element: withProtected(<LegacyVolunteerPostRedirect />) },
       { path: '*', element: <NotFoundPage /> },
     ],
   },

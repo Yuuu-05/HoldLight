@@ -92,7 +92,7 @@ router.put('/me', auth, async (req, res) => {
     }
 
     if (profile && typeof profile === 'object') {
-      const currentProfile = user.profile ? user.profile.toObject() : {};
+      const currentProfile = user.profile?.toObject?.() ?? user.profile ?? {};
       user.profile = {
         ...currentProfile,
         ...profile,

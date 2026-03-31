@@ -481,9 +481,9 @@ def build_named_color_candidates(holds: List[Dict]) -> List[Dict]:
                 "color": color_name,
                 "holdIds": [hold["id"] for hold in sorted_holds],
                 "confidence": confidence,
-                "estimatedMoves": len(sorted_holds),
+                "estimatedMoves": max(0, len(sorted_holds) - 1),
                 "startRegion": start_region,
-                "summary": f"{color_name.capitalize()} route, {start_region} section, about {len(sorted_holds)} usable holds.",
+                "summary": f"{color_name.capitalize()} same-colour route, {start_region} section, about {len(sorted_holds)} usable holds.",
             }
         )
 
@@ -562,9 +562,9 @@ def build_route_candidates(holds: List[Dict], image_bgr: np.ndarray) -> List[Dic
                 "color": color_name,
                 "holdIds": [hold["id"] for hold in sorted_holds],
                 "confidence": confidence,
-                "estimatedMoves": len(sorted_holds),
+                "estimatedMoves": max(0, len(sorted_holds) - 1),
                 "startRegion": start_region,
-                "summary": f"{color_name.capitalize()} route, {start_region} section, about {len(sorted_holds)} usable holds.",
+                "summary": f"{color_name.capitalize()} same-colour route, {start_region} section, about {len(sorted_holds)} usable holds.",
             }
         )
 
@@ -800,6 +800,17 @@ def build_triplet_route_candidates(image_bgr: np.ndarray, holds: List[Dict], ins
             continue
 
         route_holds = [holds[index] for index in member_indices]
+        color_counts: Dict[str, int] = defaultdict(int)
+        for hold in route_holds:
+            color_counts[hold["color"]] += 1
+        color_name = max(color_counts.items(), key=lambda item: item[1])[0] if color_counts else "unknown"
+
+        if color_name != "unknown":
+            filtered_member_indices = [index for index in member_indices if holds[index]["color"] == color_name]
+            if len(filtered_member_indices) >= 3:
+                member_indices = filtered_member_indices
+                route_holds = [holds[index] for index in member_indices]
+
         sorted_holds = sorted(route_holds, key=lambda item: (-item["yPct"], item["xPct"]))
         mean_x = float(np.mean([hold["xPct"] for hold in sorted_holds]))
         if mean_x < 33:
@@ -808,11 +819,6 @@ def build_triplet_route_candidates(image_bgr: np.ndarray, holds: List[Dict], ins
             start_region = "right"
         else:
             start_region = "center"
-
-        color_counts: Dict[str, int] = defaultdict(int)
-        for hold in sorted_holds:
-            color_counts[hold["color"]] += 1
-        color_name = max(color_counts.items(), key=lambda item: item[1])[0] if color_counts else "unknown"
 
         route_distances: List[float] = []
         for left_index in member_indices:
@@ -837,9 +843,9 @@ def build_triplet_route_candidates(image_bgr: np.ndarray, holds: List[Dict], ins
                 "color": color_name,
                 "holdIds": [hold["id"] for hold in sorted_holds],
                 "confidence": confidence,
-                "estimatedMoves": len(sorted_holds),
+                "estimatedMoves": max(0, len(sorted_holds) - 1),
                 "startRegion": start_region,
-                "summary": f"{color_name.capitalize()} route candidate, {start_region} section, about {len(sorted_holds)} usable holds.",
+                "summary": f"{color_name.capitalize()} same-colour route candidate, {start_region} section, about {len(sorted_holds)} usable holds.",
             }
         )
 

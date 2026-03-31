@@ -14,8 +14,25 @@ const guidanceLogSchema = new mongoose.Schema(
     payload: { type: mongoose.Schema.Types.Mixed, default: {} },
   },
   {
+    collection: 'guidanceLogs',
     timestamps: true,
   },
 );
 
-module.exports = mongoose.model('GuidanceLog', guidanceLogSchema);
+guidanceLogSchema.set('toJSON', {
+  transform: (_doc, ret) => {
+    ret.id = ret._id.toString();
+    delete ret.__v;
+    return ret;
+  },
+});
+
+guidanceLogSchema.set('toObject', {
+  transform: (_doc, ret) => {
+    ret.id = ret._id.toString();
+    delete ret.__v;
+    return ret;
+  },
+});
+
+module.exports = mongoose.models.GuidanceLog || mongoose.model('GuidanceLog', guidanceLogSchema);

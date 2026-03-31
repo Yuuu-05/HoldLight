@@ -251,7 +251,9 @@ router.patch('/:postId/applications/:applicationId', auth, async (req, res) => {
     }
 
     const userId = user._id.toString();
-    const application = post.applicants.id(req.params.applicationId);
+    const application = post.applicants.find(
+      (item) => String(item._id ?? item.id) === String(req.params.applicationId),
+    );
 
     if (!application) {
       return res.status(404).json({
@@ -329,7 +331,9 @@ router.delete('/:postId/applications/:applicationId', auth, async (req, res) => 
     }
 
     const userId = user._id.toString();
-    const application = post.applicants.id(req.params.applicationId);
+    const application = post.applicants.find(
+      (item) => String(item._id ?? item.id) === String(req.params.applicationId),
+    );
 
     if (!application) {
       return res.status(404).json({

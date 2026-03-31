@@ -5,6 +5,7 @@ interface RouteCanvasProps {
   holds?: readonly string[];
   wallMap?: WallMap;
   backgroundImageUrl?: string;
+  plainImagePreview?: boolean;
   highlightHoldIds?: string[];
   completedHoldIds?: string[];
   currentHoldId?: string;
@@ -32,6 +33,7 @@ export default function RouteCanvas({
   holds,
   wallMap,
   backgroundImageUrl,
+  plainImagePreview = false,
   highlightHoldIds = [],
   completedHoldIds = [],
   currentHoldId,
@@ -70,56 +72,91 @@ export default function RouteCanvas({
   }
 
   const aspectRatio = `${Math.max(1, wallMap.width)} / ${Math.max(1, wallMap.height)}`;
+  const useStableOverlayPreview = plainImagePreview && Boolean(backgroundImageUrl);
+
+  const containerClassName = [
+    'route-canvas',
+    'assist-route-canvas',
+    useStableOverlayPreview ? 'assist-route-canvas-preview' : '',
+    backgroundImageUrl ? 'has-image' : 'is-empty',
+    onCanvasSelect ? 'is-clickable' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  const containerStyle = useStableOverlayPreview
+    ? {
+        position: 'relative' as const,
+        width: '100%',
+        aspectRatio,
+        minHeight: '340px',
+        contain: 'paint' as const,
+        isolation: 'isolate' as const,
+        overflow: 'hidden' as const,
+      }
+    : {
+        aspectRatio,
+        minHeight: '340px',
+      };
 
   return (
     <div className="stack-sm">
       <div
-        className={`route-canvas assist-route-canvas ${backgroundImageUrl ? 'has-image' : 'is-empty'} ${onCanvasSelect ? 'is-clickable' : ''}`.trim()}
+        className={containerClassName}
         onClick={onCanvasSelect ? handleCanvasClick : undefined}
-        style={{
-          aspectRatio,
-          minHeight: '340px',
-        }}
+        style={containerStyle}
       >
         {backgroundImageUrl ? (
           <img
             src={backgroundImageUrl}
             alt="Detected climbing wall"
+            decoding="async"
+            loading="eager"
+            draggable={false}
             style={{
-              position: 'absolute',
-              inset: 0,
+              position: useStableOverlayPreview ? 'relative' : 'absolute',
+              inset: useStableOverlayPreview ? undefined : 0,
+              zIndex: 0,
+              display: 'block',
               width: '100%',
               height: '100%',
-              objectFit: 'cover',
+              objectFit: useStableOverlayPreview ? 'fill' : 'cover',
               pointerEvents: 'none',
               userSelect: 'none',
             }}
           />
         ) : null}
 
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            background: backgroundImageUrl ? 'rgba(20, 26, 42, 0.12)' : 'transparent',
-            pointerEvents: 'none',
-          }}
-        />
+        {!useStableOverlayPreview ? (
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              zIndex: 1,
+              background: backgroundImageUrl ? 'rgba(20, 26, 42, 0.12)' : 'transparent',
+              pointerEvents: 'none',
+            }}
+          />
+        ) : null}
 
         {wallMap.holds.map((hold) => {
           const isHighlighted = highlighted.has(hold.id);
           const isCompleted = completed.has(hold.id);
           const isCurrent = currentHoldId === hold.id;
           const isSelected = selectedHoldId === hold.id;
-          const hasBox = hold.x1Pct !== undefined
-            && hold.y1Pct !== undefined
-            && hold.x2Pct !== undefined
-            && hold.y2Pct !== undefined;
+
+          const hasBox =
+            hold.x1Pct !== undefined &&
+            hold.y1Pct !== undefined &&
+            hold.x2Pct !== undefined &&
+            hold.y2Pct !== undefined;
+
           const basePixelSize = hold.radiusPct ? hold.radiusPct * 6 : isCurrent ? 30 : 24;
           const pixelSize = isCurrent ? basePixelSize + 8 : basePixelSize;
           const boxWidthPct = hasBox ? Math.max(0.8, hold.x2Pct! - hold.x1Pct!) : 0;
           const boxHeightPct = hasBox ? Math.max(0.8, hold.y2Pct! - hold.y1Pct!) : 0;
           const holdColor = colorMap[hold.color] || colorMap.unknown;
+
           const borderColor = isSelected
             ? '#ff4638'
             : isHighlighted
@@ -127,11 +164,17 @@ export default function RouteCanvas({
               : backgroundImageUrl
                 ? `${holdColor}dd`
                 : 'rgba(15, 23, 42, 0.28)';
-          const labelVisible = Boolean(backgroundImageUrl && hasBox && showDetectionLabels);
+
+          const labelVisible = Boolean(
+            backgroundImageUrl && hasBox && showDetectionLabels && !useStableOverlayPreview,
+          );
+
           const holdTitle = `${hold.label} (${hold.color})`;
           const holdLabel = `${hold.label}, ${hold.color}, ${Math.round(hold.confidence * 100)} percent confidence`;
+
           const holdStyle = {
             position: 'absolute' as const,
+            zIndex: 2,
             left: hasBox ? `${hold.x1Pct}%` : `${hold.xPct}%`,
             top: hasBox ? `${hold.y1Pct}%` : `${hold.yPct}%`,
             width: hasBox ? `${boxWidthPct}%` : `${pixelSize}px`,
@@ -144,21 +187,24 @@ export default function RouteCanvas({
             borderRadius: hasBox ? '14px' : '999px',
             border: `${hasBox || isHighlighted || isSelected ? 3 : 1.5}px solid ${borderColor}`,
             background: hasBox
-              ? (isHighlighted ? `${holdColor}22` : 'transparent')
+              ? isHighlighted
+                ? `${holdColor}20`
+                : 'transparent'
               : holdColor,
             boxShadow: isSelected
               ? '0 0 0 6px rgba(255, 70, 56, 0.2)'
               : isCompleted
-                ? '0 0 0 4px rgba(34,197,94,0.25)'
+                ? '0 0 0 4px rgba(34, 197, 94, 0.25)'
                 : isCurrent
                   ? `0 0 0 5px ${holdColor}44`
-                  : hasBox && backgroundImageUrl
+                  : hasBox && backgroundImageUrl && !useStableOverlayPreview
                     ? `0 2px 10px ${holdColor}20`
                     : 'none',
-            opacity: hasHighlights ? (isHighlighted ? 1 : 0.48) : 1,
-            transform: isHighlighted || isSelected ? 'scale(1.03)' : 'scale(1)',
+            opacity: hasHighlights ? (isHighlighted ? 1 : 0.78) : 1,
+            transform: 'none',
             cursor: onHoldSelect ? 'pointer' : 'default',
-            backdropFilter: hasBox ? 'saturate(1.05)' : undefined,
+            backdropFilter: undefined,
+            willChange: 'auto' as const,
           };
 
           const content = labelVisible ? (
@@ -188,7 +234,7 @@ export default function RouteCanvas({
 
           if (onHoldSelect) {
             return (
-            <button
+              <button
                 key={hold.id}
                 type="button"
                 className="assist-route-hold"
@@ -212,9 +258,13 @@ export default function RouteCanvas({
           );
         })}
       </div>
-      <p className="subtle-text">{helperText || (backgroundImageUrl
-        ? `Detection overlay view. ${wallMap.holds.length} holds are drawn on top of the original scan image.`
-        : `Detected holds: ${wallMap.holds.length}. Highlighted nodes show the selected route. The bright ring marks the current target.`)}</p>
+
+      <p className="subtle-text">
+        {helperText ||
+          (backgroundImageUrl
+            ? `Detection overlay view. ${wallMap.holds.length} holds are drawn on top of the original scan image.`
+            : `Detected holds: ${wallMap.holds.length}. Highlighted nodes show the selected route. The bright ring marks the current target.`)}
+      </p>
     </div>
   );
 }

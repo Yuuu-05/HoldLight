@@ -21,6 +21,7 @@ interface StartScanOptions {
 interface CaptureOptions {
   maxDimension?: number;
   quality?: number;
+  maxDataUrlLength?: number;
 }
 
 function captureElementPreview(element: HTMLVideoElement | HTMLImageElement | null, options: CaptureOptions = {}) {
@@ -43,7 +44,39 @@ function captureElementPreview(element: HTMLVideoElement | HTMLImageElement | nu
   if (!context) return undefined;
 
   context.drawImage(element, 0, 0, sourceWidth, sourceHeight, 0, 0, width, height);
-  return canvas.toDataURL('image/jpeg', options.quality ?? 0.88);
+
+  const initialQuality = options.quality ?? 0.88;
+  const maxDataUrlLength = options.maxDataUrlLength;
+  let nextQuality = initialQuality;
+  let output = canvas.toDataURL('image/jpeg', nextQuality);
+
+  if (!maxDataUrlLength || output.length <= maxDataUrlLength) {
+    return output;
+  }
+
+  while (output.length > maxDataUrlLength && nextQuality > 0.4) {
+    nextQuality = Number((nextQuality - 0.08).toFixed(2));
+    output = canvas.toDataURL('image/jpeg', nextQuality);
+  }
+
+  if (output.length <= maxDataUrlLength) {
+    return output;
+  }
+
+  let shrinkScale = 0.88;
+  while (output.length > maxDataUrlLength && width * shrinkScale >= 320 && height * shrinkScale >= 240) {
+    const nextCanvas = document.createElement('canvas');
+    nextCanvas.width = Math.max(1, Math.round(width * shrinkScale));
+    nextCanvas.height = Math.max(1, Math.round(height * shrinkScale));
+    const nextContext = nextCanvas.getContext('2d');
+    if (!nextContext) break;
+
+    nextContext.drawImage(canvas, 0, 0, width, height, 0, 0, nextCanvas.width, nextCanvas.height);
+    output = nextCanvas.toDataURL('image/jpeg', Math.max(0.42, nextQuality));
+    shrinkScale -= 0.08;
+  }
+
+  return output;
 }
 
 function buildCompletionMessage(scan: ClimbScan) {
@@ -91,7 +124,11 @@ export function useScanSession() {
 
         setScanProgress({ status: 'scanning', progress: 8, message: 'Capturing a calm wall frame from the live camera.', error: null });
         const inferenceImage = captureElementPreview(videoElement, { maxDimension: 1280, quality: 0.84 });
-        const previewImage = captureElementPreview(videoElement, { maxDimension: 640, quality: 0.58 });
+        const previewImage = captureElementPreview(videoElement, {
+          maxDimension: 640,
+          quality: 0.58,
+          maxDataUrlLength: 190_000,
+        });
         if (!inferenceImage || !previewImage) {
           throw new Error('The live camera frame could not be captured yet.');
         }
@@ -112,7 +149,11 @@ export function useScanSession() {
 
         setScanProgress({ status: 'scanning', progress: 8, message: 'Preparing the uploaded wall photo.', error: null });
         const inferenceImage = captureElementPreview(imageElement, { maxDimension: 1280, quality: 0.84 });
-        const previewImage = captureElementPreview(imageElement, { maxDimension: 640, quality: 0.56 });
+        const previewImage = captureElementPreview(imageElement, {
+          maxDimension: 640,
+          quality: 0.56,
+          maxDataUrlLength: 190_000,
+        });
         if (!inferenceImage || !previewImage) {
           throw new Error('The uploaded image preview is not ready yet.');
         }
@@ -133,7 +174,11 @@ export function useScanSession() {
 
         setScanProgress({ status: 'scanning', progress: 8, message: 'Capturing a clear frame from the uploaded video.', error: null });
         const inferenceImage = captureElementPreview(uploadedVideoElement, { maxDimension: 1280, quality: 0.84 });
-        const previewImage = captureElementPreview(uploadedVideoElement, { maxDimension: 640, quality: 0.58 });
+        const previewImage = captureElementPreview(uploadedVideoElement, {
+          maxDimension: 640,
+          quality: 0.58,
+          maxDataUrlLength: 190_000,
+        });
         if (!inferenceImage || !previewImage) {
           throw new Error('Pause the uploaded video on a clear wall frame before scanning.');
         }

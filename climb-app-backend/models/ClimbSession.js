@@ -7,9 +7,14 @@ const routeHoldSchema = new mongoose.Schema(
     color: { type: String, required: true },
     xPct: { type: Number, required: true },
     yPct: { type: Number, required: true },
+    x1Pct: { type: Number },
+    y1Pct: { type: Number },
+    x2Pct: { type: Number },
+    y2Pct: { type: Number },
     confidence: { type: Number, required: true },
     role: { type: String, default: 'intermediate' },
     size: { type: String, default: 'm' },
+    radiusPct: { type: Number },
   },
   { _id: false },
 );
@@ -56,8 +61,25 @@ const climbSessionSchema = new mongoose.Schema(
     },
   },
   {
+    collection: 'climbSessions',
     timestamps: true,
   },
 );
 
-module.exports = mongoose.model('ClimbSession', climbSessionSchema);
+climbSessionSchema.set('toJSON', {
+  transform: (_doc, ret) => {
+    ret.id = ret._id.toString();
+    delete ret.__v;
+    return ret;
+  },
+});
+
+climbSessionSchema.set('toObject', {
+  transform: (_doc, ret) => {
+    ret.id = ret._id.toString();
+    delete ret.__v;
+    return ret;
+  },
+});
+
+module.exports = mongoose.models.ClimbSession || mongoose.model('ClimbSession', climbSessionSchema);

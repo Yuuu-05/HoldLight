@@ -58,44 +58,44 @@ interface TutorialPageLayoutProps {
 
 const tutorialThemeMap: Record<string, TutorialTheme> = {
   safety: {
-    shellTop: '#fff8f1',
-    shellBottom: '#ffe8df',
-    cardSurface: 'rgba(255, 252, 248, 0.92)',
-    accent: '#ea8e6f',
-    accentStrong: '#d66d49',
-    accentSoft: 'rgba(234, 142, 111, 0.18)',
-    rope: '#d68164',
-    ropeShadow: 'rgba(214, 109, 73, 0.22)',
+    shellTop: '#fdf8f4',
+    shellBottom: '#f3e8e2',
+    cardSurface: 'rgba(255, 253, 250, 0.94)',
+    accent: '#d7a08e',
+    accentStrong: '#b97f6d',
+    accentSoft: 'rgba(215, 160, 142, 0.16)',
+    rope: '#c2907f',
+    ropeShadow: 'rgba(185, 127, 109, 0.18)',
   },
   rules: {
-    shellTop: '#f4fbff',
-    shellBottom: '#e1f0fb',
-    cardSurface: 'rgba(251, 254, 255, 0.92)',
-    accent: '#72a4c8',
-    accentStrong: '#4d82aa',
-    accentSoft: 'rgba(114, 164, 200, 0.18)',
-    rope: '#6a93bd',
-    ropeShadow: 'rgba(77, 130, 170, 0.22)',
+    shellTop: '#f5f9fc',
+    shellBottom: '#e6edf3',
+    cardSurface: 'rgba(252, 254, 255, 0.94)',
+    accent: '#90aec2',
+    accentStrong: '#708fa4',
+    accentSoft: 'rgba(144, 174, 194, 0.16)',
+    rope: '#809eb2',
+    ropeShadow: 'rgba(112, 143, 164, 0.18)',
   },
   equipment: {
-    shellTop: '#f3fcf7',
-    shellBottom: '#dff2e6',
-    cardSurface: 'rgba(249, 255, 251, 0.92)',
-    accent: '#78ab88',
-    accentStrong: '#4f8565',
-    accentSoft: 'rgba(120, 171, 136, 0.18)',
-    rope: '#679677',
-    ropeShadow: 'rgba(79, 133, 101, 0.22)',
+    shellTop: '#f5faf6',
+    shellBottom: '#e4ede7',
+    cardSurface: 'rgba(250, 255, 252, 0.94)',
+    accent: '#8fad98',
+    accentStrong: '#6d8d79',
+    accentSoft: 'rgba(143, 173, 152, 0.16)',
+    rope: '#7d9d88',
+    ropeShadow: 'rgba(109, 141, 121, 0.18)',
   },
   terms: {
-    shellTop: '#fff9ee',
-    shellBottom: '#f6ead0',
-    cardSurface: 'rgba(255, 252, 245, 0.92)',
-    accent: '#d8a25c',
-    accentStrong: '#bb7b33',
-    accentSoft: 'rgba(216, 162, 92, 0.18)',
-    rope: '#c78e4d',
-    ropeShadow: 'rgba(187, 123, 51, 0.22)',
+    shellTop: '#fdf8f2',
+    shellBottom: '#eee4d5',
+    cardSurface: 'rgba(255, 252, 247, 0.94)',
+    accent: '#c8a178',
+    accentStrong: '#a77f55',
+    accentSoft: 'rgba(200, 161, 120, 0.16)',
+    rope: '#b58d63',
+    ropeShadow: 'rgba(167, 127, 85, 0.18)',
   },
 };
 
@@ -147,10 +147,14 @@ export default function TutorialPageLayout({ currentId, cards }: TutorialPageLay
             announceCard: (title: string) =>
               `第 ${currentCardIndex + 1} 张，共 ${cards.length} 张。${title}。`,
             ropeJumpLabel: (index: number, title: string) => `跳转到第 ${index + 1} 张卡片：${title}`,
+            previousCardLabel: '上一张',
+            nextCardLabel: '下一张',
+            continueHint: '看完这一张后，可以直接切到下一张。',
             moduleSaved: '已完成本模块学习，可以继续下一步。',
-            ctaLabel: nextTitle ? `完成学习，下一步：${nextTitle}` : '完成学习，获得 10 个攀岩力',
+            completionTitle: '恭喜，这一课已经完成。',
+            ctaLabel: nextTitle ? `完成学习，下一步：${nextTitle}` : '完成并返回仪表板',
             ctaHint: nextTitle
-              ? '按钮只会在最后一张卡片出现，完成这一课后继续前进。'
+              ? '这一课已经完成，点主按钮继续下一模块。'
               : '四个核心模块都学完了，返回仪表板继续练习。',
             termsNudge: '继续滑到下一张',
           }
@@ -169,12 +173,16 @@ export default function TutorialPageLayout({ currentId, cards }: TutorialPageLay
               : '',
             announceCard: (title: string) => `Card ${currentCardIndex + 1} of ${cards.length}. ${title}.`,
             ropeJumpLabel: (index: number, title: string) => `Jump to card ${index + 1}: ${title}`,
+            previousCardLabel: 'Previous card',
+            nextCardLabel: 'Next card',
+            continueHint: 'Move to the next card whenever you are ready.',
             moduleSaved: 'This module is marked complete and ready for the next step.',
+            completionTitle: 'Nice work. This lesson is complete.',
             ctaLabel: nextTitle
               ? `Finish lesson, next: ${nextTitle}`
-              : 'Complete lesson, earn 10 climbing points',
+              : 'Finish and open dashboard',
             ctaHint: nextTitle
-              ? 'The primary action only appears on the final card so the flow stays focused.'
+              ? 'This lesson is complete. Use the main button to continue to the next module.'
               : 'All four core modules are complete. Return to the dashboard for the next task.',
             termsNudge: 'Swipe to the next word',
           },
@@ -221,12 +229,23 @@ export default function TutorialPageLayout({ currentId, cards }: TutorialPageLay
       return;
     }
 
-    target.scrollIntoView({
+    const trackRect = track.getBoundingClientRect();
+    const targetRect = target.getBoundingClientRect();
+    const left = targetRect.left - trackRect.left + track.scrollLeft;
+
+    track.scrollTo({
+      left,
       behavior: 'smooth',
-      block: 'nearest',
-      inline: 'start',
     });
   }, []);
+
+  const goToPreviousCard = useCallback(() => {
+    scrollToCard(Math.max(0, currentCardIndex - 1));
+  }, [currentCardIndex, scrollToCard]);
+
+  const goToNextCard = useCallback(() => {
+    scrollToCard(Math.min(cards.length - 1, currentCardIndex + 1));
+  }, [cards.length, currentCardIndex, scrollToCard]);
 
   const handleTrackKeyDown = useCallback(
     (event: KeyboardEvent<HTMLDivElement>) => {
@@ -395,7 +414,7 @@ export default function TutorialPageLayout({ currentId, cards }: TutorialPageLay
               }}
               aria-hidden="true"
             >
-              <RopeClimberIcon />
+              <ProgressPinIcon />
             </div>
           </div>
         </div>
@@ -452,23 +471,43 @@ export default function TutorialPageLayout({ currentId, cards }: TutorialPageLay
         </div>
       </div>
 
-      <div
-        className={`tutorial-story-footer ${isLastCard ? 'is-visible' : ''}`.trim()}
-        aria-hidden={!isLastCard}
-      >
+      <div className={`tutorial-story-footer ${isLastCard ? 'is-complete' : ''}`.trim()}>
         <div className="tutorial-story-footer-copy">
-          <p className="tutorial-story-footer-status">{copy.moduleSaved}</p>
-          <p>{copy.ctaHint}</p>
+          <p className="tutorial-story-footer-status">
+            {isLastCard ? copy.completionTitle : copy.cardCountLabel}
+          </p>
+          <p>{isLastCard ? copy.ctaHint : copy.continueHint}</p>
         </div>
-        {isLastCard ? (
-          <>
+
+        <div className="tutorial-story-footer-actions">
+          <button
+            type="button"
+            className="tutorial-story-nav-button tutorial-story-nav-button-secondary"
+            onClick={goToPreviousCard}
+            disabled={currentCardIndex === 0}
+          >
+            {copy.previousCardLabel}
+          </button>
+
+          {isLastCard ? (
             <Link className="tutorial-story-cta" to={next ? next.route : routes.dashboard}>
               <span>{copy.ctaLabel}</span>
             </Link>
-            <div className="tutorial-story-footer-mascot" aria-hidden="true">
-              <GuideMascot pose="celebrate" />
-            </div>
-          </>
+          ) : (
+            <button
+              type="button"
+              className="tutorial-story-nav-button"
+              onClick={goToNextCard}
+            >
+              {copy.nextCardLabel}
+            </button>
+          )}
+        </div>
+
+        {isLastCard ? (
+          <div className="tutorial-story-footer-mascot" aria-hidden="true">
+            <GuideMascot pose="celebrate" />
+          </div>
         ) : null}
       </div>
     </section>
@@ -696,16 +735,20 @@ function StopIcon() {
   );
 }
 
-function RopeClimberIcon() {
+function ProgressPinIcon() {
   return (
-    <svg viewBox="0 0 30 30" className="tutorial-story-climber-icon">
-      <circle cx="15" cy="9" r="4" fill="#ffffff" />
-      <path d="M 15 13 L 15 20" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" />
-      <path d="M 15 16 L 10 20" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" />
-      <path d="M 15 16 L 20 20" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" />
-      <path d="M 15 20 L 12 25" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" />
-      <path d="M 15 20 L 19 25" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" />
-      <path d="M 15 2 V 8" stroke="#ffffff" strokeWidth="2.2" strokeLinecap="round" />
+    <svg viewBox="0 0 30 38" className="tutorial-story-climber-icon">
+      <path
+        d="M 15 3 C 9.2 3 4.5 7.5 4.5 13.4 C 4.5 21.2 15 34.7 15 34.7 C 15 34.7 25.5 21.2 25.5 13.4 C 25.5 7.5 20.8 3 15 3 Z"
+        fill="rgba(255, 255, 255, 0.96)"
+        stroke="var(--tutorial-accent-strong)"
+        strokeWidth="2.1"
+        strokeLinejoin="round"
+      />
+      <path d="M 15 7.8 L 20.1 12.1 L 15 15.8 L 9.9 12.1 Z" fill="var(--tutorial-accent)" />
+      <path d="M 15 15.8 L 18.1 19.2 L 15 27.8 L 11.9 19.2 Z" fill="var(--tutorial-accent-strong)" opacity="0.96" />
+      <path d="M 12.4 11.8 L 15 8.4 L 17.6 11.8 L 15 14.6 Z" fill="rgba(255, 255, 255, 0.62)" />
+      <circle cx="15" cy="13.6" r="1.8" fill="rgba(255, 255, 255, 0.98)" />
     </svg>
   );
 }
