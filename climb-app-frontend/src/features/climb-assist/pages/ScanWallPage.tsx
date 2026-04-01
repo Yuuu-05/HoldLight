@@ -15,6 +15,7 @@ import RouteCanvas from '../components/RouteCanvas';
 import ScanPermissionNotice from '../components/ScanPermissionNotice';
 import { useScanSession } from '../hooks/useScanSession';
 import { getWallMapCoverage } from '../services/scan.service';
+import { buildScanSafetyDecision } from '../services/safetyState.service';
 
 function createObjectUrlFromDataUrl(dataUrl: string) {
   const [header, encoded] = dataUrl.split(',', 2);
@@ -228,23 +229,20 @@ export default function ScanWallPage() {
   const displayScan = activeScan ?? latestScan;
   const scanCoverage = displayScan ? getWallMapCoverage(displayScan.wallMap) : null;
   const scanAnalysis = displayScan?.wallMap.analysis;
-  const isReadyForAutonomousGuidance = Boolean(
-    displayScan && (displayScan.wallMap.source === 'demo' || scanAnalysis?.shouldAllowAutonomousGuidance),
-  );
+  const scanSafetyDecision = buildScanSafetyDecision(displayScan);
+  const isReadyForAutonomousGuidance = displayScan ? scanSafetyDecision.canSelectRoute : false;
   const shouldSuggestVolunteer = Boolean(
     scanProgress.error
-      || (scanAnalysis && !scanAnalysis.shouldAllowAutonomousGuidance),
+      || (displayScan && scanSafetyDecision.status !== 'ready'),
   );
   const fallbackDescription = scanProgress.error
     ? 'The wall is a little tricky right now. Try again with a steadier phone or brighter light.'
-    : scanAnalysis?.suggestedAction === 'companion'
-      ? 'The wall is partly readable, but a companion will make the next step safer.'
-      : 'Recognition is still too dim or noisy for autonomous guidance.';
+    : scanSafetyDecision.detail;
   const scanAnnouncement = scanProgress.status === 'error'
     ? `Scan paused. ${scanProgress.error ?? 'We could not finish this scan.'}`
     : scanProgress.message;
-  const readinessHero = scanAnalysis
-    ? scanAnalysis.shouldAllowAutonomousGuidance
+  const readinessHero = displayScan
+    ? scanSafetyDecision.status === 'ready'
       ? {
           tone: 'ready',
           kicker: 'Small monkey says go',
@@ -252,7 +250,7 @@ export default function ScanWallPage() {
           body: 'The scan details are tucked away below if you want to verify them, but you can keep the momentum and move straight into route setup.',
           pose: 'celebrate' as const,
         }
-      : scanAnalysis.suggestedAction === 'companion'
+      : scanSafetyDecision.status === 'companion'
         ? {
             tone: 'companion',
             kicker: 'Bring a buddy',

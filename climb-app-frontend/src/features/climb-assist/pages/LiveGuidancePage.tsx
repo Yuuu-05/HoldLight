@@ -24,6 +24,7 @@ import { useLivePoseTracker } from '../hooks/useLivePoseTracker';
 import { useLiveWallAlignment } from '../hooks/useLiveWallAlignment';
 import { buildLivePositionGuidance } from '../services/cueGenerator.service';
 import { limbToPoseJointName } from '../services/poseTracker.service';
+import { buildLiveGuidanceSafetyDecision } from '../services/safetyState.service';
 
 function isFootLimb(limb?: GuidanceLimb) {
   return limb === 'leftFoot' || limb === 'rightFoot';
@@ -76,6 +77,8 @@ export default function LiveGuidancePage() {
   const [scan, setScan] = useState<ClimbScan | null>(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [controlError, setControlError] = useState<string | null>(null);
 
   const navigate = useNavigate();
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -91,6 +94,8 @@ export default function LiveGuidancePage() {
   const reachedSinceRef = useRef<number | null>(null);
   const lastAutoAdvanceRef = useRef(0);
   const lastBeepRef = useRef(0);
+  const lastSafetyStateRef = useRef('');
+  const lastSafetyAnnouncementRef = useRef('');
 
   usePageTitle('Live guidance');
 
@@ -99,60 +104,11 @@ export default function LiveGuidancePage() {
       ([activeSession, latestScan]) => {
         setSession(activeSession);
         setScan(latestScan);
+        setLoadError(null);
       },
-    );
-  }, []);
-
-  useEffect(() => {
-    const hasLiveTrack = Boolean(
-      stream?.active && stream.getVideoTracks().some((track) => track.readyState === 'live'),
-    );
-
-    if (!cameraSupported || hasLiveTrack) return;
-    void requestAccess();
-  }, [cameraSupported, requestAccess, stream]);
-
-  useEffect(() => {
-    if (!guidance.currentCue) return;
-
-    const spokenCue = buildCueLabel(
-      guidance.cueIndex,
-      guidance.cues.length,
-      guidance.currentCue.message,
-    );
-
-    if (lastCueSpokenRef.current === spokenCue) return;
-
-    lastCueSpokenRef.current = spokenCue;
-    lastPrimaryCueAtRef.current = Date.now();
-    lastLiveSpeechKeyRef.current = '';
-    lastLiveSpeechAtRef.current = 0;
-    speak(spokenCue);
-
-    if (session) {
-      void saveGuidanceLogsApi([
-        {
-          id: `log_${Date.now()}`,
-          sessionId: session.id,
-          type: 'cue_issued',
-          message: spokenCue,
-          timestamp: new Date().toISOString(),
-          payload: { cueIndex: guidance.cueIndex, holdId: guidance.currentCue.holdId },
-        },
-      ]);
-    }
-  }, [guidance.cueIndex, guidance.cues.length, guidance.currentCue, session, speak]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
-      return undefined;
-    }
-
-    const interval = window.setInterval(() => {
-      setIsSpeaking(window.speechSynthesis.speaking);
-    }, 180);
-
-    return () => window.clearInterval(interval);
+    ).catch((error) => {
+      setLoadError(error instanceof Error ? error.message : 'Unable to load live guidance data.');
+    });
   }, []);
 
   const currentHold = useMemo(() => {
@@ -184,6 +140,27 @@ export default function LiveGuidancePage() {
     enabled: Boolean(stream && session?.plannedRoute),
   });
 
+  useEffect(() => {
+    const hasLiveTrack = Boolean(
+      stream?.active && stream.getVideoTracks().some((track) => track.readyState === 'live'),
+    );
+
+    if (!cameraSupported || hasLiveTrack) return;
+    void requestAccess();
+  }, [cameraSupported, requestAccess, stream]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+      return undefined;
+    }
+
+    const interval = window.setInterval(() => {
+      setIsSpeaking(window.speechSynthesis.speaking);
+    }, 180);
+
+    return () => window.clearInterval(interval);
+  }, []);
+
   const liveRoutePlan = alignedRoutePlan ?? session?.plannedRoute ?? null;
   const liveCurrentHold = alignedCurrentHold ?? currentHold;
 
@@ -206,6 +183,11 @@ export default function LiveGuidancePage() {
     if (distancePct === null) return undefined;
     return Math.max(0, Math.min(100, Math.round(100 - distancePct * 6)));
   }, [distancePct]);
+
+  const liveSafetyDecision = useMemo(
+    () => buildLiveGuidanceSafetyDecision({ scan, poseState, alignmentState }),
+    [alignmentState, poseState, scan],
+  );
 
   const cue = useMemo(
     () => guidance.currentCue?.message ?? 'No cue available',
@@ -242,11 +224,104 @@ export default function LiveGuidancePage() {
     [guidance.cueIndex, session?.plannedRoute?.holds],
   );
 
+  useEffect(() => {
+    if (!guidance.currentCue || liveSafetyDecision.status !== 'ready') return;
+
+    const spokenGuideCue = buildCueLabel(
+      guidance.cueIndex,
+      guidance.cues.length,
+      guidance.currentCue.message,
+    );
+
+    if (lastCueSpokenRef.current === spokenGuideCue) return;
+
+    lastCueSpokenRef.current = spokenGuideCue;
+    lastPrimaryCueAtRef.current = Date.now();
+    lastLiveSpeechKeyRef.current = '';
+    lastLiveSpeechAtRef.current = 0;
+    speak(spokenGuideCue);
+
+    if (session) {
+      void saveGuidanceLogsApi([
+        {
+          id: `log_${Date.now()}`,
+          sessionId: session.id,
+          type: 'cue_issued',
+          message: spokenGuideCue,
+          timestamp: new Date().toISOString(),
+          payload: { cueIndex: guidance.cueIndex, holdId: guidance.currentCue.holdId },
+        },
+      ]).catch((error) => {
+        setControlError(error instanceof Error ? error.message : 'Failed to save the cue log.');
+      });
+    }
+  }, [guidance.cueIndex, guidance.cues.length, guidance.currentCue, liveSafetyDecision.status, session, speak]);
+
+  useEffect(() => {
+    if (!session) return;
+
+    const safetyKey = `${liveSafetyDecision.status}:${liveSafetyDecision.detail}`;
+    if (lastSafetyStateRef.current === safetyKey) return;
+    lastSafetyStateRef.current = safetyKey;
+
+    if (liveSafetyDecision.status !== 'ready') {
+      reachedSinceRef.current = null;
+      lastLiveSpeechKeyRef.current = '';
+      lastCueSpokenRef.current = '';
+    }
+
+    void saveGuidanceLogsApi([
+      {
+        id: `log_${Date.now()}`,
+        sessionId: session.id,
+        type: 'safety_state_changed',
+        message: `${liveSafetyDecision.headline}. ${liveSafetyDecision.detail}`,
+        timestamp: new Date().toISOString(),
+        payload: {
+          status: liveSafetyDecision.status,
+          reasons: liveSafetyDecision.reasons,
+        },
+      },
+    ]).catch((error) => {
+      setControlError(error instanceof Error ? error.message : 'Failed to save the safety state.');
+    });
+  }, [liveSafetyDecision.detail, liveSafetyDecision.headline, liveSafetyDecision.reasons, liveSafetyDecision.status, session]);
+
+  useEffect(() => {
+    if (!session?.plannedRoute) return;
+    if (liveSafetyDecision.status === 'ready') {
+      lastSafetyAnnouncementRef.current = '';
+      return;
+    }
+
+    const announcementKey = `${liveSafetyDecision.status}:${liveSafetyDecision.detail}`;
+    if (lastSafetyAnnouncementRef.current === announcementKey) return;
+
+    if (Date.now() - lastPrimaryCueAtRef.current < 1400) {
+      return;
+    }
+
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window && window.speechSynthesis.speaking) {
+      return;
+    }
+
+    lastSafetyAnnouncementRef.current = announcementKey;
+    speak(`Safety pause. ${liveSafetyDecision.detail}`);
+  }, [liveSafetyDecision.detail, liveSafetyDecision.status, session?.plannedRoute, speak]);
+
   const handleAdvance = useCallback(
     async (reason: 'manual' | 'auto' = 'manual') => {
       if (!session || !session.plannedRoute || syncing) return;
+      if (!liveSafetyDecision.canAutoAdvance) {
+        if (reason === 'manual') {
+          setControlError(liveSafetyDecision.detail);
+          speak(`Safety pause. ${liveSafetyDecision.detail}`);
+        }
+        return;
+      }
 
       setSyncing(true);
+      setControlError(null);
 
       try {
         const nextCueIndex = Math.min(
@@ -295,11 +370,17 @@ export default function LiveGuidancePage() {
             )}`,
           );
         }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unable to advance the live guidance cue.';
+        setControlError(message);
+        if (reason === 'manual') {
+          speak(message);
+        }
       } finally {
         setSyncing(false);
       }
     },
-    [guidance.cueIndex, guidance.cues, liveCurrentHold, session, speak, syncing],
+    [guidance.cueIndex, guidance.cues, liveCurrentHold, liveSafetyDecision.canAutoAdvance, liveSafetyDecision.detail, session, speak, syncing],
   );
 
   const handleFinish = useCallback(async () => {
@@ -311,57 +392,72 @@ export default function LiveGuidancePage() {
     );
     const completedAt = new Date().toISOString();
 
-    const nextSession = await updateClimbSessionApi(session.id, {
-      completed: true,
-      elapsedSeconds,
-      endedAt: completedAt,
-      cueIndex: guidance.cueIndex,
-      status: 'completed',
-      summaryStats: {
-        ...session.summaryStats,
-        holdsReached: Math.max(session.summaryStats.holdsReached, guidance.cueIndex + 1),
-      },
-    });
+    try {
+      setControlError(null);
+      const nextSession = await updateClimbSessionApi(session.id, {
+        completed: true,
+        elapsedSeconds,
+        endedAt: completedAt,
+        cueIndex: guidance.cueIndex,
+        status: 'completed',
+        summaryStats: {
+          ...session.summaryStats,
+          holdsReached: Math.max(session.summaryStats.holdsReached, guidance.cueIndex + 1),
+        },
+      });
 
-    setSession(nextSession);
+      setSession(nextSession);
 
-    await saveGuidanceLogsApi([
-      {
-        id: `log_${Date.now()}`,
-        sessionId: nextSession.id,
-        type: 'session_completed',
-        message: 'Live guidance session completed.',
-        timestamp: completedAt,
-        payload: { elapsedSeconds },
-      },
-    ]);
+      await saveGuidanceLogsApi([
+        {
+          id: `log_${Date.now()}`,
+          sessionId: nextSession.id,
+          type: 'session_completed',
+          message: 'Live guidance session completed.',
+          timestamp: completedAt,
+          payload: { elapsedSeconds },
+        },
+      ]);
 
-    navigate(routes.climbSummary);
+      navigate(routes.climbSummary);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to finish the session.';
+      setControlError(message);
+      speak(message);
+    }
   }, [guidance.cueIndex, navigate, session]);
 
   const handleRecalibrate = useCallback(async () => {
     if (!session) return;
 
-    speak(
-      'Recalibration note. Keep the camera framing matched to the scan and pause on three points of contact.',
-    );
+    try {
+      setControlError(null);
+      speak(
+        'Recalibration note. Keep the camera framing matched to the scan and pause on three points of contact.',
+      );
 
-    await recalibrate();
+      await recalibrate();
 
-    await saveGuidanceLogsApi([
-      {
-        id: `log_${Date.now()}`,
-        sessionId: session.id,
-        type: 'recalibrate',
-        message: 'Manual recalibration requested by the climber.',
-        timestamp: new Date().toISOString(),
-        payload: { cueIndex: guidance.cueIndex },
-      },
-    ]);
+      await saveGuidanceLogsApi([
+        {
+          id: `log_${Date.now()}`,
+          sessionId: session.id,
+          type: 'recalibrate',
+          message: 'Manual recalibration requested by the climber.',
+          timestamp: new Date().toISOString(),
+          payload: { cueIndex: guidance.cueIndex },
+        },
+      ]);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Recalibration failed.';
+      setControlError(message);
+      speak(message);
+    }
   }, [guidance.cueIndex, recalibrate, session, speak]);
 
   useEffect(() => {
     if (
+      !liveSafetyDecision.canAutoAdvance ||
       distancePct === null ||
       !liveCurrentHold ||
       syncing ||
@@ -403,9 +499,11 @@ export default function LiveGuidancePage() {
     poseState.visibleLimbCount,
     syncing,
     targetThreshold,
+    liveSafetyDecision.canAutoAdvance,
   ]);
 
   useEffect(() => {
+    if (!liveSafetyDecision.canPlayProximityCue) return;
     if (distancePct === null) return;
 
     const now = Date.now();
@@ -421,9 +519,10 @@ export default function LiveGuidancePage() {
           : 680;
 
     void playProximityBeep(frequency, 80, 0.03);
-  }, [distancePct, targetThreshold]);
+  }, [distancePct, liveSafetyDecision.canPlayProximityCue, targetThreshold]);
 
   useEffect(() => {
+    if (!liveSafetyDecision.canSpeakLiveCue) return;
     if (!guidance.currentCue || !liveCurrentHold || !livePositionGuidance.speechText) return;
     if (!poseState.active && distancePct === null) return;
     if (poseState.poseQualityPct <= 0 && distancePct === null) return;
@@ -463,7 +562,16 @@ export default function LiveGuidancePage() {
     poseState.poseQualityPct,
     speak,
     targetThreshold,
+    liveSafetyDecision.canSpeakLiveCue,
   ]);
+
+  if (loadError) {
+    return (
+      <Card title="Live guidance">
+        <p>{loadError}</p>
+      </Card>
+    );
+  }
 
   if (!session?.plannedRoute) {
     return (
@@ -504,7 +612,7 @@ export default function LiveGuidancePage() {
         <div className="assist-live-telemetry">
           <div>
             <span className="badge">Tracker</span>
-            <p className="subtle-text">{poseState.error || poseState.statusLabel}</p>
+            <p className="subtle-text">{controlError || poseState.error || poseState.statusLabel}</p>
           </div>
           <div>
             <span className="badge">Target</span>
@@ -528,6 +636,12 @@ export default function LiveGuidancePage() {
                 : `${alignmentState.statusLabel}${alignmentState.detector ? ` via ${alignmentState.detector}` : ''}`}
             </p>
           </div>
+          <div>
+            <span className="badge">Safety</span>
+            <p className="subtle-text">
+              {liveSafetyDecision.headline}. {liveSafetyDecision.detail}
+            </p>
+          </div>
         </div>
       </Card>
 
@@ -537,17 +651,17 @@ export default function LiveGuidancePage() {
           targetLabel={liveCurrentHold?.label}
           progressLabel={guidance.currentCue?.progressLabel}
           isSpeaking={isSpeaking}
-          poseStatus={trackerHint}
+          poseStatus={liveSafetyDecision.status === 'ready' ? trackerHint : liveSafetyDecision.detail}
           alignmentPct={alignmentPct}
         />
       </div>
 
       <VoiceCuePanel
-        cue={`${cue} ${trackerHint}`.trim()}
+        cue={liveSafetyDecision.status === 'ready' ? `${cue} ${trackerHint}`.trim() : liveSafetyDecision.detail}
         progressLabel={guidance.currentCue?.progressLabel}
         isSpeaking={isSpeaking}
-        onSpeak={() => speak(manualCue)}
-        onRepeat={repeat}
+        onSpeak={() => speak(liveSafetyDecision.status === 'ready' ? manualCue : `Safety pause. ${liveSafetyDecision.detail}`)}
+        onRepeat={() => (liveSafetyDecision.status === 'ready' ? repeat() : speak(`Safety pause. ${liveSafetyDecision.detail}`))}
         onAdvance={() => void handleAdvance('manual')}
         onNext={() => void handleAdvance('manual')}
         onRecalibrate={() => void handleRecalibrate()}

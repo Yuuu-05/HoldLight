@@ -9,12 +9,15 @@ import { usePageTitle } from '../../../shared/hooks/usePageTitle';
 import { createClimbSessionApi, getLatestClimbScanApi } from '../../../shared/api/climbing.api';
 import { triggerHaptic } from '../../../shared/lib/haptics';
 import { buildRoutePlan, getAvailableRouteCandidates } from '../services/routePlanner.service';
+import { buildScanSafetyDecision } from '../services/safetyState.service';
 import type { ClimbScan } from '../../../shared/types/climb';
 
 export default function SelectDifficultyPage() {
   const [difficulty, setDifficulty] = useState('Beginner');
   const [scan, setScan] = useState<ClimbScan | null>(null);
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const navigate = useNavigate();
   const hasBuzzedRef = useRef(false);
 
@@ -23,10 +26,13 @@ export default function SelectDifficultyPage() {
   useEffect(() => {
     getLatestClimbScanApi().then((nextScan) => {
       setScan(nextScan);
+      setLoadError(null);
       if (nextScan) {
         const [firstCandidate] = getAvailableRouteCandidates(nextScan.wallMap);
         setSelectedCandidateId(firstCandidate?.id ?? null);
       }
+    }).catch((error) => {
+      setLoadError(error instanceof Error ? error.message : 'Unable to load the saved wall scan.');
     });
   }, []);
 
@@ -45,10 +51,8 @@ export default function SelectDifficultyPage() {
     return buildRoutePlan(scan.wallMap, selectedCandidate, difficulty);
   }, [difficulty, scan, selectedCandidate]);
 
-  const scanAnalysis = scan?.wallMap.analysis;
-  const autonomousReady = Boolean(
-    scan && (scan.wallMap.source === 'demo' || scanAnalysis?.shouldAllowAutonomousGuidance),
-  );
+  const scanSafetyDecision = useMemo(() => buildScanSafetyDecision(scan), [scan]);
+  const autonomousReady = scanSafetyDecision.canSelectRoute;
 
   useEffect(() => {
     if (hasBuzzedRef.current || !autonomousReady || availableCandidates.length === 0) {
@@ -65,28 +69,40 @@ export default function SelectDifficultyPage() {
 
   async function handleContinue() {
     if (!scan || !selectedCandidate || !previewRoute) return;
+    try {
+      setActionError(null);
+      await createClimbSessionApi({
+        scanId: scan.id,
+        routeId: previewRoute.id,
+        selectedColor: selectedCandidate.color,
+        difficulty,
+        startedAt: new Date().toISOString(),
+        cueIndex: 0,
+        completed: false,
+        currentTargetHoldId: previewRoute.holds[0]?.id || '',
+        status: 'draft',
+        plannedRoute: previewRoute,
+        summaryStats: {
+          holdsReached: 0,
+          totalHolds: previewRoute.holds.length,
+          cueCount: 0,
+          recalibrationCount: 0,
+          source: scan.wallMap.source,
+        },
+      });
 
-    await createClimbSessionApi({
-      scanId: scan.id,
-      routeId: previewRoute.id,
-      selectedColor: selectedCandidate.color,
-      difficulty,
-      startedAt: new Date().toISOString(),
-      cueIndex: 0,
-      completed: false,
-      currentTargetHoldId: previewRoute.holds[0]?.id || '',
-      status: 'draft',
-      plannedRoute: previewRoute,
-      summaryStats: {
-        holdsReached: 0,
-        totalHolds: previewRoute.holds.length,
-        cueCount: 0,
-        recalibrationCount: 0,
-        source: scan.wallMap.source,
-      },
-    });
+      navigate(routes.routeRecommendation);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Unable to create the climb session.');
+    }
+  }
 
-    navigate(routes.routeRecommendation);
+  if (loadError) {
+    return (
+      <Card title="Select route and guidance level">
+        <p>{loadError}</p>
+      </Card>
+    );
   }
 
   if (!scan) {
@@ -101,10 +117,7 @@ export default function SelectDifficultyPage() {
   if (!autonomousReady) {
     return (
       <Card title="Select route and guidance level">
-        <p>
-          Automatic recognition has not cleared the accessibility gate yet, so
-          autonomous route selection is blocked for this scan.
-        </p>
+        <p>{scanSafetyDecision.detail}</p>
         <Button onClick={() => navigate(routes.scanWall)}>Retake wall scan</Button>
       </Card>
     );
@@ -166,6 +179,8 @@ export default function SelectDifficultyPage() {
             </p>
           </div>
         ) : null}
+
+        {actionError ? <p className="subtle-text">{actionError}</p> : null}
 
         <Button onClick={() => void handleContinue()} disabled={!selectedCandidate}>
           Review route recommendation

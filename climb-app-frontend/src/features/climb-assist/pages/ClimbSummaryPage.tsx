@@ -9,11 +9,25 @@ import { triggerHaptic } from '../../../shared/lib/haptics';
 
 export default function ClimbSummaryPage() {
   const [session, setSession] = useState<ClimbSession | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
-    getClimbSessionApi().then(setSession);
+    getClimbSessionApi().then((nextSession) => {
+      setSession(nextSession);
+      setLoadError(null);
+    }).catch((error) => {
+      setLoadError(error instanceof Error ? error.message : 'Unable to load the climb summary.');
+    });
     triggerHaptic(18);
   }, []);
+
+  if (loadError) {
+    return (
+      <Card title="Climb summary" className="assist-summary-card" bodyClassName="stack-md">
+        <p>{loadError}</p>
+      </Card>
+    );
+  }
 
   return (
     <Card title="Climb summary" className="assist-summary-card" bodyClassName="stack-md">

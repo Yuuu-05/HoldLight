@@ -6,6 +6,12 @@ import {
   type PoseJointName,
   type PosePoint,
 } from '../services/poseTracker.service';
+import {
+  createPoseSubjectLockState,
+  stabilizePoseSubjectFrame,
+  type PoseSubjectLockMeta,
+  type PoseSubjectLockStatus,
+} from '../services/poseSubjectLock.service';
 
 export interface PoseAnchor {
   xPct: number;
@@ -29,6 +35,10 @@ export interface LivePoseState {
   visibleLimbCount: number;
   visibleJointCount: number;
   trackedJointCount: number;
+  subjectLockStatus: PoseSubjectLockStatus;
+  subjectLockConfidencePct: number;
+  interferenceRiskPct: number;
+  subjectLockReason: string;
 }
 
 interface PoseFrameState {
@@ -40,6 +50,10 @@ interface PoseFrameState {
   visibleLimbCount: number;
   visibleJointCount: number;
   trackedJointCount: number;
+  subjectLockStatus: PoseSubjectLockStatus;
+  subjectLockConfidencePct: number;
+  interferenceRiskPct: number;
+  subjectLockReason: string;
 }
 
 const UI_SYNC_INTERVAL_MS = 120;
@@ -119,13 +133,19 @@ function buildDisplayLandmarks(poseFrame: PoseFrame | null) {
   });
 }
 
-function buildUiFrame(poseFrame: PoseFrame | null): PoseFrameState {
+function buildUiFrame(poseFrame: PoseFrame | null, lockMeta?: PoseSubjectLockMeta): PoseFrameState {
   const metrics = poseFrame?.metrics;
+  const subjectLockStatus = lockMeta?.status ?? 'searching';
+  const subjectLockConfidencePct = lockMeta?.confidencePct ?? 0;
+  const interferenceRiskPct = lockMeta?.interferenceRiskPct ?? 0;
+  const subjectLockReason = lockMeta?.statusLabel ?? 'Searching for the primary climber';
+
   return {
     landmarks: buildDisplayLandmarks(poseFrame),
     anchors: buildAnchors(poseFrame),
     active: Boolean(
       poseFrame &&
+        subjectLockStatus !== 'searching' &&
         ((metrics?.visibleLimbCount ?? 0) >= 1 || (metrics?.visibleJointCount ?? 0) >= 6),
     ),
     poseFrame,
@@ -133,6 +153,10 @@ function buildUiFrame(poseFrame: PoseFrame | null): PoseFrameState {
     visibleLimbCount: metrics?.visibleLimbCount ?? 0,
     visibleJointCount: metrics?.visibleJointCount ?? 0,
     trackedJointCount: metrics?.trackedJointCount ?? 0,
+    subjectLockStatus,
+    subjectLockConfidencePct,
+    interferenceRiskPct,
+    subjectLockReason,
   };
 }
 
@@ -145,6 +169,10 @@ const EMPTY_FRAME: PoseFrameState = {
   visibleLimbCount: 0,
   visibleJointCount: 0,
   trackedJointCount: 0,
+  subjectLockStatus: 'searching',
+  subjectLockConfidencePct: 0,
+  interferenceRiskPct: 0,
+  subjectLockReason: 'Searching for the primary climber',
 };
 
 export function useLivePoseTracker(videoElement: HTMLVideoElement | null, enabled = true) {
@@ -157,6 +185,7 @@ export function useLivePoseTracker(videoElement: HTMLVideoElement | null, enable
   const lastVideoTimeRef = useRef(-1);
   const workCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const busyRef = useRef(false);
+  const subjectLockStateRef = useRef(createPoseSubjectLockState());
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -174,6 +203,7 @@ export function useLivePoseTracker(videoElement: HTMLVideoElement | null, enable
       setUiFrame(EMPTY_FRAME);
       setError(null);
       setLoading(false);
+      subjectLockStateRef.current = createPoseSubjectLockState();
       return undefined;
     }
 
@@ -187,6 +217,7 @@ export function useLivePoseTracker(videoElement: HTMLVideoElement | null, enable
         latestFrameRef.current = EMPTY_FRAME;
         lastInferenceAtRef.current = 0;
         lastVideoTimeRef.current = -1;
+        subjectLockStateRef.current = createPoseSubjectLockState();
 
         const tracker = await createPoseTracker();
         if (disposed) return;
@@ -235,7 +266,12 @@ export function useLivePoseTracker(videoElement: HTMLVideoElement | null, enable
 
           try {
             const nextPoseFrame = await trackerRef.current.estimate(canvas);
-            latestFrameRef.current = buildUiFrame(nextPoseFrame);
+            const lockedFrame = stabilizePoseSubjectFrame(
+              nextPoseFrame,
+              subjectLockStateRef.current,
+            );
+            subjectLockStateRef.current = lockedFrame.nextState;
+            latestFrameRef.current = buildUiFrame(lockedFrame.frame, lockedFrame.meta);
           } catch (poseError) {
             if (!disposed && mountedRef.current) {
               setError(poseError instanceof Error ? poseError.message : 'Pose tracking failed.');
@@ -277,6 +313,7 @@ export function useLivePoseTracker(videoElement: HTMLVideoElement | null, enable
       workCanvasRef.current = null;
       latestFrameRef.current = EMPTY_FRAME;
       busyRef.current = false;
+      subjectLockStateRef.current = createPoseSubjectLockState();
 
       if (mountedRef.current) {
         setUiFrame(EMPTY_FRAME);
@@ -293,11 +330,7 @@ export function useLivePoseTracker(videoElement: HTMLVideoElement | null, enable
     ? 'Pose tracker unavailable'
     : loading
       ? 'Starting pose tracker'
-      : uiFrame.active
-        ? uiFrame.poseQualityPct >= 60
-          ? 'Pose tracker locked'
-          : 'Pose tracker tracking a partial frame'
-        : 'Waiting for a full-body view';
+      : uiFrame.subjectLockReason;
 
   return {
     supported,
@@ -312,5 +345,9 @@ export function useLivePoseTracker(videoElement: HTMLVideoElement | null, enable
     visibleLimbCount: uiFrame.visibleLimbCount,
     visibleJointCount: uiFrame.visibleJointCount,
     trackedJointCount: uiFrame.trackedJointCount,
+    subjectLockStatus: uiFrame.subjectLockStatus,
+    subjectLockConfidencePct: uiFrame.subjectLockConfidencePct,
+    interferenceRiskPct: uiFrame.interferenceRiskPct,
+    subjectLockReason: uiFrame.subjectLockReason,
   } satisfies LivePoseState;
 }

@@ -17,6 +17,8 @@ import type { ClimbScan, ClimbSession } from '../../../shared/types/climb';
 export default function RouteRecommendationPage() {
   const [scan, setScan] = useState<ClimbScan | null>(null);
   const [session, setSession] = useState<ClimbSession | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const navigate = useNavigate();
   const hasBuzzedRef = useRef(false);
 
@@ -27,8 +29,11 @@ export default function RouteRecommendationPage() {
       ([latestScan, activeSession]) => {
         setScan(latestScan);
         setSession(activeSession);
+        setLoadError(null);
       },
-    );
+    ).catch((error) => {
+      setLoadError(error instanceof Error ? error.message : 'Unable to load the recommended route.');
+    });
   }, []);
 
   useEffect(() => {
@@ -46,26 +51,38 @@ export default function RouteRecommendationPage() {
 
   async function handleStartGuidance() {
     if (!session) return;
+    try {
+      setActionError(null);
+      const nextSession = await updateClimbSessionApi(session.id, {
+        status: 'guiding',
+        currentTargetHoldId: session.plannedRoute?.holds[0]?.id || '',
+      });
 
-    const nextSession = await updateClimbSessionApi(session.id, {
-      status: 'guiding',
-      currentTargetHoldId: session.plannedRoute?.holds[0]?.id || '',
-    });
+      setSession(nextSession);
 
-    setSession(nextSession);
+      await saveGuidanceLogsApi([
+        {
+          id: `log_${Date.now()}`,
+          sessionId: nextSession.id,
+          type: 'scan_saved',
+          message: `Route ${nextSession.selectedColor.toUpperCase()} is ready for live guidance.`,
+          timestamp: new Date().toISOString(),
+          payload: { routeId: nextSession.routeId },
+        },
+      ]);
 
-    await saveGuidanceLogsApi([
-      {
-        id: `log_${Date.now()}`,
-        sessionId: nextSession.id,
-        type: 'scan_saved',
-        message: `Route ${nextSession.selectedColor.toUpperCase()} is ready for live guidance.`,
-        timestamp: new Date().toISOString(),
-        payload: { routeId: nextSession.routeId },
-      },
-    ]);
+      navigate(routes.liveGuidance);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Unable to start live guidance.');
+    }
+  }
 
-    navigate(routes.liveGuidance);
+  if (loadError) {
+    return (
+      <Card title="Route recommendation">
+        <p>{loadError}</p>
+      </Card>
+    );
   }
 
   if (!scan || !session?.plannedRoute) {
@@ -136,6 +153,8 @@ export default function RouteRecommendationPage() {
           <li>If the scan looks wrong, go back and rescan or upload a clearer image.</li>
           <li>If the route looks right, continue to live guidance.</li>
         </ol>
+
+        {actionError ? <p className="subtle-text">{actionError}</p> : null}
 
         <div className="inline-actions wrap">
           <Button onClick={() => void handleStartGuidance()}>Start live guidance</Button>

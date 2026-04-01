@@ -12,7 +12,13 @@ export type HoldColor =
 
 export type HoldRole = 'start' | 'foot' | 'intermediate' | 'finish';
 export type SessionStatus = 'draft' | 'guiding' | 'paused' | 'completed';
-export type GuidanceLogType = 'cue_issued' | 'hold_reached' | 'scan_saved' | 'session_completed' | 'recalibrate';
+export type GuidanceLogType =
+  | 'cue_issued'
+  | 'hold_reached'
+  | 'scan_saved'
+  | 'session_completed'
+  | 'recalibrate'
+  | 'safety_state_changed';
 export type GuidanceLimb = 'leftHand' | 'rightHand' | 'leftFoot' | 'rightFoot' | 'match';
 export type VisionReadinessStatus = 'ready' | 'retake_required' | 'companion_mode_recommended';
 export type VisionSuggestedAction = 'proceed' | 'retake' | 'companion';

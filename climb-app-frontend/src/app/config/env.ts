@@ -5,6 +5,9 @@ export const env = {
   storagePrefix: 'climb-app',
   isDev: import.meta.env.DEV,
   isProd: import.meta.env.PROD,
+  studyModeEnabledByDefault: ['1', 'true', 'yes', 'on'].includes(
+    String(import.meta.env.VITE_STUDY_MODE ?? import.meta.env.VITE_RESEARCH_MODE ?? '').trim().toLowerCase(),
+  ),
   devAuthBypassAvailable: Boolean(
     import.meta.env.DEV &&
     !import.meta.env.PROD &&

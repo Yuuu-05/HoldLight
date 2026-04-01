@@ -13,6 +13,7 @@ export const storageKeys = {
   accessibility: `${env.storagePrefix}:accessibility`,
   posts: `${env.storagePrefix}:posts`,
   volunteerPosts: `${env.storagePrefix}:volunteer-posts`,
+  studyMode: `${env.storagePrefix}:study-mode`,
   climbScans: `${env.storagePrefix}:climb-scans`,
   activeClimbScanId: `${env.storagePrefix}:active-climb-scan-id`,
   climbSessions: `${env.storagePrefix}:climb-sessions`,

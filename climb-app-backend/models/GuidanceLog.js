@@ -6,7 +6,7 @@ const guidanceLogSchema = new mongoose.Schema(
     sessionId: { type: String, required: true, index: true },
     type: {
       type: String,
-      enum: ['cue_issued', 'hold_reached', 'scan_saved', 'session_completed', 'recalibrate'],
+      enum: ['cue_issued', 'hold_reached', 'scan_saved', 'session_completed', 'recalibrate', 'safety_state_changed'],
       required: true,
     },
     message: { type: String, required: true },
