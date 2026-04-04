@@ -1241,6 +1241,46 @@
   pointer-events: none;
 }
 
+.assist-live-tracker-status {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  z-index: 3;
+  display: grid;
+  gap: 0.22rem;
+  max-width: min(78%, 19rem);
+  padding: 0.58rem 0.72rem;
+  border-radius: 18px;
+  background: rgba(15, 23, 42, 0.8);
+  color: #ffffff;
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.22);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.assist-live-tracker-status.is-ready {
+  background: rgba(6, 78, 59, 0.82);
+}
+
+.assist-live-tracker-status.is-warning {
+  background: rgba(120, 53, 15, 0.84);
+}
+
+.assist-live-tracker-status.is-error {
+  background: rgba(127, 29, 29, 0.84);
+}
+
+.assist-live-tracker-status strong {
+  font-size: 0.8rem;
+  line-height: 1.15;
+}
+
+.assist-live-tracker-status span {
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: rgba(255, 255, 255, 0.9);
+}
+
 .assist-live-overlay .camera-skeleton {
   position: absolute;
   inset: 0;

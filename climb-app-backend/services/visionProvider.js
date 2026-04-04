@@ -1,16 +1,8 @@
-const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
+const { resolvePythonCommand } = require('./pythonRuntime');
 
-const WORKSPACE_ROOT = path.join(__dirname, '..', '..');
-const DEFAULT_VENV_CANDIDATES = [
-  path.join(WORKSPACE_ROOT, '.venv', 'bin', 'python'),
-  path.join(WORKSPACE_ROOT, '.venv-1', 'bin', 'python'),
-];
-const PYTHON_COMMAND =
-  process.env.VISION_PYTHON_COMMAND
-  || DEFAULT_VENV_CANDIDATES.find((candidate) => fs.existsSync(candidate))
-  || 'python';
+const PYTHON_COMMAND = resolvePythonCommand('VISION_PYTHON_COMMAND', ['.venv', '.venv-1']);
 const PROVIDER_NAMES = {
   auto: 'python-auto',
   heuristic: 'python-opencv-heuristic',

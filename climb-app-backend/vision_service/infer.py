@@ -10,6 +10,13 @@ from typing import Dict, List, Optional, Tuple
 import cv2
 import numpy as np
 
+from color_classifier import (
+    extract_mask_color_features,
+    extract_masked_hold_crop,
+    load_neutral_classifier,
+    predict_neutral_color,
+)
+
 
 HEURISTIC_PROVIDER_NAME = "python-opencv-heuristic"
 XIAOXIAE_PROVIDER_NAME = "xiaoxiae-detectron2-triplet"
@@ -25,6 +32,15 @@ XIAOXIAE_MODEL_DIR = os.path.join(BASE_DIR, "models", "xiaoxiae")
 XIAOXIAE_CONFIG_PATH = os.path.join(XIAOXIAE_MODEL_DIR, "experiment_config.yml")
 XIAOXIAE_HOLD_WEIGHTS_PATH = os.path.join(XIAOXIAE_MODEL_DIR, "hold_detector", "model_final.pth")
 XIAOXIAE_ROUTE_WEIGHTS_PATH = os.path.join(XIAOXIAE_MODEL_DIR, "route_triplet", "triplet_network_final.pt")
+NEUTRAL_COLOR_MODEL_PATH = os.environ.get(
+    "VISION_NEUTRAL_COLOR_MODEL",
+    os.path.join(XIAOXIAE_MODEL_DIR, "color_classifier", "neutral_hold_classifier.pt"),
+)
+
+try:
+    NEUTRAL_COLOR_CONFIDENCE_THRESHOLD = float(os.environ.get("VISION_NEUTRAL_COLOR_CONFIDENCE", "0.72"))
+except ValueError:
+    NEUTRAL_COLOR_CONFIDENCE_THRESHOLD = 0.72
 
 COLOR_RANGES = {
     "red": [((0, 90, 55), (10, 255, 255)), ((168, 90, 55), (180, 255, 255))],
@@ -42,6 +58,8 @@ _XIAOXIAE_PREDICTOR = None
 _TRIPLET_MODEL = None
 _TRIPLET_PREPROCESS = None
 _TRIPLET_DEVICE = None
+_NEUTRAL_COLOR_BUNDLE = None
+_NEUTRAL_COLOR_LOAD_ATTEMPTED = False
 
 
 def fail(message: str):
@@ -106,6 +124,7 @@ def get_xiaoxiae_runtime_status() -> Dict:
     config_exists = os.path.exists(XIAOXIAE_CONFIG_PATH)
     hold_weights_exists = os.path.exists(XIAOXIAE_HOLD_WEIGHTS_PATH)
     route_weights_exists = os.path.exists(XIAOXIAE_ROUTE_WEIGHTS_PATH)
+    neutral_color_model_exists = os.path.exists(NEUTRAL_COLOR_MODEL_PATH)
     assets_ready = config_exists and hold_weights_exists and route_weights_exists
     detectron2_ready = module_available("detectron2")
     torch_ready = module_available("torch")
@@ -130,9 +149,62 @@ def get_xiaoxiae_runtime_status() -> Dict:
         "detectron2Ready": detectron2_ready,
         "torchReady": torch_ready,
         "torchvisionReady": torchvision_ready,
+        "neutralColorModelReady": neutral_color_model_exists,
         "ready": assets_ready and detectron2_ready and torch_ready and torchvision_ready,
         "reasons": reasons,
     }
+
+
+def get_neutral_color_bundle():
+    global _NEUTRAL_COLOR_BUNDLE, _NEUTRAL_COLOR_LOAD_ATTEMPTED
+    if _NEUTRAL_COLOR_LOAD_ATTEMPTED:
+        return _NEUTRAL_COLOR_BUNDLE
+
+    _NEUTRAL_COLOR_LOAD_ATTEMPTED = True
+    if not os.path.exists(NEUTRAL_COLOR_MODEL_PATH):
+        return None
+
+    try:
+        _NEUTRAL_COLOR_BUNDLE = load_neutral_classifier(NEUTRAL_COLOR_MODEL_PATH)
+    except Exception:
+        _NEUTRAL_COLOR_BUNDLE = None
+    return _NEUTRAL_COLOR_BUNDLE
+
+
+def classify_neutral_mask_color(
+    image_bgr: np.ndarray,
+    mask: np.ndarray,
+    bbox: Tuple[int, int, int, int],
+) -> Optional[str]:
+    bundle = get_neutral_color_bundle()
+    if bundle is None:
+        return None
+
+    crop_bgr, crop_mask = extract_masked_hold_crop(image_bgr, mask, bbox)
+    prediction = predict_neutral_color(bundle, crop_bgr, crop_mask)
+    if not prediction:
+        return None
+
+    features = extract_mask_color_features(crop_bgr, crop_mask)
+    mean_sat = float(features[20])
+    mean_val = float(features[25])
+    low_sat_fraction = float(features[41])
+    high_value_fraction = float(features[42])
+    low_value_fraction = float(features[44])
+
+    if prediction["label"] not in {"white", "black"}:
+        return None
+    if float(prediction["confidence"]) < NEUTRAL_COLOR_CONFIDENCE_THRESHOLD:
+        return None
+    if prediction["label"] == "white":
+        if not ((low_sat_fraction >= 0.45 and mean_val >= 0.58) or high_value_fraction >= 0.28):
+            return None
+        if mean_sat >= 0.32:
+            return None
+    if prediction["label"] == "black":
+        if not (low_value_fraction >= 0.42 or mean_val <= 0.34):
+            return None
+    return str(prediction["label"])
 
 
 def make_mask(hsv: np.ndarray, color_name: str) -> np.ndarray:
@@ -196,6 +268,10 @@ def classify_roi_color(roi_bgr: np.ndarray) -> str:
 
 
 def classify_mask_color(image_bgr: np.ndarray, mask: np.ndarray, bbox: Tuple[int, int, int, int]) -> str:
+    neutral_color = classify_neutral_mask_color(image_bgr, mask, bbox)
+    if neutral_color is not None:
+        return neutral_color
+
     hsv = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2HSV)
     gray = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2GRAY)
     working_mask = mask.astype(np.uint8)
@@ -932,6 +1008,8 @@ def build_model_notes(provider_name: str, runtime_status: Dict, fallback_reason:
     if provider_name == XIAOXIAE_PROVIDER_NAME:
         notes.insert(0, "This scan used the xiaoxiae Detectron2 hold detector with TripletNet route grouping.")
         notes.append("The local weights came from the Kaggle models bundle and are stored inside the backend vision service.")
+        if runtime_status.get("neutralColorModelReady"):
+            notes.append("A trainable white/black/other crop classifier is active before the HSV colour fallback.")
         return notes
 
     notes.insert(0, "This scan used the Python OpenCV fallback provider instead of the xiaoxiae model runtime.")
