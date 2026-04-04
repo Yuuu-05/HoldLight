@@ -23,6 +23,9 @@ export type GuidanceLimb = 'leftHand' | 'rightHand' | 'leftFoot' | 'rightFoot' |
 export type VisionReadinessStatus = 'ready' | 'retake_required' | 'companion_mode_recommended';
 export type VisionSuggestedAction = 'proceed' | 'retake' | 'companion';
 export type RouteStartRegion = 'left' | 'center' | 'right';
+export type RouteStartType = 'single-start' | 'dual-hand-start' | 'match-start';
+export type RouteFinishType = 'single-finish' | 'controlled-finish' | 'match-finish';
+export type RouteReviewState = 'auto-approved' | 'review-recommended';
 
 export interface Hold {
   id: string;
@@ -40,6 +43,24 @@ export interface Hold {
   radiusPct?: number;
 }
 
+export interface RouteSemantics {
+  plannerVersion: string;
+  feedbackReady: boolean;
+  reviewState: RouteReviewState;
+  startType: RouteStartType;
+  startLabel: string;
+  finishType: RouteFinishType;
+  finishLabel: string;
+  startHoldIds: string[];
+  finishHoldIds: string[];
+  supportHoldIds: string[];
+  reachabilityScore: number;
+  stabilityScore: number;
+  reviewSummary: string;
+  setterNotes: string[];
+  reviewHints: string[];
+}
+
 export interface RouteCandidate {
   id: string;
   color: HoldColor;
@@ -48,6 +69,7 @@ export interface RouteCandidate {
   estimatedMoves: number;
   startRegion: RouteStartRegion;
   summary: string;
+  semantics?: RouteSemantics;
 }
 
 export interface VisionDetectionSummary {
@@ -105,6 +127,7 @@ export interface RoutePlan {
   holds: Hold[];
   summary: string;
   estimatedMoves: number;
+  semantics?: RouteSemantics;
 }
 
 export interface ClimbSessionSummary {

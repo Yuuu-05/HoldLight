@@ -41,15 +41,44 @@ export default function SelectDifficultyPage() {
     [scan],
   );
 
+  const visibleCandidates = useMemo(
+    () => availableCandidates.slice(0, 5),
+    [availableCandidates],
+  );
+
   const selectedCandidate = useMemo(
-    () => availableCandidates.find((candidate) => candidate.id === selectedCandidateId) ?? null,
-    [availableCandidates, selectedCandidateId],
+    () => visibleCandidates.find((candidate) => candidate.id === selectedCandidateId) ?? null,
+    [selectedCandidateId, visibleCandidates],
+  );
+
+  const previewRoutes = useMemo(
+    () => {
+      if (!scan) return [];
+
+      return visibleCandidates.map((candidate) => ({
+        candidate,
+        route: buildRoutePlan(scan.wallMap, candidate, difficulty),
+      }));
+    },
+    [difficulty, scan, visibleCandidates],
   );
 
   const previewRoute = useMemo(() => {
-    if (!scan || !selectedCandidate) return null;
-    return buildRoutePlan(scan.wallMap, selectedCandidate, difficulty);
-  }, [difficulty, scan, selectedCandidate]);
+    if (!selectedCandidate) return null;
+    return previewRoutes.find((entry) => entry.candidate.id === selectedCandidate.id)?.route ?? null;
+  }, [previewRoutes, selectedCandidate]);
+
+  const selectedSemantics = previewRoute?.semantics ?? selectedCandidate?.semantics ?? null;
+
+  const routeOverlays = useMemo(
+    () => previewRoutes.map(({ candidate, route }) => ({
+      id: candidate.id,
+      holdIds: route.holdIds,
+      color: candidate.color,
+      emphasis: candidate.id === selectedCandidateId ? 'primary' as const : 'secondary' as const,
+    })),
+    [previewRoutes, selectedCandidateId],
+  );
 
   const scanSafetyDecision = useMemo(() => buildScanSafetyDecision(scan), [scan]);
   const autonomousReady = scanSafetyDecision.canSelectRoute;
@@ -141,7 +170,8 @@ export default function SelectDifficultyPage() {
           plainImagePreview
           highlightHoldIds={previewRoute?.holdIds ?? []}
           currentHoldId={previewRoute?.holds[0]?.id}
-          helperText="Stable overlay preview of the scanned wall. Highlighted boxes show the currently selected same-colour route candidate."
+          routeOverlays={routeOverlays}
+          helperText="Stable overlay preview of the scanned wall. Colored lines show each candidate path in move order. The selected route stays solid and highlighted."
         />
       </div>
 
@@ -158,7 +188,7 @@ export default function SelectDifficultyPage() {
         <DifficultySelector value={difficulty} onChange={setDifficulty} />
 
         <div className="segmented-control assist-route-pill-grid">
-          {availableCandidates.slice(0, 5).map((candidate) => (
+          {visibleCandidates.map((candidate) => (
             <Button
               key={candidate.id}
               variant={selectedCandidateId === candidate.id ? 'primary' : 'secondary'}
@@ -170,13 +200,44 @@ export default function SelectDifficultyPage() {
           ))}
         </div>
 
-        {selectedCandidate ? (
+        {selectedCandidate && previewRoute ? (
           <div className="assist-route-summary">
-            <strong>{selectedCandidate.summary}</strong>
+            <strong>{previewRoute.summary}</strong>
+            {selectedSemantics ? (
+              <div className="assist-route-insight-grid">
+                <span className="assist-route-insight-pill">Start: {selectedSemantics.startLabel}</span>
+                <span className="assist-route-insight-pill">Finish: {selectedSemantics.finishLabel}</span>
+                <span className="assist-route-insight-pill">Reachability: {selectedSemantics.reachabilityScore}%</span>
+                <span className="assist-route-insight-pill">Stability: {selectedSemantics.stabilityScore}%</span>
+                <span
+                  className={`assist-route-insight-pill ${selectedSemantics.reviewState === 'review-recommended' ? 'is-review' : 'is-approved'}`}
+                >
+                  {selectedSemantics.reviewState === 'review-recommended' ? 'Setter review recommended' : 'Semantic checks passed'}
+                </span>
+              </div>
+            ) : null}
             <p className="subtle-text">
               Confidence {Math.round(selectedCandidate.confidence * 100)}%.
-              {' '}Estimated moves {selectedCandidate.estimatedMoves}.
+              {' '}Estimated moves {previewRoute.estimatedMoves}.
+              {' '}The highlighted line shows the selected route order from start to finish.
             </p>
+            {selectedSemantics ? (
+              <p className="subtle-text">{selectedSemantics.reviewSummary}</p>
+            ) : null}
+            {selectedSemantics?.setterNotes.length ? (
+              <ul className="assist-route-note-list">
+                {selectedSemantics.setterNotes.slice(0, 3).map((note) => (
+                  <li key={note}>{note}</li>
+                ))}
+              </ul>
+            ) : null}
+            {selectedSemantics?.reviewHints.length ? (
+              <ul className="assist-route-note-list assist-route-note-list-alert">
+                {selectedSemantics.reviewHints.slice(0, 2).map((note) => (
+                  <li key={note}>{note}</li>
+                ))}
+              </ul>
+            ) : null}
           </div>
         ) : null}
 

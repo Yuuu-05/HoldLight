@@ -1,6 +1,13 @@
 import type { MouseEvent } from 'react';
 import type { Hold, WallMap } from '../../../shared/types/climb';
 
+interface RouteOverlay {
+  id: string;
+  holdIds: string[];
+  color?: string;
+  emphasis?: 'primary' | 'secondary';
+}
+
 interface RouteCanvasProps {
   holds?: readonly string[];
   wallMap?: WallMap;
@@ -14,6 +21,7 @@ interface RouteCanvasProps {
   onHoldSelect?: (hold: Hold) => void;
   onCanvasSelect?: (position: { xPct: number; yPct: number }) => void;
   helperText?: string;
+  routeOverlays?: RouteOverlay[];
 }
 
 const colorMap: Record<string, string> = {
@@ -42,6 +50,7 @@ export default function RouteCanvas({
   onHoldSelect,
   onCanvasSelect,
   helperText,
+  routeOverlays = [],
 }: RouteCanvasProps) {
   if (!wallMap) {
     return (
@@ -59,6 +68,39 @@ export default function RouteCanvas({
   const highlighted = new Set(highlightHoldIds);
   const completed = new Set(completedHoldIds);
   const hasHighlights = highlightHoldIds.length > 0;
+  const holdLookup = new Map(wallMap.holds.map((hold) => [hold.id, hold]));
+  const visibleRouteOverlays = routeOverlays
+    .map((overlay) => {
+      const points = overlay.holdIds
+        .map((holdId) => holdLookup.get(holdId))
+        .filter((hold): hold is Hold => Boolean(hold))
+        .map((hold) => {
+          const hasBox =
+            hold.x1Pct !== undefined &&
+            hold.y1Pct !== undefined &&
+            hold.x2Pct !== undefined &&
+            hold.y2Pct !== undefined;
+
+          return {
+            xPct: hasBox ? (hold.x1Pct! + hold.x2Pct!) / 2 : hold.xPct,
+            yPct: hasBox ? (hold.y1Pct! + hold.y2Pct!) / 2 : hold.yPct,
+          };
+        });
+
+      if (points.length < 2) return null;
+
+      const fallbackColor =
+        overlay.color ??
+        holdLookup.get(overlay.holdIds[0])?.color ??
+        'unknown';
+
+      return {
+        ...overlay,
+        points,
+        stroke: colorMap[fallbackColor] || colorMap.unknown,
+      };
+    })
+    .filter((overlay): overlay is NonNullable<typeof overlay> => Boolean(overlay));
 
   function handleCanvasClick(event: MouseEvent<HTMLDivElement>) {
     if (!onCanvasSelect) return;
@@ -137,6 +179,69 @@ export default function RouteCanvas({
               pointerEvents: 'none',
             }}
           />
+        ) : null}
+
+        {visibleRouteOverlays.length ? (
+          <svg
+            className="assist-route-path-layer"
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+            aria-hidden="true"
+          >
+            {visibleRouteOverlays.map((overlay) => {
+              const points = overlay.points
+                .map((point) => `${point.xPct},${point.yPct}`)
+                .join(' ');
+              const isPrimary = overlay.emphasis === 'primary';
+              const start = overlay.points[0];
+              const end = overlay.points[overlay.points.length - 1];
+
+              return (
+                <g key={overlay.id} className={`assist-route-path ${isPrimary ? 'is-primary' : 'is-secondary'}`}>
+                  <polyline
+                    points={points}
+                    fill="none"
+                    stroke="rgba(255, 255, 255, 0.72)"
+                    strokeWidth={isPrimary ? 1.85 : 1.1}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    opacity={isPrimary ? 0.9 : 0.46}
+                  />
+                  <polyline
+                    points={points}
+                    fill="none"
+                    stroke={overlay.stroke}
+                    strokeWidth={isPrimary ? 1.15 : 0.72}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeDasharray={isPrimary ? undefined : '1.2 1.6'}
+                    opacity={isPrimary ? 0.96 : 0.72}
+                  />
+                  <circle
+                    cx={start.xPct}
+                    cy={start.yPct}
+                    r={isPrimary ? 1.15 : 0.9}
+                    fill="#ffffff"
+                    opacity={isPrimary ? 0.96 : 0.76}
+                  />
+                  <circle
+                    cx={start.xPct}
+                    cy={start.yPct}
+                    r={isPrimary ? 0.62 : 0.46}
+                    fill={overlay.stroke}
+                    opacity={0.98}
+                  />
+                  <circle
+                    cx={end.xPct}
+                    cy={end.yPct}
+                    r={isPrimary ? 1.05 : 0.82}
+                    fill={overlay.stroke}
+                    opacity={isPrimary ? 0.98 : 0.82}
+                  />
+                </g>
+              );
+            })}
+          </svg>
         ) : null}
 
         {wallMap.holds.map((hold) => {
