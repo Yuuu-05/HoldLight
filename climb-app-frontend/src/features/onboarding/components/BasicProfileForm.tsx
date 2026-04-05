@@ -13,7 +13,6 @@ const accessibilityPresets = [
   { value: '', label: 'No additional support needed' },
   { value: 'I need spoken guidance and read-aloud support.', label: 'Yes - spoken guidance' },
   { value: 'I need high contrast mode and larger text.', label: 'Yes - high contrast and larger text' },
-  { value: 'I would like volunteer guidance during sessions.', label: 'Yes - volunteer guidance' },
   { value: '__custom__', label: 'Other / custom note' },
 ];
 
@@ -33,11 +32,9 @@ export default function BasicProfileForm({ profile, setProfile }: BasicProfileFo
         ? t('Yes - spoken guidance')
         : item.label === 'Yes - high contrast and larger text'
           ? t('Yes - high contrast and larger text')
-          : item.label === 'Yes - volunteer guidance'
-            ? t('Yes - volunteer guidance')
-            : item.label === 'Other / custom note'
-              ? t('Other / custom note')
-              : t('No additional support needed'),
+          : item.label === 'Other / custom note'
+            ? t('Other / custom note')
+            : t('No additional support needed'),
   }));
 
   return (
@@ -102,7 +99,7 @@ export default function BasicProfileForm({ profile, setProfile }: BasicProfileFo
         label={t('Accessibility needs details')}
         value={profile.accessibilityNeeds ?? ''}
         onChange={(e) => setProfile({ ...profile, accessibilityNeeds: e.target.value || undefined })}
-        placeholder={t('Screen reader, high contrast, volunteer guidance, spoken route preview...')}
+        placeholder={t('Screen reader, high contrast, spoken route preview...')}
         rows={4}
       />
     </div>

@@ -38,14 +38,6 @@ const accessibilityPreferenceSchema = new mongoose.Schema(
   { _id: false },
 );
 
-const tutorialProgressSchema = new mongoose.Schema(
-  {
-    completedIds: [{ type: String, trim: true }],
-    updatedAt: { type: Date, default: null },
-  },
-  { _id: false },
-);
-
 const notificationPreferencesSchema = new mongoose.Schema(
   {
     readIds: [{ type: String, trim: true }],
@@ -57,7 +49,7 @@ const notificationPreferencesSchema = new mongoose.Schema(
 const onboardingPreferencesSchema = new mongoose.Schema(
   {
     completed: { type: Boolean, default: false },
-    accessibilitySetupCompleted: { type: Boolean, default: false },
+    accessibilitySetupCompleted: { type: Boolean, default: true },
     guideCompleted: { type: Boolean, default: false },
     completedAt: { type: Date, default: null },
   },
@@ -74,10 +66,6 @@ const preferencesSchema = new mongoose.Schema(
     accessibility: {
       type: accessibilityPreferenceSchema,
       default: () => ({}),
-    },
-    tutorialProgress: {
-      type: tutorialProgressSchema,
-      default: () => ({ completedIds: [] }),
     },
     notifications: {
       type: notificationPreferencesSchema,
@@ -103,9 +91,6 @@ const userSchema = new mongoose.Schema(
     },
     profile: { type: profileSchema, default: {} },
     preferences: { type: preferencesSchema, default: () => ({}) },
-    posts: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Post' }],
-    likedPosts: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Post' }],
-    volunteerSessions: [{ type: mongoose.Schema.Types.ObjectId, ref: 'VolunteerPost' }],
     tokenVersion: { type: Number, default: 0 },
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now },

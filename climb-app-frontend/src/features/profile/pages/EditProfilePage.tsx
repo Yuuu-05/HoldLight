@@ -29,7 +29,7 @@ export default function EditProfilePage() {
         <div className="stack-sm">
           <p className="subtle-text">{t('Climbing passport')}</p>
           <h1 id="profile-edit-heading">{t('Edit profile')}</h1>
-          <p>{t('Update personal details, climbing experience, and accessibility support needs.')}</p>
+          <p>{t('Update personal details, climbing experience, and your preferred climbing notes.')}</p>
         </div>
 
         <div className="profile-edit-stamp" aria-hidden="true">

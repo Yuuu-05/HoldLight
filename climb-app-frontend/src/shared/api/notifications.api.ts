@@ -1,13 +1,7 @@
 import { apiClient } from './client';
 
 export type BackendNotificationType =
-  | 'profile_incomplete'
-  | 'tutorial_progress'
-  | 'social_activity'
-  | 'friend_requests'
-  | 'volunteer_interest'
-  | 'upcoming_session'
-  | 'room_invitations';
+  | 'profile_incomplete';
 
 export interface BackendNotification {
   id: string;

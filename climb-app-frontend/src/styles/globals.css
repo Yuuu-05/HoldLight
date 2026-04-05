@@ -241,21 +241,20 @@ select {
 }
 
 .mobile-action-bar {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  justify-content: center;
+  align-items: stretch;
   gap: 0.7rem;
-  overflow-x: auto;
   padding: 0.2rem 1rem 0;
-  scrollbar-width: none;
-}
-
-.mobile-action-bar::-webkit-scrollbar {
-  display: none;
 }
 
 .chip-link {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  width: 100%;
+  min-width: 0;
   min-height: 2.95rem;
   padding: 0.75rem 1rem;
   border: 1.5px solid var(--border-strong);

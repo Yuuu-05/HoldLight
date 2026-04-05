@@ -39,16 +39,16 @@ export const profileBadgeCatalog: ProfileBadgeDefinition[] = [
   {
     id: 'echo-line',
     label: 'Echo Line',
-    summary: 'Accessibility preferences are part of your setup.',
-    unlockHint: 'Unlock by adding accessibility support details.',
+    summary: 'Guidance preferences are part of your setup.',
+    unlockHint: 'Unlock by adding guidance notes to your profile.',
     accent: '#4b8f8c',
     shape: 'orbit',
   },
   {
     id: 'guide-knot',
     label: 'Guide Knot',
-    summary: 'You carry a support-focused climbing role.',
-    unlockHint: 'Unlock by taking a guide-oriented role.',
+    summary: 'You use a voice-first climbing role.',
+    unlockHint: 'Unlock by using the visually impaired climber role.',
     accent: '#3d6aa2',
     shape: 'ribbon',
   },
@@ -84,7 +84,7 @@ export function getDerivedBadgeIds(user: User | null | undefined, isProfileCompl
     derived.push('echo-line');
   }
 
-  if (user.role === 'volunteer' || user.role === 'visually_impaired') {
+  if (user.role === 'visually_impaired') {
     derived.push('guide-knot');
   }
 

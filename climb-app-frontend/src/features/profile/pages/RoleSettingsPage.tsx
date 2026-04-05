@@ -28,15 +28,14 @@ export default function RoleSettingsPage() {
             : `${t('Your account is currently set to')} `}
           <strong>{t(getRoleLabel(user?.role))}</strong>.
         </p>
-        <p>{t('The interface adapts based on this role, including dashboard guidance, tutorial emphasis, volunteer flows, and accessibility shortcuts.')}</p>
+        <p>{t('The interface adapts based on this role, including dashboard guidance and climbing flow shortcuts.')}</p>
       </Card>
 
       <Card title={t('Role guide')}>
         <ul className="clean-list">
-          <li><strong>{t('New climber')}</strong>: {t('focuses on tutorial content and lower-stress guidance.')}</li>
-          <li><strong>{t('Experienced climber')}</strong>: {t('focuses more on community participation and advanced demos.')}</li>
+          <li><strong>{t('New climber')}</strong>: {t('focuses on onboarding basics, calmer pacing, and accessible guidance.')}</li>
+          <li><strong>{t('Experienced climber')}</strong>: {t('focuses on faster access to scanning, route guidance, and practical climbing tools.')}</li>
           <li><strong>{t('Visually impaired climber')}</strong>: {t('prioritises voice-first and accessibility support.')}</li>
-          <li><strong>{t('Volunteer guide')}</strong>: {t('prioritises support requests and structured contact intent.')}</li>
         </ul>
       </Card>
 

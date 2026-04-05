@@ -18,14 +18,12 @@ from color_classifier import (
 )
 
 
-HEURISTIC_PROVIDER_NAME = "python-opencv-heuristic"
 XIAOXIAE_PROVIDER_NAME = "xiaoxiae-detectron2-triplet"
 MAX_WIDTH = 1280
 TRIPLET_MEDIAN_THRESHOLD = 0.7
 TRIPLET_MAX_THRESHOLD = 2.65
 DETECTRON_SCORE_THRESHOLD = 0.58
 ENHANCED_DETECTRON_SCORE_THRESHOLD = 0.5
-UPLOAD_HEURISTIC_CONFIDENCE_FLOOR = 0.54
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 XIAOXIAE_MODEL_DIR = os.path.join(BASE_DIR, "models", "xiaoxiae")
@@ -110,14 +108,12 @@ def resize_image(image: np.ndarray) -> np.ndarray:
 
 
 def get_requested_provider_mode(payload: Dict) -> str:
-    raw = str(payload.get("providerMode") or os.environ.get("VISION_PROVIDER_MODE") or "auto").strip().lower()
-    if raw in {"auto", "python-auto"}:
-        return "auto"
-    if raw in {"xiaoxiae", "python-xiaoxiae"}:
+    raw = str(payload.get("providerMode") or os.environ.get("VISION_PROVIDER_MODE") or "xiaoxiae").strip().lower()
+    if raw in {"auto", "python-auto", "xiaoxiae", "python-xiaoxiae"}:
         return "xiaoxiae"
     if raw in {"python-opencv", "opencv", "heuristic"}:
-        return "heuristic"
-    return "auto"
+        fail('The heuristic vision provider has been removed. Set VISION_PROVIDER="xiaoxiae".')
+    fail(f'Unsupported vision provider mode "{raw}". Set VISION_PROVIDER="xiaoxiae".')
 
 
 def get_xiaoxiae_runtime_status() -> Dict:
@@ -709,18 +705,6 @@ def enhance_detection_image(image_bgr: np.ndarray) -> np.ndarray:
     return cv2.cvtColor(hsv.astype(np.uint8), cv2.COLOR_HSV2BGR)
 
 
-def collect_upload_heuristic_holds(image_bgr: np.ndarray) -> List[Dict]:
-    heuristic_holds = detect_color_holds(image_bgr)
-    if len(heuristic_holds) < 10:
-        heuristic_holds = detect_fallback_holds(image_bgr, heuristic_holds)
-
-    return [
-        hold
-        for hold in heuristic_holds
-        if hold["confidence"] >= UPLOAD_HEURISTIC_CONFIDENCE_FLOOR and hold["color"] != "unknown"
-    ]
-
-
 def get_xiaoxiae_predictor():
     global _XIAOXIAE_PREDICTOR
     if _XIAOXIAE_PREDICTOR is not None:
@@ -928,16 +912,6 @@ def build_triplet_route_candidates(image_bgr: np.ndarray, holds: List[Dict], ins
     return sorted(candidates, key=lambda item: item["confidence"], reverse=True)
 
 
-def run_heuristic_pipeline(image_bgr: np.ndarray) -> Tuple[List[Dict], List[str], List[Dict]]:
-    holds = dedupe_holds(detect_color_holds(image_bgr))
-    if len(holds) < 8:
-        holds = detect_fallback_holds(image_bgr, holds)
-
-    holds, colors = assign_roles_and_labels(holds)
-    route_candidates = build_route_candidates(holds, image_bgr)
-    return holds, colors, route_candidates
-
-
 def run_xiaoxiae_pipeline(image_bgr: np.ndarray, source: str) -> Tuple[List[Dict], List[str], List[Dict]]:
     holds, instances = detect_xiaoxiae_holds(image_bgr)
 
@@ -948,9 +922,6 @@ def run_xiaoxiae_pipeline(image_bgr: np.ndarray, source: str) -> Tuple[List[Dict
             score_threshold=ENHANCED_DETECTRON_SCORE_THRESHOLD,
         )
         holds = merge_detected_holds(holds + enhanced_holds)
-
-        if len(holds) < 14:
-            holds = merge_detected_holds(holds + collect_upload_heuristic_holds(image_bgr))
 
         holds, colors = assign_roles_and_labels(holds)
         route_candidates = build_named_color_candidates(holds)
@@ -1000,23 +971,15 @@ def build_capture_guidance(summary: Dict) -> List[str]:
     return guidance
 
 
-def build_model_notes(provider_name: str, runtime_status: Dict, fallback_reason: Optional[str]) -> List[str]:
+def build_model_notes(runtime_status: Dict) -> List[str]:
     notes = [
+        "This scan used the xiaoxiae Detectron2 hold detector with TripletNet route grouping.",
         "Autonomous guidance is only enabled when recognition confidence and image quality both clear the accessibility gate.",
+        "The local weights came from the Kaggle models bundle and are stored inside the backend vision service.",
     ]
 
-    if provider_name == XIAOXIAE_PROVIDER_NAME:
-        notes.insert(0, "This scan used the xiaoxiae Detectron2 hold detector with TripletNet route grouping.")
-        notes.append("The local weights came from the Kaggle models bundle and are stored inside the backend vision service.")
-        if runtime_status.get("neutralColorModelReady"):
-            notes.append("A trainable white/black/other crop classifier is active before the HSV colour fallback.")
-        return notes
-
-    notes.insert(0, "This scan used the Python OpenCV fallback provider instead of the xiaoxiae model runtime.")
-    if runtime_status["assetsReady"]:
-        notes.append("The xiaoxiae config and weight files are present locally, but the current Python runtime is still missing required model dependencies.")
-    if fallback_reason:
-        notes.append(fallback_reason)
+    if runtime_status.get("neutralColorModelReady"):
+        notes.append("A trainable white/black/other crop classifier is active alongside HSV colour analysis.")
     return notes
 
 
@@ -1024,9 +987,7 @@ def build_analysis(
     holds: List[Dict],
     route_candidates: List[Dict],
     metrics: Tuple[float, float, float, float],
-    provider_name: str,
     runtime_status: Dict,
-    fallback_reason: Optional[str],
 ) -> Dict:
     average_confidence = round(float(np.mean([hold["confidence"] for hold in holds])) if holds else 0.0, 2)
     blur_score, brightness, contrast, quality_score = metrics
@@ -1041,9 +1002,9 @@ def build_analysis(
         "contrast": contrast,
     }
 
-    confidence_gate = 0.6 if provider_name == XIAOXIAE_PROVIDER_NAME else 0.56
-    quality_gate = 0.42 if provider_name == XIAOXIAE_PROVIDER_NAME else 0.46
-    companion_gate = 0.48 if provider_name == XIAOXIAE_PROVIDER_NAME else 0.42
+    confidence_gate = 0.6
+    quality_gate = 0.42
+    companion_gate = 0.48
 
     if len(holds) >= 8 and len(route_candidates) >= 1 and average_confidence >= confidence_gate and quality_score >= quality_gate:
         readiness = "ready"
@@ -1060,7 +1021,7 @@ def build_analysis(
 
     overall_confidence = round(clamp(average_confidence * 0.72 + quality_score * 0.28, 0.0, 0.99), 2)
     return {
-        "provider": provider_name,
+        "provider": XIAOXIAE_PROVIDER_NAME,
         "confidence": overall_confidence,
         "readiness": readiness,
         "suggestedAction": suggested_action,
@@ -1068,38 +1029,27 @@ def build_analysis(
         "captureGuidance": build_capture_guidance(summary),
         "routeCandidates": route_candidates,
         "detectionSummary": summary,
-        "modelNotes": build_model_notes(provider_name, runtime_status, fallback_reason),
+        "modelNotes": build_model_notes(runtime_status),
     }
 
 
 def build_wall_map(payload: Dict, image_bgr: np.ndarray) -> Dict:
     resized = resize_image(image_bgr)
     source = payload.get("source") or "upload"
-    requested_provider = get_requested_provider_mode(payload)
+    get_requested_provider_mode(payload)
     runtime_status = get_xiaoxiae_runtime_status()
-    fallback_reason: Optional[str] = None
-    provider_name = HEURISTIC_PROVIDER_NAME
+    provider_name = XIAOXIAE_PROVIDER_NAME
 
-    if requested_provider in {"auto", "xiaoxiae"}:
-        if runtime_status["ready"]:
-            try:
-                holds, colors, route_candidates = run_xiaoxiae_pipeline(resized, source)
-                provider_name = XIAOXIAE_PROVIDER_NAME
-            except Exception as exc:
-                if requested_provider == "xiaoxiae":
-                    fail(f"Xiaoxiae provider failed during inference: {exc}")
-                fallback_reason = f"Automatic xiaoxiae inference failed and fell back to heuristics: {exc}"
-                holds, colors, route_candidates = run_heuristic_pipeline(resized)
-        elif requested_provider == "xiaoxiae":
-            fail("Xiaoxiae provider is not ready: " + " ".join(runtime_status["reasons"]))
-        else:
-            fallback_reason = "Xiaoxiae assets were detected, but the current runtime is not ready: " + " ".join(runtime_status["reasons"])
-            holds, colors, route_candidates = run_heuristic_pipeline(resized)
-    else:
-        holds, colors, route_candidates = run_heuristic_pipeline(resized)
+    if not runtime_status["ready"]:
+        fail("Xiaoxiae provider is not ready: " + " ".join(runtime_status["reasons"]))
+
+    try:
+        holds, colors, route_candidates = run_xiaoxiae_pipeline(resized, source)
+    except Exception as exc:
+        fail(f"Xiaoxiae provider failed during inference: {exc}")
 
     metrics = image_metrics(resized)
-    analysis = build_analysis(holds, route_candidates, metrics, provider_name, runtime_status, fallback_reason)
+    analysis = build_analysis(holds, route_candidates, metrics, runtime_status)
 
     scanned_at = datetime.now(timezone.utc).isoformat()
     return {

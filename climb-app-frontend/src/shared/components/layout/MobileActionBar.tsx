@@ -7,9 +7,9 @@ export default function MobileActionBar() {
 
   return (
     <div className="mobile-action-bar">
+      <Link className="chip-link" to={routes.dashboard}>{t('Dashboard')}</Link>
       <Link className="chip-link" to={routes.scanWall}>{t('Start scan')}</Link>
-      <Link className="chip-link" to={routes.socialFeed}>{t('Community')}</Link>
-      <Link className="chip-link" to={routes.tutorialHome}>{t('Tutorial')}</Link>
+      <Link className="chip-link" to={routes.profile}>{t('Profile')}</Link>
     </div>
   );
 }

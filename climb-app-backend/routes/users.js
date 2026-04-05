@@ -18,14 +18,13 @@ const defaultAccessibilityPreferences = {
 
 const defaultOnboardingPreferences = {
   completed: false,
-  accessibilitySetupCompleted: false,
+  accessibilitySetupCompleted: true,
   guideCompleted: false,
   completedAt: null,
 };
 
 function buildUserPreferences(user) {
   const preferences = user.preferences?.toObject?.() ?? user.preferences ?? {};
-  const tutorialProgress = preferences.tutorialProgress ?? {};
   const notifications = preferences.notifications ?? {};
   const onboarding = preferences.onboarding ?? {};
 
@@ -34,10 +33,6 @@ function buildUserPreferences(user) {
     accessibility: {
       ...defaultAccessibilityPreferences,
       ...(preferences.accessibility ?? {}),
-    },
-    tutorialProgress: {
-      completedIds: tutorialProgress.completedIds ?? [],
-      updatedAt: tutorialProgress.updatedAt ?? null,
     },
     notifications: {
       readIds: notifications.readIds ?? [],
@@ -165,7 +160,7 @@ router.get('/me/preferences', auth, async (req, res) => {
 
 router.patch('/me/preferences', auth, async (req, res) => {
   try {
-    const { language, accessibility, tutorialProgress, notifications, onboarding } = req.body;
+    const { language, accessibility, notifications, onboarding } = req.body;
     const user = await User.findById(req.user.id);
 
     if (!user) {
@@ -185,13 +180,6 @@ router.patch('/me/preferences', auth, async (req, res) => {
               ...accessibility,
             }
           : current.accessibility,
-      tutorialProgress:
-        tutorialProgress && Array.isArray(tutorialProgress.completedIds)
-          ? {
-              completedIds: [...new Set(tutorialProgress.completedIds.filter(Boolean))],
-              updatedAt: new Date(),
-            }
-          : current.tutorialProgress,
       notifications:
         notifications && Array.isArray(notifications.readIds)
           ? {

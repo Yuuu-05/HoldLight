@@ -3,19 +3,13 @@ const { spawn } = require('child_process');
 const { resolvePythonCommand } = require('./pythonRuntime');
 
 const PYTHON_COMMAND = resolvePythonCommand('VISION_PYTHON_COMMAND', ['.venv', '.venv-1']);
-const PROVIDER_NAMES = {
-  auto: 'python-auto',
-  heuristic: 'python-opencv-heuristic',
-  xiaoxiae: 'xiaoxiae-detectron2-triplet',
-};
+const PROVIDER_NAME = 'xiaoxiae-detectron2-triplet';
 
 function normalizeProviderMode(value) {
-  const normalized = (value || 'auto').trim().toLowerCase();
+  const normalized = (value || 'xiaoxiae').trim().toLowerCase();
 
-  if (['auto', 'python-auto'].includes(normalized)) return 'auto';
-  if (['python-opencv', 'opencv', 'heuristic'].includes(normalized)) return 'heuristic';
-  if (['xiaoxiae', 'python-xiaoxiae'].includes(normalized)) return 'xiaoxiae';
-  throw new Error(`Unsupported VISION_PROVIDER "${value}".`);
+  if (['auto', 'python-auto', 'xiaoxiae', 'python-xiaoxiae'].includes(normalized)) return 'xiaoxiae';
+  throw new Error(`Unsupported VISION_PROVIDER "${value}". Only "xiaoxiae" is available now.`);
 }
 
 function runPythonScript(scriptFilename, payload, providerMode) {
@@ -73,9 +67,9 @@ function runPythonInference(payload, providerMode) {
 }
 
 function getVisionProvider() {
-  const providerMode = normalizeProviderMode(process.env.VISION_PROVIDER || 'auto');
+  const providerMode = normalizeProviderMode(process.env.VISION_PROVIDER || 'xiaoxiae');
   return {
-    name: PROVIDER_NAMES[providerMode],
+    name: PROVIDER_NAME,
     infer: (payload) => runPythonInference(payload, providerMode),
   };
 }

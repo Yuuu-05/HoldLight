@@ -63,7 +63,7 @@ export default function ProfilePage() {
   const accessibilityHeadline = accessibilitySignals[0] || t('No accessibility note yet');
   const accessibilityDescription =
     user.profile?.accessibilityNeeds ||
-    t('These preferences help shape read-aloud support, focus guidance, and volunteer matching.');
+    t('These preferences help shape read-aloud support and focus guidance.');
   const passportFacts = [
     { label: t('Birthday'), value: birthday },
     { label: t('Height (cm)'), value: user.profile?.height ? `${user.profile.height}` : t('Not set yet') },
@@ -74,14 +74,14 @@ export default function ProfilePage() {
     {
       to: routes.profileEdit,
       label: t('Edit profile'),
-      copy: t('Update personal details, climbing experience, and accessibility support needs.'),
+      copy: t('Update personal details, climbing experience, and personal notes.'),
       icon: 'edit' as const,
       toneClassName: 'profile-action-tone-sand',
     },
     {
       to: routes.roleSettings,
       label: t('Role settings'),
-      copy: t('The interface adapts based on this role, including dashboard guidance, tutorial emphasis, volunteer flows, and accessibility shortcuts.'),
+      copy: t('The interface adapts based on this role, including dashboard guidance and climbing flow shortcuts.'),
       icon: 'role' as const,
       toneClassName: 'profile-action-tone-sky',
     },

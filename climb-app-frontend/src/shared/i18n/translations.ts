@@ -372,6 +372,8 @@ export const translations = {
     'Yes - volunteer guidance': 'Yes - volunteer guidance',
     'Other / custom note': 'Other / custom note',
     'Accessibility needs details': 'Accessibility needs details',
+    'Screen reader, high contrast, spoken route preview...':
+      'Screen reader, high contrast, spoken route preview...',
     'Screen reader, high contrast, volunteer guidance, spoken route preview...':
       'Screen reader, high contrast, volunteer guidance, spoken route preview...',
     'I need spoken guidance and read-aloud support.':
@@ -1174,6 +1176,8 @@ export const translations = {
     'Yes - volunteer guidance': '希望活动中有志愿者协助',
     'Other / custom note': '其他 / 自定义说明',
     'Accessibility needs details': '无障碍需求说明',
+    'Screen reader, high contrast, spoken route preview...':
+      '例如：屏幕朗读、高对比度、语音路线预览……',
     'Screen reader, high contrast, volunteer guidance, spoken route preview...':
       '例如：屏幕朗读、高对比度、志愿者陪同、语音线路预览……',
     'I need spoken guidance and read-aloud support.':

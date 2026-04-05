@@ -11,17 +11,11 @@ export default function FirstLoginProfilePage() {
 
   const isZh = language === 'zh';
   const wantsReplay = new URLSearchParams(location.search).has('mode');
-  const needsVisionSetup =
-    user?.role === 'visually_impaired' && !user.preferences?.onboarding?.accessibilitySetupCompleted;
 
   usePageTitle(isZh ? '新手引导' : 'Welcome guide');
 
   if (!user) {
     return null;
-  }
-
-  if (needsVisionSetup) {
-    return <Navigate to={routes.onboardingVision} replace />;
   }
 
   return (

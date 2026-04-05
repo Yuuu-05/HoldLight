@@ -18,6 +18,7 @@ build/
 
 # local python caches
 climb-app-backend/vision_service/__pycache__/
+__pycache__/
 
 # logs
 *.log
@@ -34,6 +35,8 @@ Thumbs.db
 .tmp-*/
 *.url
 *.pyc
+*.zip
+_incoming_zip/
 
 # test
 coverage/

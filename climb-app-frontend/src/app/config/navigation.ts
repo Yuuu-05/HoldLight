@@ -1,6 +1,6 @@
 import { routes } from '../../shared/constants/routes';
 
-export type MainNavigationItemId = 'dashboard' | 'tutorial' | 'assist' | 'social' | 'profile';
+export type MainNavigationItemId = 'dashboard' | 'assist' | 'profile';
 
 export type MainNavigationItem = {
   id: MainNavigationItemId;
@@ -18,23 +18,11 @@ export const mainNavigation: MainNavigationItem[] = [
     matchPrefixes: [routes.dashboard],
   },
   {
-    id: 'tutorial',
-    label: 'Tutorial',
-    to: routes.tutorialHome,
-    matchPrefixes: [routes.tutorialHome],
-  },
-  {
     id: 'assist',
     label: 'Assist',
     to: routes.scanWall,
     matchPrefixes: ['/climb'],
     isFab: true,
-  },
-  {
-    id: 'social',
-    label: 'Social',
-    to: routes.socialFeed,
-    matchPrefixes: [routes.socialFeed],
   },
   {
     id: 'profile',

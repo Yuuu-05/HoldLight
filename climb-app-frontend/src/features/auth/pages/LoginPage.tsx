@@ -19,7 +19,7 @@ export default function LoginPage() {
       <div className="page-card stack-md">
         <div className="stack-sm">
           <h1>{t('Login')}</h1>
-          <p>{t('Sign in to continue your climbing sessions, tutorials, and community features.')}</p>
+          <p>{t('Sign in to continue your climbing sessions, scans, and route guidance.')}</p>
         </div>
 
         {showDevShortcut ? (

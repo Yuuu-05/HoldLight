@@ -6,9 +6,7 @@ import { triggerHaptic } from '../../lib/haptics';
 
 const navAriaLabels: Record<MainNavigationItemId, string> = {
   dashboard: 'Open dashboard',
-  tutorial: 'Open tutorial hub',
   assist: 'Open assist',
-  social: 'Open social hub',
   profile: 'Open profile center',
 };
 
@@ -17,7 +15,11 @@ export default function BottomNav() {
   const location = useLocation();
 
   return (
-    <nav className="bottom-nav" aria-label={t('Primary navigation')}>
+    <nav
+      className="bottom-nav"
+      aria-label={t('Primary navigation')}
+      style={{ gridTemplateColumns: `repeat(${mainNavigation.length}, minmax(0, 1fr))` }}
+    >
       {mainNavigation.map((item) => {
         const isActive = item.matchPrefixes.some((prefix) => {
           if (location.pathname === prefix) {
@@ -59,12 +61,8 @@ function BottomNavIcon({ itemId, active }: BottomNavIconProps) {
   switch (itemId) {
     case 'dashboard':
       return <HomeIcon active={active} />;
-    case 'tutorial':
-      return <BookIcon active={active} />;
     case 'assist':
       return <AssistIcon />;
-    case 'social':
-      return <SocialIcon active={active} />;
     case 'profile':
       return <ProfileIcon active={active} />;
     default:
@@ -145,80 +143,6 @@ function HomeIcon({ active }: IconProps) {
   );
 }
 
-function BookIcon({ active }: IconProps) {
-  const strokeWidth = active ? 2.1 : 1.9;
-
-  if (active) {
-    return (
-      <IconFrame>
-        <path
-          d="M6 6.6c0-1.4 1.12-2.53 2.5-2.53h2.73c1.13 0 2.2.53 2.88 1.43l.45.6.45-.6a3.6 3.6 0 0 1 2.88-1.43h.16c1.1 0 1.99.9 1.99 1.99v11.04"
-          stroke="currentColor"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={strokeWidth}
-        />
-        <path
-          d="M12 6.2v11.08"
-          stroke="currentColor"
-          strokeLinecap="round"
-          strokeWidth={strokeWidth}
-        />
-        <path
-          d="M12 17.28c-.73-.74-1.74-1.16-2.79-1.16H7.97c-.67 0-1.32.19-1.89.53a1.1 1.1 0 0 1-1.68-.94V7.2"
-          stroke="currentColor"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={strokeWidth}
-        />
-        <path
-          d="M12 17.28c.73-.74 1.74-1.16 2.79-1.16h1.24c.67 0 1.32.19 1.89.53a1.1 1.1 0 0 0 1.68-.94V7.2"
-          stroke="currentColor"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={strokeWidth}
-        />
-      </IconFrame>
-    );
-  }
-
-  return (
-    <IconFrame>
-      <path
-        d="M6 6.6c0-1.4 1.12-2.53 2.5-2.53h2.73c1.13 0 2.2.53 2.88 1.43l.45.6.45-.6a3.6 3.6 0 0 1 2.88-1.43h.16c1.1 0 1.99.9 1.99 1.99v11.04"
-        fill="none"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={strokeWidth}
-      />
-      <path
-        d="M12 6.2v11.08"
-        fill="none"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeWidth={strokeWidth}
-      />
-      <path
-        d="M12 17.28c-.73-.74-1.74-1.16-2.79-1.16H7.97c-.67 0-1.32.19-1.89.53a1.1 1.1 0 0 1-1.68-.94V7.2"
-        fill="none"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={strokeWidth}
-      />
-      <path
-        d="M12 17.28c.73-.74 1.74-1.16 2.79-1.16h1.24c.67 0 1.32.19 1.89.53a1.1 1.1 0 0 0 1.68-.94V7.2"
-        fill="none"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={strokeWidth}
-      />
-    </IconFrame>
-  );
-}
-
 function AssistIcon() {
   return (
     <IconFrame>
@@ -267,58 +191,6 @@ function AssistIcon() {
         stroke="currentColor"
         strokeLinecap="round"
         strokeWidth="2.1"
-      />
-    </IconFrame>
-  );
-}
-
-function SocialIcon({ active }: IconProps) {
-  const strokeWidth = active ? 2.1 : 1.9;
-
-  if (active) {
-    return (
-      <IconFrame>
-        <circle cx="8" cy="8.2" r="2.35" fill="none" stroke="currentColor" strokeWidth={strokeWidth} />
-        <circle cx="15.8" cy="8.9" r="2.05" fill="none" stroke="currentColor" strokeWidth={strokeWidth} />
-        <path
-          d="M4.8 17.9c0-2.08 1.68-3.77 3.77-3.77h.5c2.09 0 3.78 1.69 3.78 3.77"
-          fill="none"
-          stroke="currentColor"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={strokeWidth}
-        />
-        <path
-          d="M13.35 17.6c0-1.55 1.26-2.8 2.8-2.8h.2c1.55 0 2.8 1.25 2.8 2.8"
-          fill="none"
-          stroke="currentColor"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={strokeWidth}
-        />
-      </IconFrame>
-    );
-  }
-
-  return (
-    <IconFrame>
-      <circle cx="8" cy="8.2" r="2.35" fill="none" stroke="currentColor" strokeWidth={strokeWidth} />
-      <circle cx="15.8" cy="8.9" r="2.05" fill="none" stroke="currentColor" strokeWidth={strokeWidth} />
-      <path
-        d="M4.8 17.9c0-2.08 1.68-3.77 3.77-3.77h.5c2.09 0 3.78 1.69 3.78 3.77"
-        fill="none"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={strokeWidth}
-      />
-      <path
-        d="M13.35 17.6c0-1.55 1.26-2.8 2.8-2.8h.2c1.55 0 2.8 1.25 2.8 2.8"
-        fill="none"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={strokeWidth}
       />
     </IconFrame>
   );

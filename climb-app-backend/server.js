@@ -5,10 +5,6 @@ const mongoose = require('mongoose');
 
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
-const postRoutes = require('./routes/posts');
-const friendRoutes = require('./routes/friends');
-const roomRoutes = require('./routes/rooms');
-const volunteerRoutes = require('./routes/volunteers');
 const notificationRoutes = require('./routes/notifications');
 const climbScanRoutes = require('./routes/climbScans');
 const climbSessionRoutes = require('./routes/climbSessions');
@@ -25,10 +21,6 @@ app.use(express.json({ limit: process.env.BODY_LIMIT || '12mb' }));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
-app.use('/api/posts', postRoutes);
-app.use('/api/friends', friendRoutes);
-app.use('/api/rooms', roomRoutes);
-app.use('/api/volunteers', volunteerRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/climb-scans', climbScanRoutes);
 app.use('/api/climb-sessions', climbSessionRoutes);

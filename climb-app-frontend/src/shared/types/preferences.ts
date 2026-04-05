@@ -12,11 +12,6 @@ export interface AccessibilityPreferences {
   fontScale: number;
 }
 
-export interface TutorialProgressPreferences {
-  completedIds: string[];
-  updatedAt?: string | null;
-}
-
 export interface NotificationPreferences {
   readIds: string[];
   updatedAt?: string | null;
@@ -32,7 +27,6 @@ export interface OnboardingPreferences {
 export interface UserPreferences {
   language: AppLanguage;
   accessibility: AccessibilityPreferences;
-  tutorialProgress: TutorialProgressPreferences;
   notifications: NotificationPreferences;
   onboarding: OnboardingPreferences;
 }
@@ -40,7 +34,6 @@ export interface UserPreferences {
 export interface UserPreferencesUpdate {
   language?: AppLanguage;
   accessibility?: Partial<AccessibilityPreferences>;
-  tutorialProgress?: Partial<TutorialProgressPreferences>;
   notifications?: Partial<NotificationPreferences>;
   onboarding?: Partial<OnboardingPreferences>;
 }

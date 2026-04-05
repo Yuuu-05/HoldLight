@@ -25,7 +25,7 @@ export default function Header() {
     <header className="site-header">
       <div>
         <Link to={routes.home} className="brand-mark">{t('Climb Together')}</Link>
-        <p className="site-tagline">{t('Accessible climbing support, tutorials, and volunteer coordination.')}</p>
+        <p className="site-tagline">{t('Accessible climbing guidance, scan tools, and route assistance.')}</p>
       </div>
       <div className="header-actions">
         <LanguageSwitcher />

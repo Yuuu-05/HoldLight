@@ -231,7 +231,7 @@ export default function ScanWallPage() {
   const scanAnalysis = displayScan?.wallMap.analysis;
   const scanSafetyDecision = buildScanSafetyDecision(displayScan);
   const isReadyForAutonomousGuidance = displayScan ? scanSafetyDecision.canSelectRoute : false;
-  const shouldSuggestVolunteer = Boolean(
+  const shouldShowRetryNotice = Boolean(
     scanProgress.error
       || (displayScan && scanSafetyDecision.status !== 'ready'),
   );
@@ -374,7 +374,7 @@ export default function ScanWallPage() {
         >
           <span className="assist-progress-bar" style={{ width: `${scanProgress.progress}%` }} />
         </div>
-        {shouldSuggestVolunteer ? (
+        {shouldShowRetryNotice ? (
           <div className="assist-soft-warning-card" role="note" aria-live="polite">
             <AssistMascotSticker variant="flashlight" className="assist-warning-mascot" />
             <div className="stack-sm">

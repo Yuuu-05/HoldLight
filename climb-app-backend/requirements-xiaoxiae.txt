@@ -1,4 +1,4 @@
--r requirements-heuristic.txt
+-r requirements-vision-base.txt
 torch==2.4.1
 torchvision==0.19.1
 git+https://github.com/facebookresearch/detectron2.git

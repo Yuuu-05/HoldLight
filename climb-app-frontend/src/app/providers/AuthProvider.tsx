@@ -79,9 +79,6 @@ function checkProfileComplete(user: User | null) {
 
 function checkOnboarded(user: User | null) {
   if (!user) return false;
-  if (user.role === 'visually_impaired' && !user.preferences?.onboarding?.accessibilitySetupCompleted) {
-    return false;
-  }
   if (user.preferences?.onboarding?.completed) {
     return true;
   }
@@ -117,17 +114,13 @@ function buildDefaultPreferences(role: RoleValue = 'new_user', completed = false
       fontScale: 1,
       ...accessibilityPreset,
     },
-    tutorialProgress: {
-      completedIds: [],
-      updatedAt: null,
-    },
     notifications: {
       readIds: [],
       updatedAt: null,
     },
     onboarding: {
       completed,
-      accessibilitySetupCompleted: completed || role !== 'visually_impaired',
+      accessibilitySetupCompleted: true,
       guideCompleted: completed,
       completedAt: completed ? new Date().toISOString() : null,
     },
@@ -156,13 +149,6 @@ function mergePreferences(
           ...payload.accessibility,
         }
       : base.accessibility,
-    tutorialProgress:
-      payload.tutorialProgress && Array.isArray(payload.tutorialProgress.completedIds)
-        ? {
-            completedIds: payload.tutorialProgress.completedIds,
-            updatedAt: payload.tutorialProgress.updatedAt ?? new Date().toISOString(),
-          }
-        : base.tutorialProgress,
     notifications:
       payload.notifications && Array.isArray(payload.notifications.readIds)
         ? {
