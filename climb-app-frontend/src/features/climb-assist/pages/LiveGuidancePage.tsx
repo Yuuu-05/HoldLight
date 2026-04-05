@@ -12,7 +12,6 @@ import Card from '../../../shared/components/ui/Card';
 import { routes } from '../../../shared/constants/routes';
 import { usePageTitle } from '../../../shared/hooks/usePageTitle';
 import { playProximityBeep } from '../../../shared/lib/audioCue';
-import { buildCueLabel } from '../../../shared/utils/routeVoiceText';
 import type { ClimbScan, ClimbSession, GuidanceLimb, Hold } from '../../../shared/types/climb';
 import CameraPreview from '../components/CameraPreview';
 import EncouragementBanner from '../components/EncouragementBanner';
@@ -23,6 +22,14 @@ import { useGuidanceEngine } from '../hooks/useGuidanceEngine';
 import { useLivePoseTracker } from '../hooks/useLivePoseTracker';
 import { useLiveWallAlignment } from '../hooks/useLiveWallAlignment';
 import { buildLivePositionGuidance } from '../services/cueGenerator.service';
+import {
+  buildGuidanceCueSpeechZh,
+  buildLivePositionSpeechZh,
+  buildLiveSafetyPauseSpeechZh,
+  buildPoseTrackerStatusZh,
+  buildRecalibrationSpeechZh,
+  buildTargetReachedSpeechZh,
+} from '../services/liveGuidanceSpeech.service';
 import { limbToPoseJointName } from '../services/poseTracker.service';
 import { buildLiveGuidanceSafetyDecision } from '../services/safetyState.service';
 
@@ -71,7 +78,7 @@ function getTargetThreshold(hold: Hold | null, limb?: GuidanceLimb) {
 }
 
 export default function LiveGuidancePage() {
-  const { speak, repeat } = useSpeech();
+  const { speak, repeatWithOptions, warm } = useSpeech();
   const { stream, supported: cameraSupported, requestAccess } = useCamera();
   const [session, setSession] = useState<ClimbSession | null>(null);
   const [scan, setScan] = useState<ClimbScan | null>(null);
@@ -98,6 +105,10 @@ export default function LiveGuidancePage() {
   const lastSafetyAnnouncementRef = useRef('');
 
   usePageTitle('Live guidance');
+
+  useEffect(() => {
+    warm('ZH');
+  }, [warm]);
 
   useEffect(() => {
     Promise.all([getClimbSessionApi(), getLatestClimbScanApi()]).then(
@@ -207,17 +218,50 @@ export default function LiveGuidancePage() {
     [activeAnchor, distancePct, guidance.currentCue?.limb, liveCurrentHold, poseState.poseFrame, targetThreshold],
   );
 
-  const trackerHint = useMemo(() => livePositionGuidance.displayText, [livePositionGuidance.displayText]);
-
-  const spokenCue = useMemo(
-    () => buildCueLabel(guidance.cueIndex, guidance.cues.length, cue),
-    [cue, guidance.cueIndex, guidance.cues.length],
+  const livePositionSpeechZh = useMemo(
+    () =>
+      buildLivePositionSpeechZh({
+        limb: guidance.currentCue?.limb,
+        targetHold: liveCurrentHold,
+        activeAnchor,
+        distancePct,
+        targetThreshold,
+      }),
+    [activeAnchor, distancePct, guidance.currentCue?.limb, liveCurrentHold, targetThreshold],
   );
 
-  const manualCue = useMemo(() => {
-    const combinedCue = [cue, livePositionGuidance.speechText].filter(Boolean).join(' ');
-    return buildCueLabel(guidance.cueIndex, guidance.cues.length, combinedCue || cue);
-  }, [cue, guidance.cueIndex, guidance.cues.length, livePositionGuidance.speechText]);
+  const trackerHint = useMemo(() => livePositionGuidance.displayText, [livePositionGuidance.displayText]);
+
+  const spokenCueZh = useMemo(
+    () =>
+      guidance.currentCue
+        ? buildGuidanceCueSpeechZh({
+            cueIndex: guidance.cueIndex,
+            totalCues: guidance.cues.length,
+            cue: guidance.currentCue,
+            targetHold: liveCurrentHold,
+          })
+        : '',
+    [guidance.cueIndex, guidance.cues.length, guidance.currentCue, liveCurrentHold],
+  );
+
+  const manualCueZh = useMemo(() => {
+    const combinedCue = [spokenCueZh, livePositionSpeechZh.speechText].filter(Boolean).join(' ');
+    return combinedCue || spokenCueZh;
+  }, [livePositionSpeechZh.speechText, spokenCueZh]);
+
+  const safetyPauseSpeechZh = useMemo(
+    () =>
+      buildLiveSafetyPauseSpeechZh({
+        decision: liveSafetyDecision,
+        poseState,
+        alignmentState,
+        scan,
+      }),
+    [alignmentState, liveSafetyDecision, poseState, scan],
+  );
+
+  const trackerStatusZh = useMemo(() => buildPoseTrackerStatusZh(poseState), [poseState]);
 
   const completedHoldIds = useMemo(
     () => session?.plannedRoute?.holds.slice(0, guidance.cueIndex).map((hold) => hold.id) ?? [],
@@ -226,12 +270,7 @@ export default function LiveGuidancePage() {
 
   useEffect(() => {
     if (!guidance.currentCue || liveSafetyDecision.status !== 'ready') return;
-
-    const spokenGuideCue = buildCueLabel(
-      guidance.cueIndex,
-      guidance.cues.length,
-      guidance.currentCue.message,
-    );
+    const spokenGuideCue = spokenCueZh;
 
     if (lastCueSpokenRef.current === spokenGuideCue) return;
 
@@ -239,7 +278,7 @@ export default function LiveGuidancePage() {
     lastPrimaryCueAtRef.current = Date.now();
     lastLiveSpeechKeyRef.current = '';
     lastLiveSpeechAtRef.current = 0;
-    speak(spokenGuideCue);
+    speak(spokenGuideCue, { language: 'ZH' });
 
     if (session) {
       void saveGuidanceLogsApi([
@@ -247,7 +286,7 @@ export default function LiveGuidancePage() {
           id: `log_${Date.now()}`,
           sessionId: session.id,
           type: 'cue_issued',
-          message: spokenGuideCue,
+          message: guidance.currentCue.message,
           timestamp: new Date().toISOString(),
           payload: { cueIndex: guidance.cueIndex, holdId: guidance.currentCue.holdId },
         },
@@ -255,7 +294,7 @@ export default function LiveGuidancePage() {
         setControlError(error instanceof Error ? error.message : 'Failed to save the cue log.');
       });
     }
-  }, [guidance.cueIndex, guidance.cues.length, guidance.currentCue, liveSafetyDecision.status, session, speak]);
+  }, [guidance.cueIndex, guidance.currentCue, liveSafetyDecision.status, session, speak, spokenCueZh]);
 
   useEffect(() => {
     if (!session) return;
@@ -306,8 +345,8 @@ export default function LiveGuidancePage() {
     }
 
     lastSafetyAnnouncementRef.current = announcementKey;
-    speak(`Safety pause. ${liveSafetyDecision.detail}`);
-  }, [liveSafetyDecision.detail, liveSafetyDecision.status, session?.plannedRoute, speak]);
+    speak(safetyPauseSpeechZh, { language: 'ZH' });
+  }, [liveSafetyDecision.detail, liveSafetyDecision.status, safetyPauseSpeechZh, session?.plannedRoute, speak]);
 
   const handleAdvance = useCallback(
     async (reason: 'manual' | 'auto' = 'manual') => {
@@ -315,7 +354,7 @@ export default function LiveGuidancePage() {
       if (!liveSafetyDecision.canAutoAdvance) {
         if (reason === 'manual') {
           setControlError(liveSafetyDecision.detail);
-          speak(`Safety pause. ${liveSafetyDecision.detail}`);
+          speak(safetyPauseSpeechZh, { language: 'ZH' });
         }
         return;
       }
@@ -363,11 +402,13 @@ export default function LiveGuidancePage() {
 
         if (reason === 'auto' && nextTarget) {
           speak(
-            `Target reached. Next cue. ${buildCueLabel(
+            buildTargetReachedSpeechZh({
               nextCueIndex,
-              guidance.cues.length,
-              guidance.cues[nextCueIndex]?.message || '',
-            )}`,
+              totalCues: guidance.cues.length,
+              nextCue: guidance.cues[nextCueIndex],
+              nextHold: nextTarget,
+            }),
+            { language: 'ZH' },
           );
         }
       } catch (error) {
@@ -380,7 +421,7 @@ export default function LiveGuidancePage() {
         setSyncing(false);
       }
     },
-    [guidance.cueIndex, guidance.cues, liveCurrentHold, liveSafetyDecision.canAutoAdvance, liveSafetyDecision.detail, session, speak, syncing],
+    [guidance.cueIndex, guidance.cues, liveCurrentHold, liveSafetyDecision.canAutoAdvance, liveSafetyDecision.detail, safetyPauseSpeechZh, session, speak, syncing],
   );
 
   const handleFinish = useCallback(async () => {
@@ -432,9 +473,7 @@ export default function LiveGuidancePage() {
 
     try {
       setControlError(null);
-      speak(
-        'Recalibration note. Keep the camera framing matched to the scan and pause on three points of contact.',
-      );
+      speak(buildRecalibrationSpeechZh(), { language: 'ZH' });
 
       await recalibrate();
 
@@ -523,7 +562,7 @@ export default function LiveGuidancePage() {
 
   useEffect(() => {
     if (!liveSafetyDecision.canSpeakLiveCue) return;
-    if (!guidance.currentCue || !liveCurrentHold || !livePositionGuidance.speechText) return;
+    if (!guidance.currentCue || !liveCurrentHold || !livePositionSpeechZh.speechText) return;
     if (!poseState.active && distancePct === null) return;
     if (poseState.poseQualityPct <= 0 && distancePct === null) return;
 
@@ -534,7 +573,7 @@ export default function LiveGuidancePage() {
     }
 
     const minSpacing = distancePct !== null && distancePct <= targetThreshold * 1.3 ? 1400 : 2400;
-    const isNewSpeechKey = lastLiveSpeechKeyRef.current !== livePositionGuidance.speechKey;
+    const isNewSpeechKey = lastLiveSpeechKeyRef.current !== livePositionSpeechZh.speechKey;
 
     if (!isNewSpeechKey && now - lastLiveSpeechAtRef.current < minSpacing) {
       return;
@@ -548,16 +587,16 @@ export default function LiveGuidancePage() {
       return;
     }
 
-    lastLiveSpeechKeyRef.current = livePositionGuidance.speechKey;
+    lastLiveSpeechKeyRef.current = livePositionSpeechZh.speechKey;
     lastLiveSpeechAtRef.current = now;
-    speak(livePositionGuidance.speechText);
+    speak(livePositionSpeechZh.speechText, { language: 'ZH' });
   }, [
     distancePct,
     guidance.currentCue,
     guidance.isLastCue,
     liveCurrentHold,
-    livePositionGuidance.speechKey,
-    livePositionGuidance.speechText,
+    livePositionSpeechZh.speechKey,
+    livePositionSpeechZh.speechText,
     poseState.active,
     poseState.poseQualityPct,
     speak,
@@ -612,7 +651,9 @@ export default function LiveGuidancePage() {
         <div className="assist-live-telemetry">
           <div>
             <span className="badge">Tracker</span>
-            <p className="subtle-text">{controlError || poseState.error || poseState.statusLabel}</p>
+            <p className="subtle-text">
+              {controlError || `${trackerStatusZh.headline}。${trackerStatusZh.detail}`}
+            </p>
           </div>
           <div>
             <span className="badge">Target</span>
@@ -660,8 +701,14 @@ export default function LiveGuidancePage() {
         cue={liveSafetyDecision.status === 'ready' ? `${cue} ${trackerHint}`.trim() : liveSafetyDecision.detail}
         progressLabel={guidance.currentCue?.progressLabel}
         isSpeaking={isSpeaking}
-        onSpeak={() => speak(liveSafetyDecision.status === 'ready' ? manualCue : `Safety pause. ${liveSafetyDecision.detail}`)}
-        onRepeat={() => (liveSafetyDecision.status === 'ready' ? repeat() : speak(`Safety pause. ${liveSafetyDecision.detail}`))}
+        onSpeak={() =>
+          speak(liveSafetyDecision.status === 'ready' ? manualCueZh : safetyPauseSpeechZh, { language: 'ZH' })
+        }
+        onRepeat={() =>
+          (liveSafetyDecision.status === 'ready'
+            ? repeatWithOptions({ language: 'ZH' })
+            : speak(safetyPauseSpeechZh, { language: 'ZH' }))
+        }
         onAdvance={() => void handleAdvance('manual')}
         onNext={() => void handleAdvance('manual')}
         onRecalibrate={() => void handleRecalibrate()}

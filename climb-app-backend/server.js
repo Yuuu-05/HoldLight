@@ -14,6 +14,7 @@ const climbScanRoutes = require('./routes/climbScans');
 const climbSessionRoutes = require('./routes/climbSessions');
 const guidanceLogRoutes = require('./routes/guidanceLogs');
 const visionRoutes = require('./routes/vision');
+const ttsRoutes = require('./routes/tts');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -33,6 +34,7 @@ app.use('/api/climb-scans', climbScanRoutes);
 app.use('/api/climb-sessions', climbSessionRoutes);
 app.use('/api/guidance-logs', guidanceLogRoutes);
 app.use('/api/vision', visionRoutes);
+app.use('/api/tts', ttsRoutes);
 
 app.get('/api/health', (_req, res) => {
   res.json({
