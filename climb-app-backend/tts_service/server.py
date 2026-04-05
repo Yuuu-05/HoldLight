@@ -8,10 +8,24 @@ import traceback
 PROTOCOL_STDOUT = os.fdopen(os.dup(sys.__stdout__.fileno()), "w", encoding="utf-8", buffering=1)
 sys.stdout = sys.stderr
 
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+if CURRENT_DIR not in sys.path:
+    sys.path.insert(0, CURRENT_DIR)
+
 for proxy_env_name in ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "http_proxy", "https_proxy", "all_proxy"):
     os.environ.pop(proxy_env_name, None)
 os.environ["NO_PROXY"] = "*"
 os.environ["no_proxy"] = "*"
+
+PATCH_ERROR = None
+PATCH_RESULT = None
+
+try:
+    from apply_melo_runtime_patch import apply_runtime_patch
+
+    PATCH_RESULT = apply_runtime_patch()
+except Exception as exc:  # pragma: no cover - runtime dependency check
+    PATCH_ERROR = exc
 
 try:
     from melo.api import TTS
@@ -60,6 +74,12 @@ class MeloRuntime:
         self.models = {}
 
     def ensure_dependency_ready(self):
+        if PATCH_ERROR is not None:
+            raise RuntimeError(
+                "MeloTTS runtime patch could not be applied automatically. "
+                "Make sure the .venv-tts environment is writable and dependencies are installed."
+            ) from PATCH_ERROR
+
         if IMPORT_ERROR is not None:
             raise RuntimeError(
                 "MeloTTS is not installed in the configured Python environment. "
@@ -99,6 +119,7 @@ class MeloRuntime:
             "language": language,
             "speakers": sorted(bundle["speaker_ids"].keys()),
             "device": DEFAULT_DEVICE,
+            "patchedFiles": (PATCH_RESULT or {}).get("patchedFiles", []),
         }
 
     def synthesize(self, text, language, speaker, speed):
