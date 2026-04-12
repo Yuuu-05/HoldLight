@@ -1,4 +1,4 @@
-# Climb Together Frontend
+# HoldLight Frontend
 
 A Vite + React + TypeScript frontend for the CPT208 climbing project.
 

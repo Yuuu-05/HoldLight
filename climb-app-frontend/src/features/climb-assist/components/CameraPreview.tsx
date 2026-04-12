@@ -7,6 +7,7 @@ import {
   type ReactNode,
   type RefObject,
 } from 'react';
+import { useLanguage } from '../../../app/providers/LanguageProvider';
 
 interface CameraPreviewProps {
   stream: MediaStream | null;
@@ -18,6 +19,7 @@ interface CameraPreviewProps {
   plainLiveView?: boolean;
   syncAspectRatio?: boolean;
   showMask?: boolean;
+  showCaption?: boolean;
 }
 
 type VideoElementWithFrameCallback = HTMLVideoElement & {
@@ -54,7 +56,7 @@ function readAspectRatio(video: HTMLVideoElement) {
 
 export default function CameraPreview({
   stream,
-  label = 'Rear camera preview',
+  label,
   videoRef,
   onVideoReady,
   children,
@@ -62,7 +64,10 @@ export default function CameraPreview({
   plainLiveView = false,
   syncAspectRatio = false,
   showMask,
+  showCaption = false,
 }: CameraPreviewProps) {
+  const { t } = useLanguage();
+  const previewLabel = label ?? t('Rear camera preview');
   const internalVideoRef = useRef<HTMLVideoElement>(null);
   const activeVideoRef = videoRef ?? internalVideoRef;
   const captionId = useId();
@@ -201,7 +206,7 @@ export default function CameraPreview({
   if (!stream) {
     return (
       <div className="camera-placeholder camera-placeholder-assist" role="note">
-        Camera preview will appear here when permission is granted.
+        {t('Camera preview will appear here when permission is granted.')}
       </div>
     );
   }
@@ -245,8 +250,8 @@ export default function CameraPreview({
           autoPlay
           playsInline
           muted
-          aria-label={label}
-          aria-describedby={captionId}
+          aria-label={previewLabel}
+          aria-describedby={showCaption ? captionId : undefined}
           style={plainVideoStyle}
         />
 
@@ -269,7 +274,7 @@ export default function CameraPreview({
               WebkitBackdropFilter: 'blur(6px)',
             }}
           >
-            Starting live camera…
+            {t('Starting live camera...')}
           </div>
         ) : null}
 
@@ -282,9 +287,11 @@ export default function CameraPreview({
 
         {children}
       </div>
-      <figcaption id={captionId} className="subtle-text camera-preview-caption">
-        {label}
-      </figcaption>
+      {showCaption ? (
+        <figcaption id={captionId} className="subtle-text camera-preview-caption">
+          {previewLabel}
+        </figcaption>
+      ) : null}
     </figure>
   );
 }

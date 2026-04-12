@@ -2,25 +2,27 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSpeech } from '../../../app/providers/SpeechProvider';
 import { useCamera } from '../../../app/providers/CameraProvider';
+import { useLanguage } from '../../../app/providers/LanguageProvider';
 import {
   getClimbSessionApi,
   getLatestClimbScanApi,
   saveGuidanceLogsApi,
   updateClimbSessionApi,
 } from '../../../shared/api/climbing.api';
+import MascotStatusLoader from '../../../shared/components/illustration/MascotStatusLoader';
 import Card from '../../../shared/components/ui/Card';
 import { routes } from '../../../shared/constants/routes';
 import { usePageTitle } from '../../../shared/hooks/usePageTitle';
 import { playProximityBeep } from '../../../shared/lib/audioCue';
 import type { ClimbScan, ClimbSession, GuidanceLimb, Hold } from '../../../shared/types/climb';
 import CameraPreview from '../components/CameraPreview';
-import EncouragementBanner from '../components/EncouragementBanner';
 import LiveGuidanceOverlay from '../components/LiveGuidanceOverlay';
 import PositionHintCard from '../components/PositionHintCard';
 import VoiceCuePanel from '../components/VoiceCuePanel';
 import { useGuidanceEngine } from '../hooks/useGuidanceEngine';
 import { useLivePoseTracker } from '../hooks/useLivePoseTracker';
 import { useLiveWallAlignment } from '../hooks/useLiveWallAlignment';
+import { getActiveStoredScan, getActiveStoredSession } from '../store/climbAssist.store';
 import { buildLivePositionGuidance } from '../services/cueGenerator.service';
 import {
   buildGuidanceCueSpeechZh,
@@ -32,6 +34,11 @@ import {
 } from '../services/liveGuidanceSpeech.service';
 import { limbToPoseJointName } from '../services/poseTracker.service';
 import { buildLiveGuidanceSafetyDecision } from '../services/safetyState.service';
+import {
+  formatAlignmentStatus,
+  formatHoldTarget,
+  localizeAssistText,
+} from '../utils/localizedAssistText';
 
 function isFootLimb(limb?: GuidanceLimb) {
   return limb === 'leftFoot' || limb === 'rightFoot';
@@ -80,8 +87,10 @@ function getTargetThreshold(hold: Hold | null, limb?: GuidanceLimb) {
 export default function LiveGuidancePage() {
   const { speak, repeatWithOptions, warm } = useSpeech();
   const { stream, supported: cameraSupported, requestAccess } = useCamera();
+  const { language, t } = useLanguage();
   const [session, setSession] = useState<ClimbSession | null>(null);
   const [scan, setScan] = useState<ClimbScan | null>(null);
+  const [loadingLiveData, setLoadingLiveData] = useState(true);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -111,16 +120,42 @@ export default function LiveGuidancePage() {
   }, [warm]);
 
   useEffect(() => {
-    Promise.all([getClimbSessionApi(), getLatestClimbScanApi()]).then(
-      ([activeSession, latestScan]) => {
-        setSession(activeSession);
-        setScan(latestScan);
-        setLoadError(null);
-      },
-    ).catch((error) => {
+    let active = true;
+
+    setLoadingLiveData(true);
+    Promise.all([
+      getClimbSessionApi().catch(() => getActiveStoredSession()),
+      getLatestClimbScanApi().catch(() => getActiveStoredScan()),
+    ]).then(([activeSession, latestScan]) => {
+      if (!active) return;
+      setSession(activeSession ?? getActiveStoredSession());
+      setScan(latestScan ?? getActiveStoredScan());
+      setLoadError(null);
+    }).catch((error) => {
+      if (!active) return;
+      setSession(getActiveStoredSession());
+      setScan(getActiveStoredScan());
       setLoadError(error instanceof Error ? error.message : 'Unable to load live guidance data.');
+    }).finally(() => {
+      if (active) {
+        setLoadingLiveData(false);
+      }
     });
+
+    return () => {
+      active = false;
+    };
   }, []);
+
+  useEffect(() => {
+    if (loadingLiveData || loadError || session?.plannedRoute) return undefined;
+
+    const timer = window.setTimeout(() => {
+      navigate(routes.routeRecommendation, { replace: true });
+    }, 700);
+
+    return () => window.clearTimeout(timer);
+  }, [loadError, loadingLiveData, navigate, session?.plannedRoute]);
 
   const currentHold = useMemo(() => {
     if (!session?.plannedRoute) return null;
@@ -262,6 +297,17 @@ export default function LiveGuidancePage() {
   );
 
   const trackerStatusZh = useMemo(() => buildPoseTrackerStatusZh(poseState), [poseState]);
+  const localizedSafetyHeadline = localizeAssistText(liveSafetyDecision.headline, language);
+  const localizedSafetyDetail = localizeAssistText(liveSafetyDecision.detail, language);
+  const displayPrimaryCue = language === 'zh'
+    ? spokenCueZh || t('No cue available')
+    : cue;
+  const displayTrackerHint = language === 'zh'
+    ? livePositionSpeechZh.speechText ?? localizeAssistText(trackerHint, language)
+    : trackerHint;
+  const displayPanelCue = liveSafetyDecision.status === 'ready'
+    ? [displayPrimaryCue, displayTrackerHint].filter(Boolean).join(' ')
+    : localizedSafetyDetail;
 
   const completedHoldIds = useMemo(
     () => session?.plannedRoute?.holds.slice(0, guidance.cueIndex).map((hold) => hold.id) ?? [],
@@ -604,34 +650,49 @@ export default function LiveGuidancePage() {
     liveSafetyDecision.canSpeakLiveCue,
   ]);
 
+  if (loadingLiveData) {
+    return (
+      <section className="assist-route-loading">
+        <MascotStatusLoader
+          title={t('Preparing live guidance')}
+          message={t('The monkey is checking the route before live guidance starts.')}
+        />
+      </section>
+    );
+  }
+
   if (loadError) {
     return (
-      <Card title="Live guidance">
-        <p>{loadError}</p>
-      </Card>
+      <section className="assist-route-loading">
+        <MascotStatusLoader
+          title={t('Live guidance')}
+          message={localizeAssistText(loadError, language)}
+        />
+      </section>
     );
   }
 
   if (!session?.plannedRoute) {
     return (
-      <Card title="Live guidance">
-        <p>Select a route first.</p>
-      </Card>
+      <section className="assist-route-loading">
+        <MascotStatusLoader
+          title={t('Preparing live guidance')}
+          message={t('The monkey is checking the route before live guidance starts.')}
+        />
+      </section>
     );
   }
 
   return (
     <div className="stack-lg assist-guidance-shell assist-live-page">
-      <EncouragementBanner text="Stay smooth, keep three points of contact when possible, and let the cue lead the next move." />
-
       <Card
-        title="Live guidance camera"
+        title={t('Live guidance camera')}
         className="assist-live-camera-card"
         bodyClassName="stack-md"
       >
         <CameraPreview
           stream={stream}
-          label="Live climbing camera for pose-guided next-hold alignment"
+          label={t('Live climbing camera for pose-guided next-hold alignment')}
           videoRef={videoRef}
           onVideoReady={setVideoElement}
           className="assist-live-camera-preview"
@@ -650,37 +711,35 @@ export default function LiveGuidancePage() {
 
         <div className="assist-live-telemetry">
           <div>
-            <span className="badge">Tracker</span>
+            <span className="badge">{t('Tracker')}</span>
             <p className="subtle-text">
-              {controlError || `${trackerStatusZh.headline}。${trackerStatusZh.detail}`}
+              {controlError ? localizeAssistText(controlError, language) : `${trackerStatusZh.headline}。${trackerStatusZh.detail}`}
             </p>
           </div>
           <div>
-            <span className="badge">Target</span>
+            <span className="badge">{t('Target')}</span>
             <p className="subtle-text">
-              {liveCurrentHold ? `${liveCurrentHold.label} (${liveCurrentHold.color})` : 'No active target yet'}
+              {formatHoldTarget(liveCurrentHold, language)}
             </p>
           </div>
           <div>
-            <span className="badge">Alignment</span>
+            <span className="badge">{t('Alignment')}</span>
             <p className="subtle-text">
               {typeof alignmentPct === 'number'
                 ? `${alignmentPct}%`
-                : 'Waiting for the active limb'}
+                : localizeAssistText('Waiting for the active limb', language)}
             </p>
           </div>
           <div>
-            <span className="badge">Wall lock</span>
+            <span className="badge">{t('Wall lock')}</span>
             <p className="subtle-text">
-              {alignmentState.error
-                ? alignmentState.error
-                : `${alignmentState.statusLabel}${alignmentState.detector ? ` via ${alignmentState.detector}` : ''}`}
+              {formatAlignmentStatus(alignmentState, language)}
             </p>
           </div>
           <div>
-            <span className="badge">Safety</span>
+            <span className="badge">{t('Safety')}</span>
             <p className="subtle-text">
-              {liveSafetyDecision.headline}. {liveSafetyDecision.detail}
+              {localizedSafetyHeadline}. {localizedSafetyDetail}
             </p>
           </div>
         </div>
@@ -688,17 +747,17 @@ export default function LiveGuidancePage() {
 
       <div className="assist-live-stage">
         <PositionHintCard
-          cue={cue}
-          targetLabel={liveCurrentHold?.label}
+          cue={displayPrimaryCue}
+          targetLabel={formatHoldTarget(liveCurrentHold, language)}
           progressLabel={guidance.currentCue?.progressLabel}
           isSpeaking={isSpeaking}
-          poseStatus={liveSafetyDecision.status === 'ready' ? trackerHint : liveSafetyDecision.detail}
+          poseStatus={liveSafetyDecision.status === 'ready' ? displayTrackerHint : localizedSafetyDetail}
           alignmentPct={alignmentPct}
         />
       </div>
 
       <VoiceCuePanel
-        cue={liveSafetyDecision.status === 'ready' ? `${cue} ${trackerHint}`.trim() : liveSafetyDecision.detail}
+        cue={displayPanelCue}
         progressLabel={guidance.currentCue?.progressLabel}
         isSpeaking={isSpeaking}
         onSpeak={() =>

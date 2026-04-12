@@ -27,13 +27,7 @@ export default function EditProfilePage() {
     <section className="page-card stack-lg profile-edit-page" aria-labelledby="profile-edit-heading">
       <div className="profile-edit-hero">
         <div className="stack-sm">
-          <p className="subtle-text">{t('Climbing passport')}</p>
           <h1 id="profile-edit-heading">{t('Edit profile')}</h1>
-          <p>{t('Update personal details, climbing experience, and your preferred climbing notes.')}</p>
-        </div>
-
-        <div className="profile-edit-stamp" aria-hidden="true">
-          <span>EDIT</span>
         </div>
       </div>
 

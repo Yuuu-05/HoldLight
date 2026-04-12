@@ -1,7 +1,20 @@
 const express = require('express');
 const { getTtsProvider, normalizeTtsLanguage } = require('../services/ttsProvider');
+const auth = require('../middleware/auth');
+const { buildRateLimiterFromEnv } = require('../middleware/rateLimit');
 
 const router = express.Router();
+const ttsLimiter = buildRateLimiterFromEnv({
+  envPrefix: 'TTS_RATE_LIMIT',
+  defaultWindowMs: 60_000,
+  defaultMaxRequests: 35,
+  keyPrefix: 'tts',
+  keyFn: (req) => req.user?.id || req.ip || 'anonymous',
+  message: 'Too many speech requests were sent in a short time. Please wait a moment and try again.',
+});
+
+router.use(auth);
+router.use(ttsLimiter);
 
 function parseLanguage(value) {
   if (typeof value !== 'string' || !value.trim()) {

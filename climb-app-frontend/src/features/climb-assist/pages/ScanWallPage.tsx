@@ -1,21 +1,112 @@
-import { useEffect, useRef, useState, type ChangeEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCamera } from '../../../app/providers/CameraProvider';
 import { useLanguage } from '../../../app/providers/LanguageProvider';
-import GuideMascot from '../../../shared/components/illustration/GuideMascot';
 import Button from '../../../shared/components/ui/Button';
 import Card from '../../../shared/components/ui/Card';
+import { updateClimbScanApi } from '../../../shared/api/climbing.api';
 import { routes } from '../../../shared/constants/routes';
 import { usePageTitle } from '../../../shared/hooks/usePageTitle';
 import { triggerHaptic } from '../../../shared/lib/haptics';
-import type { ClimbScan } from '../../../shared/types/climb';
+import type { ClimbScan, Hold, HoldColor, WallManualReview, WallMap } from '../../../shared/types/climb';
 import AssistMascotSticker from '../components/AssistMascotSticker';
 import CameraPreview from '../components/CameraPreview';
 import RouteCanvas from '../components/RouteCanvas';
 import ScanPermissionNotice from '../components/ScanPermissionNotice';
 import { useScanSession } from '../hooks/useScanSession';
-import { getWallMapCoverage } from '../services/scan.service';
+import { getAvailableRouteCandidates } from '../services/routePlanner.service';
 import { buildScanSafetyDecision } from '../services/safetyState.service';
+import {
+  formatHoldColor,
+  localizeAssistText,
+} from '../utils/localizedAssistText';
+
+type ScanMobileStep = 'capture' | 'status' | 'review';
+
+const HOLD_COLOR_OPTIONS: HoldColor[] = [
+  'blue',
+  'red',
+  'green',
+  'yellow',
+  'pink',
+  'purple',
+  'orange',
+  'black',
+  'white',
+  'unknown',
+];
+
+const HOLD_COLOR_REVIEW_GUIDANCE = 'Companion reviewed hold colors before route setup.';
+
+function getWallMapColorsFromHolds(holds: Hold[]): HoldColor[] {
+  return Array.from(
+    new Set(holds.map((hold) => hold.color).filter((color) => color !== 'unknown')),
+  ) as HoldColor[];
+}
+
+function getAverageHoldConfidence(holds: Hold[]) {
+  if (holds.length === 0) return 0;
+  return Number((holds.reduce((sum, hold) => sum + hold.confidence, 0) / holds.length).toFixed(2));
+}
+
+function countHoldColorChanges(originalWallMap: WallMap | undefined, nextWallMap: WallMap | null) {
+  if (!originalWallMap || !nextWallMap) return 0;
+
+  const originalColors = new Map(originalWallMap.holds.map((hold) => [hold.id, hold.color]));
+  return nextWallMap.holds.reduce(
+    (count, hold) => count + (originalColors.get(hold.id) !== hold.color ? 1 : 0),
+    0,
+  );
+}
+
+function refreshWallMapAfterColorReview(
+  wallMap: WallMap,
+  manualReview?: WallManualReview,
+): WallMap {
+  const colors = getWallMapColorsFromHolds(wallMap.holds);
+  const baseWallMap: WallMap = {
+    ...wallMap,
+    colors,
+  };
+  const routeCandidates = getAvailableRouteCandidates(baseWallMap);
+  const hasRouteCandidates = routeCandidates.length > 0;
+  const canProceedAfterManualReview = Boolean(manualReview && hasRouteCandidates);
+  const analysis = baseWallMap.analysis
+    ? {
+        ...baseWallMap.analysis,
+        readiness:
+          canProceedAfterManualReview
+            ? 'ready' as const
+            : !hasRouteCandidates
+              ? 'retake_required' as const
+            : baseWallMap.analysis.readiness,
+        suggestedAction:
+          canProceedAfterManualReview
+            ? 'proceed' as const
+            : !hasRouteCandidates
+              ? 'retake' as const
+            : baseWallMap.analysis.suggestedAction,
+        shouldAllowAutonomousGuidance:
+          hasRouteCandidates && (baseWallMap.analysis.shouldAllowAutonomousGuidance || canProceedAfterManualReview),
+        captureGuidance: manualReview
+          ? Array.from(new Set([HOLD_COLOR_REVIEW_GUIDANCE, ...baseWallMap.analysis.captureGuidance]))
+          : baseWallMap.analysis.captureGuidance,
+        routeCandidates,
+        detectionSummary: {
+          ...baseWallMap.analysis.detectionSummary,
+          holdCount: baseWallMap.holds.length,
+          routeCount: routeCandidates.length,
+          averageHoldConfidence: getAverageHoldConfidence(baseWallMap.holds),
+        },
+        manualReview: manualReview ?? baseWallMap.analysis.manualReview,
+      }
+    : undefined;
+
+  return {
+    ...baseWallMap,
+    analysis,
+  };
+}
 
 function createObjectUrlFromDataUrl(dataUrl: string) {
   const [header, encoded] = dataUrl.split(',', 2);
@@ -38,7 +129,7 @@ function createObjectUrlFromDataUrl(dataUrl: string) {
 export default function ScanWallPage() {
   const { supported, stream, requestAccess } = useCamera();
   const navigate = useNavigate();
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
   const { scanProgress, latestScan, startScan } = useScanSession();
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaInputRef = useRef<HTMLInputElement>(null);
@@ -48,8 +139,12 @@ export default function ScanWallPage() {
   const [uploadPreviewUrl, setUploadPreviewUrl] = useState<string | null>(null);
   const [uploadName, setUploadName] = useState('');
   const [uploadType, setUploadType] = useState<'image' | 'video' | null>(null);
-  const [showRecognitionDetails, setShowRecognitionDetails] = useState(false);
   const [overlayPreviewUrl, setOverlayPreviewUrl] = useState<string | null>(null);
+  const [mobileStep, setMobileStep] = useState<ScanMobileStep>('capture');
+  const [correctedWallMap, setCorrectedWallMap] = useState<WallMap | null>(null);
+  const [selectedCorrectionHoldId, setSelectedCorrectionHoldId] = useState<string | null>(null);
+  const [colorReviewSaving, setColorReviewSaving] = useState(false);
+  const [colorReviewError, setColorReviewError] = useState<string | null>(null);
   const hasSecureContext = typeof window === 'undefined' ? true : window.isSecureContext;
   const scanBusy = scanProgress.status === 'scanning' || scanProgress.status === 'saving';
   const previousScanStatusRef = useRef(scanProgress.status);
@@ -162,7 +257,7 @@ export default function ScanWallPage() {
     });
   }
 
-  async function handleScan(source: 'camera' | 'demo') {
+  async function handleScan(source: 'camera') {
     if (scanBusy) return;
 
     let activeStream = stream;
@@ -185,6 +280,9 @@ export default function ScanWallPage() {
 
     if (scan) {
       setActiveScan(scan);
+      setMobileStep('review');
+    } else {
+      setMobileStep('status');
     }
   }
 
@@ -200,6 +298,9 @@ export default function ScanWallPage() {
 
     if (scan) {
       setActiveScan(scan);
+      setMobileStep('review');
+    } else {
+      setMobileStep('status');
     }
   }
 
@@ -226,289 +327,366 @@ export default function ScanWallPage() {
     setUploadType(nextType);
   }
 
-  const displayScan = activeScan ?? latestScan;
-  const scanCoverage = displayScan ? getWallMapCoverage(displayScan.wallMap) : null;
-  const scanAnalysis = displayScan?.wallMap.analysis;
-  const scanSafetyDecision = buildScanSafetyDecision(displayScan);
-  const isReadyForAutonomousGuidance = displayScan ? scanSafetyDecision.canSelectRoute : false;
-  const shouldShowRetryNotice = Boolean(
-    scanProgress.error
-      || (displayScan && scanSafetyDecision.status !== 'ready'),
-  );
-  const fallbackDescription = scanProgress.error
-    ? 'The wall is a little tricky right now. Try again with a steadier phone or brighter light.'
-    : scanSafetyDecision.detail;
-  const scanAnnouncement = scanProgress.status === 'error'
-    ? `Scan paused. ${scanProgress.error ?? 'We could not finish this scan.'}`
-    : scanProgress.message;
-  const readinessHero = displayScan
-    ? scanSafetyDecision.status === 'ready'
-      ? {
-          tone: 'ready',
-          kicker: 'Small monkey says go',
-          title: 'Your wall looks ready. Pick a route and start climbing.',
-          body: 'The scan details are tucked away below if you want to verify them, but you can keep the momentum and move straight into route setup.',
-          pose: 'celebrate' as const,
-        }
-      : scanSafetyDecision.status === 'companion'
-        ? {
-            tone: 'companion',
-            kicker: 'Bring a buddy',
-            title: 'Small monkey found a few route ideas, but this wall is better with a companion.',
-            body: 'You can open the scan details if you want to inspect what was detected before deciding on the next step.',
-            pose: 'nod' as const,
-          }
-        : {
-            tone: 'retake',
-            kicker: 'One more scan',
-            title: 'Small monkey wants a cleaner wall photo before guiding this climb.',
-            body: 'Retake the scan from a steadier angle or brighter light. The recognition details stay folded away unless you need them.',
-            pose: 'tilt' as const,
-          }
-    : {
-        tone: 'ready',
-        kicker: 'Demo wall ready',
-        title: 'Small monkey says this wall is ready for a fun first route.',
-        body: 'Jump into route setup and let the climb start. You can always come back and rescan later.',
-        pose: 'celebrate' as const,
+  function handleCorrectionHoldSelect(hold: Hold) {
+    setSelectedCorrectionHoldId(hold.id);
+    setColorReviewError(null);
+  }
+
+  function handleCorrectionColorChange(color: HoldColor) {
+    if (!displayScan || !selectedCorrectionHoldId) return;
+
+    setCorrectedWallMap((currentWallMap) => {
+      const baseWallMap = currentWallMap ?? displayScan.wallMap;
+      const nextWallMap: WallMap = {
+        ...baseWallMap,
+        holds: baseWallMap.holds.map((hold) =>
+          hold.id === selectedCorrectionHoldId ? { ...hold, color } : hold,
+        ),
       };
 
+      return refreshWallMapAfterColorReview(nextWallMap);
+    });
+    setColorReviewError(null);
+  }
+
+  function handleResetColorReview() {
+    setCorrectedWallMap(null);
+    setSelectedCorrectionHoldId(null);
+    setColorReviewError(null);
+  }
+
+  async function handleSaveColorReview() {
+    if (!displayScan) return;
+
+    try {
+      setColorReviewSaving(true);
+      setColorReviewError(null);
+
+      const manualReview: WallManualReview = {
+        holdColorsReviewed: true,
+        reviewedAt: new Date().toISOString(),
+        colorCorrectionCount,
+        reviewer: 'companion',
+      };
+      const reviewedWallMap = refreshWallMapAfterColorReview(
+        correctedWallMap ?? displayScan.wallMap,
+        manualReview,
+      );
+      if (!reviewedWallMap.analysis?.routeCandidates.length) {
+        throw new Error('No same-colour route is available after color review.');
+      }
+
+      const updatedScan = await updateClimbScanApi(displayScan.id, {
+        availableColors: reviewedWallMap.colors,
+        wallMap: reviewedWallMap,
+      });
+
+      setActiveScan(updatedScan);
+      setCorrectedWallMap(null);
+      setSelectedCorrectionHoldId(null);
+      triggerHaptic(24);
+      navigate(routes.selectDifficulty);
+    } catch (error) {
+      setColorReviewError(error instanceof Error ? error.message : 'Unable to save hold color review.');
+    } finally {
+      setColorReviewSaving(false);
+    }
+  }
+
+  const displayScan = activeScan ?? latestScan;
+  const reviewScan = useMemo(
+    () =>
+      displayScan && correctedWallMap
+        ? { ...displayScan, availableColors: correctedWallMap.colors, wallMap: correctedWallMap }
+        : displayScan,
+    [correctedWallMap, displayScan],
+  );
+  const selectedCorrectionHold = useMemo(
+    () => reviewScan?.wallMap.holds.find((hold) => hold.id === selectedCorrectionHoldId) ?? null,
+    [reviewScan?.wallMap.holds, selectedCorrectionHoldId],
+  );
+  const colorCorrectionCount = useMemo(
+    () => countHoldColorChanges(displayScan?.wallMap, correctedWallMap),
+    [correctedWallMap, displayScan?.wallMap],
+  );
+  const hasUnsavedColorReview = Boolean(correctedWallMap);
+  const scanSafetyDecision = buildScanSafetyDecision(reviewScan);
+  const shouldShowRetryNotice = Boolean(
+    scanProgress.error
+      || (reviewScan && scanSafetyDecision.status !== 'ready'),
+  );
+  const fallbackDescription = scanProgress.error
+    ? t('The wall is a little tricky right now. Try again with a steadier phone or brighter light.')
+    : localizeAssistText(scanSafetyDecision.detail, language);
+  const localizedScanProgressMessage = localizeAssistText(scanProgress.message, language);
+  const localizedScanError = localizeAssistText(scanProgress.error, language);
+  const scanAnnouncement = scanProgress.status === 'error'
+    ? `${t('Scan paused.')} ${localizedScanError || t('We could not finish this scan.')}`
+    : localizedScanProgressMessage;
   useEffect(() => {
-    setShowRecognitionDetails(false);
+    setCorrectedWallMap(null);
+    setSelectedCorrectionHoldId(null);
+    setColorReviewError(null);
   }, [displayScan?.id]);
 
+  useEffect(() => {
+    if (reviewScan && !scanBusy) {
+      setMobileStep('review');
+    }
+  }, [reviewScan?.id, scanBusy]);
+
+  useEffect(() => {
+    if (!reviewScan || selectedCorrectionHoldId) return;
+    setSelectedCorrectionHoldId(reviewScan.wallMap.holds[0]?.id ?? null);
+  }, [reviewScan, selectedCorrectionHoldId]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!window.matchMedia('(max-width: 720px)').matches) return;
+
+    document.getElementById('main-content')?.scrollIntoView({ block: 'start' });
+  }, [mobileStep]);
+
   return (
-    <section className="stack-lg assist-shell">
-      <Card title={t('Assist')} className="tone-blue assist-hero-card assist-scan-hero-card" bodyClassName="stack-md">
-        <div className="assist-scan-intro">
-          <p className="subtle-text">{t('Open the wall scanning flow to prepare climbing guidance.')}</p>
-          <p className="assist-scan-note">
-            Frame the whole wall like a sticker photo and keep the phone steady for a cleaner route match.
-          </p>
-        </div>
-        <ScanPermissionNotice supported={supported} hasSecureContext={hasSecureContext} />
-        <CameraPreview
-          stream={stream}
-          videoRef={videoRef}
-          className="assist-camera-stage"
-          label="A rounded polaroid-style live view for wall recognition."
-        >
-          {scanBusy ? (
-            <div className="assist-camera-loader" role="status" aria-hidden="true">
-              <div className="assist-camera-loader-card">
-                <AssistMascotSticker variant="observe" className="assist-camera-loader-mascot" />
+    <section className={`stack-lg assist-shell ${reviewScan ? 'assist-shell-review-mode' : ''}`.trim()}>
+      {!reviewScan ? (
+        <>
+          <nav className="assist-mobile-flow-tabs" aria-label={t('Assist flow steps')}>
+            {[
+              { id: 'capture' as const, label: t('Scan') },
+              { id: 'status' as const, label: t('Status') },
+            ].map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className={`assist-mobile-flow-tab ${mobileStep === item.id ? 'is-active' : ''}`.trim()}
+                aria-current={mobileStep === item.id ? 'step' : undefined}
+                onClick={() => setMobileStep(item.id)}
+              >
+                {item.label}
+              </button>
+            ))}
+          </nav>
+
+          <Card
+            title={t('Assist')}
+            className="tone-blue assist-hero-card assist-scan-hero-card assist-mobile-panel"
+            bodyClassName="stack-md"
+            data-mobile-active={mobileStep === 'capture' ? 'true' : 'false'}
+          >
+            <div className="assist-scan-intro">
+              <p className="assist-scan-note">
+                {t('Frame the whole wall like a sticker photo and keep the phone steady for a cleaner route match.')}
+              </p>
+            </div>
+            <ScanPermissionNotice supported={supported} hasSecureContext={hasSecureContext} />
+            <CameraPreview
+              stream={stream}
+              videoRef={videoRef}
+              className="assist-camera-stage"
+              label={t('Camera preview for wall recognition')}
+            >
+              {scanBusy ? (
+                <div className="assist-camera-loader" role="status" aria-hidden="true">
+                  <div className="assist-camera-loader-card">
+                    <AssistMascotSticker variant="observe" className="assist-camera-loader-mascot" />
                 <div className="stack-sm">
-                  <strong>Small monkey is checking the wall map</strong>
-                  <p>Hold the phone steady while route recognition finishes its pass.</p>
+                  <strong>{t('Checking wall map')}</strong>
+                  <p>{t('Hold the phone steady while route recognition finishes its pass.')}</p>
+                  <div
+                    className="assist-inline-progress"
+                    role="progressbar"
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={scanProgress.progress}
+                    aria-valuetext={localizedScanProgressMessage}
+                  >
+                    <span style={{ width: `${scanProgress.progress}%` }} />
+                  </div>
+                  <small>{scanProgress.progress}%</small>
                 </div>
               </div>
             </div>
-          ) : null}
-        </CameraPreview>
-        <div className="sr-only" aria-live="polite" aria-atomic="true">
-          {scanAnnouncement}
-        </div>
-        <div className="inline-actions wrap assist-action-row">
-          <Button onClick={() => void handleScan('camera')} disabled={!supported || !hasSecureContext || scanBusy}>
-            Scan with camera
-          </Button>
-          <Button variant="secondary" onClick={() => void handleScan('demo')} disabled={scanBusy}>
-            Use demo wall
-          </Button>
-        </div>
-      </Card>
-
-      <Card
-        title="Upload a wall photo or video"
-        className="tone-yellow assist-bottom-sheet assist-upload-sheet"
-        bodyClassName="stack-md"
-      >
-        <p>
-          Upload a wall photo, or pause a short video on a clear frame, and run the same recognition pipeline without using the live camera.
-        </p>
-        <input
-          ref={mediaInputRef}
-          type="file"
-          accept="image/*,video/*"
-          className="sr-only"
-          onChange={handleUploadSelected}
-        />
-        <div className="inline-actions wrap">
-          <Button variant="secondary" onClick={() => mediaInputRef.current?.click()} disabled={scanBusy}>
-            Upload
-          </Button>
-          <Button onClick={() => void handleUploadScan()} disabled={!uploadType || scanBusy}>
-            Scan uploaded media
-          </Button>
-        </div>
-        {uploadType && uploadPreviewUrl ? (
-          <div className="stack-sm">
-            <p className="subtle-text">Selected file: {uploadName}</p>
-            {uploadType === 'image' ? (
-              <img ref={uploadImageRef} className="camera-preview" src={uploadPreviewUrl} alt="Uploaded wall preview" />
-            ) : (
-              <video ref={uploadVideoRef} className="camera-preview" src={uploadPreviewUrl} controls playsInline muted />
-            )}
-          </div>
-        ) : (
-          <div className="camera-placeholder camera-placeholder-assist">
-            Upload a wall photo or video to test recognition without the live camera.
-          </div>
-        )}
-      </Card>
-
-      <Card title="Scan pulse" className="assist-bottom-sheet assist-status-sheet" bodyClassName="stack-md">
-        <div className="assist-status-head">
-          <p className="assist-status-copy">
-            <strong>{scanProgress.message}</strong>
-          </p>
-          <span className="assist-status-progress">{scanProgress.progress}%</span>
-        </div>
-        <div
-          className="assist-progress-track"
-          role="progressbar"
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-valuenow={scanProgress.progress}
-          aria-valuetext={scanProgress.message}
-        >
-          <span className="assist-progress-bar" style={{ width: `${scanProgress.progress}%` }} />
-        </div>
-        {shouldShowRetryNotice ? (
-          <div className="assist-soft-warning-card" role="note" aria-live="polite">
-            <AssistMascotSticker variant="flashlight" className="assist-warning-mascot" />
-            <div className="stack-sm">
-              <strong>That wall is a little dim right now</strong>
-              <p>{fallbackDescription}</p>
-              <div className="inline-actions wrap">
-                <Button onClick={() => navigate(routes.scanWall)}>Retake scan</Button>
-              </div>
+              ) : null}
+            </CameraPreview>
+            <div className="sr-only" aria-live="polite" aria-atomic="true">
+              {scanAnnouncement}
             </div>
-          </div>
-        ) : null}
-        {scanCoverage ? (
-          <div className="stats-grid">
-            <div>
-              <strong>{scanCoverage.holdCount}</strong>
-              <span>Detected holds</span>
-            </div>
-            <div>
-              <strong>{scanCoverage.colorCount}</strong>
-              <span>Detected route colors</span>
-            </div>
-            <div>
-              <strong>{scanCoverage.source}</strong>
-              <span>Scan source</span>
-            </div>
-          </div>
-        ) : null}
-        {displayScan?.wallMap.scanNotes.length ? (
-          <ol className="numbered-list subtle-text">
-            {displayScan.wallMap.scanNotes.map((note) => (
-              <li key={note}>{note}</li>
-            ))}
-          </ol>
-        ) : null}
-      </Card>
-
-      {displayScan ? (
-        <Card title="Wall overlay preview" className="assist-stable-card" bodyClassName="stack-md">
-          <RouteCanvas
-            wallMap={displayScan.wallMap}
-            backgroundImageUrl={overlayPreviewUrl ?? displayScan.coverImageUrl}
-            plainImagePreview
-            helperText="Original scan image with detected hold overlays. Use this view to verify the recognition result before choosing a route."
-          />
-        </Card>
-      ) : null}
-
-      {displayScan ? (
-        <Card title="Route readiness" className="assist-bottom-sheet assist-readiness-sheet assist-stable-card" bodyClassName="stack-md">
-          <div className={`assist-readiness-hero assist-readiness-hero-${readinessHero.tone}`.trim()}>
-            <div className="assist-readiness-copy">
-              <span className="assist-readiness-kicker">{readinessHero.kicker}</span>
-              <div className="stack-sm">
-                <strong>{readinessHero.title}</strong>
-                <p>{readinessHero.body}</p>
-              </div>
-            </div>
-            <div className="assist-readiness-mascot-shell" aria-hidden="true">
-              <GuideMascot className="assist-readiness-mascot" pose={readinessHero.pose} />
-            </div>
-          </div>
-
-          {scanAnalysis ? (
-            <div className="stack-sm">
-              <Button
-                type="button"
-                variant="ghost"
-                className="assist-readiness-toggle"
-                aria-expanded={showRecognitionDetails}
-                aria-controls="scan-recognition-details"
-                onClick={() => setShowRecognitionDetails((current) => !current)}
-              >
-                <span className="assist-readiness-toggle-copy">
-                  <span className="assist-readiness-toggle-title">
-                    {showRecognitionDetails ? 'Hide scan details' : 'See what the scan found'}
-                  </span>
-                  <span className="assist-readiness-toggle-hint">Recognition metrics and route candidates</span>
-                </span>
-                <span className="assist-readiness-toggle-icon" aria-hidden="true">
-                  v
-                </span>
+            <div className="inline-actions wrap assist-action-row">
+              <Button onClick={() => void handleScan('camera')} disabled={!supported || !hasSecureContext || scanBusy}>
+                {t('Scan with camera')}
               </Button>
+            </div>
+            <div className="assist-mobile-step-actions">
+              <Button variant="secondary" onClick={() => setMobileStep('status')}>
+                {t('View progress')}
+              </Button>
+            </div>
+          </Card>
 
-              {showRecognitionDetails ? (
-                <div id="scan-recognition-details" className="assist-readiness-details stack-md">
-                  <div className="stats-grid">
-                    <div>
-                      <strong>{Math.round(scanAnalysis.confidence * 100)}%</strong>
-                      <span>Overall confidence</span>
-                    </div>
-                    <div>
-                      <strong>{scanAnalysis.detectionSummary.holdCount}</strong>
-                      <span>Detected holds</span>
-                    </div>
-                    <div>
-                      <strong>{scanAnalysis.detectionSummary.routeCount}</strong>
-                      <span>Route candidates</span>
-                    </div>
-                  </div>
-                  <p className="subtle-text">Active provider: {scanAnalysis.provider}</p>
-                  <ol className="numbered-list subtle-text">
-                    {scanAnalysis.captureGuidance.map((item) => (
-                      <li key={item}>{item}</li>
-                    ))}
-                  </ol>
-                  {scanAnalysis.routeCandidates.length ? (
-                    <div className="stack-sm">
-                      <p>
-                        <strong>Detected route candidates</strong>
-                      </p>
-                      <ol className="numbered-list subtle-text">
-                        {scanAnalysis.routeCandidates.slice(0, 3).map((candidate) => (
-                          <li key={candidate.id}>
-                            {candidate.summary} Confidence {Math.round(candidate.confidence * 100)}%.
-                          </li>
-                        ))}
-                      </ol>
+          <Card
+            title={t('Upload a wall photo or video')}
+            className="tone-yellow assist-bottom-sheet assist-upload-sheet assist-mobile-panel"
+            bodyClassName="stack-md"
+            data-mobile-active={mobileStep === 'capture' ? 'true' : 'false'}
+          >
+            <input
+              ref={mediaInputRef}
+              type="file"
+              accept="image/*,video/*"
+              className="sr-only"
+              onChange={handleUploadSelected}
+            />
+            <div className="inline-actions wrap">
+              <Button variant="secondary" onClick={() => mediaInputRef.current?.click()} disabled={scanBusy}>
+                {t('Upload')}
+              </Button>
+              <Button onClick={() => void handleUploadScan()} disabled={!uploadType || scanBusy}>
+                {t('Scan uploaded media')}
+              </Button>
+            </div>
+            {uploadType && uploadPreviewUrl ? (
+              <div className="stack-sm">
+                <p className="subtle-text">{t('Selected file:')} {uploadName}</p>
+                <div className="assist-upload-preview-frame">
+                  {uploadType === 'image' ? (
+                    <img ref={uploadImageRef} className="camera-preview" src={uploadPreviewUrl} alt={t('Uploaded wall preview')} />
+                  ) : (
+                    <video ref={uploadVideoRef} className="camera-preview" src={uploadPreviewUrl} controls playsInline muted />
+                  )}
+                  {scanBusy ? (
+                    <div className="assist-upload-progress-bar" aria-hidden="true">
+                      <span style={{ width: `${scanProgress.progress}%` }} />
                     </div>
                   ) : null}
                 </div>
-              ) : null}
-            </div>
-          ) : null}
+              </div>
+            ) : (
+              <div className="camera-placeholder camera-placeholder-assist">
+                {t('Upload a wall photo or video')}
+              </div>
+            )}
+          </Card>
 
-          <div className="inline-actions wrap">
-            <Button onClick={() => navigate(routes.selectDifficulty)} disabled={!isReadyForAutonomousGuidance}>
-              Continue to route setup
-            </Button>
-            <Button variant="secondary" onClick={() => navigate(routes.scanWall)}>
-              Retake scan
-            </Button>
+          <Card
+            title={t('Scan pulse')}
+            className="assist-bottom-sheet assist-status-sheet assist-mobile-panel"
+            bodyClassName="stack-md"
+            data-mobile-active={mobileStep === 'status' ? 'true' : 'false'}
+          >
+            <div className="assist-status-head">
+              <p className="assist-status-copy">
+                <strong>{localizedScanProgressMessage}</strong>
+              </p>
+              <span className="assist-status-progress">{scanProgress.progress}%</span>
+            </div>
+            <div
+              className="assist-progress-track"
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={scanProgress.progress}
+              aria-valuetext={localizedScanProgressMessage}
+            >
+              <span className="assist-progress-bar" style={{ width: `${scanProgress.progress}%` }} />
+            </div>
+            {shouldShowRetryNotice ? (
+              <div className="assist-soft-warning-card" role="note" aria-live="polite">
+                <AssistMascotSticker variant="flashlight" className="assist-warning-mascot" />
+                <div className="stack-sm">
+                  <strong>{t('That wall is a little dim right now')}</strong>
+                  <p>{fallbackDescription}</p>
+                  <div className="inline-actions wrap">
+                    <Button onClick={() => navigate(routes.scanWall)}>{t('Retake scan')}</Button>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+            <div className="assist-mobile-step-actions">
+              <Button variant="secondary" onClick={() => setMobileStep('capture')}>{t('Back to scan')}</Button>
+            </div>
+          </Card>
+        </>
+      ) : (
+        <Card
+          className="assist-scan-review-card assist-stable-card"
+          bodyClassName="assist-color-review-layout"
+        >
+          <div className="assist-color-review-canvas">
+            <RouteCanvas
+              wallMap={reviewScan.wallMap}
+              backgroundImageUrl={overlayPreviewUrl ?? reviewScan.coverImageUrl}
+              plainImagePreview
+              fitContainer
+              selectedHoldId={selectedCorrectionHoldId ?? undefined}
+              selectedHoldColor={selectedCorrectionHold?.color}
+              onHoldSelect={handleCorrectionHoldSelect}
+              helperText={t('Tap a hold circle, then choose its correct color.')}
+            />
+          </div>
+          <div className="assist-color-review-panel">
+            <div className="assist-color-review-head">
+              <div className="stack-sm">
+                <strong>{t('Tap a circle, choose the right color')}</strong>
+                <p className="subtle-text">
+                  {t('Confirming saves the corrected wall and opens route setup.')}
+                </p>
+              </div>
+            </div>
+
+            <div className="assist-color-picker-shell">
+              {selectedCorrectionHold ? (
+                <>
+                  <div className="assist-color-swatch-grid" role="group" aria-label={t('Choose corrected hold color')}>
+                    {HOLD_COLOR_OPTIONS.map((color) => (
+                      <button
+                        key={color}
+                        type="button"
+                        className={`assist-color-swatch assist-color-swatch-${color} ${selectedCorrectionHold.color === color ? 'is-active' : ''}`.trim()}
+                        aria-pressed={selectedCorrectionHold.color === color}
+                        onClick={() => handleCorrectionColorChange(color)}
+                      >
+                        {formatHoldColor(color, language, true)}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <p className="subtle-text">{t('Tap any detected hold circle to edit its color.')}</p>
+              )}
+            </div>
+
+            <div className="assist-color-action-row">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={handleResetColorReview}
+                disabled={!hasUnsavedColorReview || colorReviewSaving}
+              >
+                {t('Reset color changes')}
+              </Button>
+              <Button type="button" variant="secondary" onClick={() => navigate(routes.scanWall)} disabled={colorReviewSaving}>
+                {t('Retake scan')}
+              </Button>
+              <Button
+                type="button"
+                onClick={() => void handleSaveColorReview()}
+                disabled={colorReviewSaving}
+              >
+                {colorReviewSaving
+                  ? t('Saving...')
+                  : t('Confirm and set route')}
+              </Button>
+            </div>
+
+            {colorReviewError ? (
+              <p className="subtle-text" role="alert">
+                {localizeAssistText(colorReviewError, language)}
+              </p>
+            ) : null}
           </div>
         </Card>
-      ) : null}
+      )}
     </section>
   );
 }

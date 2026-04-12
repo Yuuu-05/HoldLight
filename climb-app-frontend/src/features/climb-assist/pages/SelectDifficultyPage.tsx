@@ -1,39 +1,86 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import MascotStatusLoader from '../../../shared/components/illustration/MascotStatusLoader';
 import Button from '../../../shared/components/ui/Button';
 import Card from '../../../shared/components/ui/Card';
+import { useLanguage } from '../../../app/providers/LanguageProvider';
 import DifficultySelector from '../components/DifficultySelector';
 import RouteCanvas from '../components/RouteCanvas';
 import { routes } from '../../../shared/constants/routes';
 import { usePageTitle } from '../../../shared/hooks/usePageTitle';
 import { createClimbSessionApi, getLatestClimbScanApi } from '../../../shared/api/climbing.api';
 import { triggerHaptic } from '../../../shared/lib/haptics';
-import { buildRoutePlan, getAvailableRouteCandidates } from '../services/routePlanner.service';
+import { getActiveStoredScan } from '../store/climbAssist.store';
+import { buildEditableRoutePlan, buildRoutePlan, getAvailableRouteCandidates } from '../services/routePlanner.service';
 import { buildScanSafetyDecision } from '../services/safetyState.service';
-import type { ClimbScan } from '../../../shared/types/climb';
+import type { ClimbScan, Hold } from '../../../shared/types/climb';
+import {
+  describeRoutePlan,
+  formatHoldColor,
+  formatRouteFinishType,
+  formatRouteStartType,
+  formatReviewState,
+  localizeAssistText,
+} from '../utils/localizedAssistText';
 
 export default function SelectDifficultyPage() {
   const [difficulty, setDifficulty] = useState('Beginner');
   const [scan, setScan] = useState<ClimbScan | null>(null);
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
+  const [loadingScan, setLoadingScan] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [editMode, setEditMode] = useState(false);
+  const [selectedEditableHoldId, setSelectedEditableHoldId] = useState<string | null>(null);
+  const [customHoldIds, setCustomHoldIds] = useState<string[]>([]);
+  const { language, t } = useLanguage();
   const navigate = useNavigate();
   const hasBuzzedRef = useRef(false);
 
   usePageTitle('Select route');
 
   useEffect(() => {
-    getLatestClimbScanApi().then((nextScan) => {
+    let active = true;
+
+    const applyLoadedScan = (nextScan: ClimbScan | null) => {
+      if (!active) return;
       setScan(nextScan);
-      setLoadError(null);
       if (nextScan) {
         const [firstCandidate] = getAvailableRouteCandidates(nextScan.wallMap);
         setSelectedCandidateId(firstCandidate?.id ?? null);
+      } else {
+        setSelectedCandidateId(null);
+      }
+    };
+
+    setLoadingScan(true);
+    getLatestClimbScanApi().then((nextScan) => {
+      applyLoadedScan(nextScan ?? getActiveStoredScan());
+      if (active) {
+        setLoadError(null);
       }
     }).catch((error) => {
-      setLoadError(error instanceof Error ? error.message : 'Unable to load the saved wall scan.');
+      const fallbackScan = getActiveStoredScan();
+      if (fallbackScan) {
+        applyLoadedScan(fallbackScan);
+        if (active) {
+          setLoadError(null);
+        }
+        return;
+      }
+
+      if (active) {
+        setLoadError(error instanceof Error ? error.message : 'Unable to load the saved wall scan.');
+      }
+    }).finally(() => {
+      if (active) {
+        setLoadingScan(false);
+      }
     });
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   const availableCandidates = useMemo(
@@ -68,16 +115,57 @@ export default function SelectDifficultyPage() {
     return previewRoutes.find((entry) => entry.candidate.id === selectedCandidate.id)?.route ?? null;
   }, [previewRoutes, selectedCandidate]);
 
-  const selectedSemantics = previewRoute?.semantics ?? selectedCandidate?.semantics ?? null;
+  const sameColorHoldCount = useMemo(
+    () => scan?.wallMap.holds.filter((hold) => hold.color === selectedCandidate?.color).length ?? 0,
+    [scan, selectedCandidate?.color],
+  );
+
+  useEffect(() => {
+    if (!previewRoute) {
+      setCustomHoldIds([]);
+      setSelectedEditableHoldId(null);
+      setEditMode(false);
+      return;
+    }
+
+    setCustomHoldIds(previewRoute.holdIds);
+    setSelectedEditableHoldId(null);
+    setEditMode(false);
+  }, [previewRoute?.id, selectedCandidateId]);
+
+  const editedRoute = useMemo(() => {
+    if (!scan || !selectedCandidate) return null;
+    return buildEditableRoutePlan(
+      scan.wallMap,
+      selectedCandidate.color,
+      customHoldIds,
+      difficulty,
+    );
+  }, [customHoldIds, difficulty, scan, selectedCandidate]);
+
+  const hasCustomEdits = useMemo(() => {
+    if (!previewRoute) return false;
+    const originalIds = [...previewRoute.holdIds].sort();
+    const nextIds = [...customHoldIds].sort();
+    return originalIds.length !== nextIds.length || originalIds.some((id, index) => id !== nextIds[index]);
+  }, [customHoldIds, previewRoute]);
+
+  const displayRoute = (editMode || hasCustomEdits) && editedRoute ? editedRoute : previewRoute;
+  const routeIsReady = Boolean(displayRoute && displayRoute.holds.length >= 2);
+  const selectedSemantics = displayRoute?.semantics ?? selectedCandidate?.semantics ?? null;
 
   const routeOverlays = useMemo(
-    () => previewRoutes.map(({ candidate, route }) => ({
-      id: candidate.id,
-      holdIds: route.holdIds,
-      color: candidate.color,
-      emphasis: candidate.id === selectedCandidateId ? 'primary' as const : 'secondary' as const,
-    })),
-    [previewRoutes, selectedCandidateId],
+    () =>
+      previewRoutes.map(({ candidate, route }) => {
+        const isSelected = candidate.id === selectedCandidateId;
+        return {
+          id: candidate.id,
+          holdIds: isSelected && displayRoute ? displayRoute.holdIds : route.holdIds,
+          color: candidate.color,
+          emphasis: isSelected ? 'primary' as const : 'secondary' as const,
+        };
+      }),
+    [displayRoute, previewRoutes, selectedCandidateId],
   );
 
   const scanSafetyDecision = useMemo(() => buildScanSafetyDecision(scan), [scan]);
@@ -96,24 +184,63 @@ export default function SelectDifficultyPage() {
     return () => window.clearTimeout(timer);
   }, [autonomousReady, availableCandidates.length]);
 
+  useEffect(() => {
+    if (loadingScan || loadError || scan) return;
+    navigate(routes.scanWall, { replace: true });
+  }, [loadError, loadingScan, navigate, scan]);
+
+  function handleRouteSelect(candidateId: string) {
+    setSelectedCandidateId(candidateId);
+    setActionError(null);
+  }
+
+  function handleEditableHoldToggle(hold: Hold) {
+    if (!editMode || !selectedCandidate) return;
+
+    if (hold.color !== selectedCandidate.color) {
+      setActionError('Only tap holds with the selected route color. Correct hold colors from the scan page if this hold belongs here.');
+      return;
+    }
+
+    setSelectedEditableHoldId(hold.id);
+    setCustomHoldIds((currentIds) =>
+      currentIds.includes(hold.id)
+        ? currentIds.filter((id) => id !== hold.id)
+        : [...currentIds, hold.id],
+    );
+    setActionError(null);
+  }
+
+  function handleResetRouteEdits() {
+    if (!previewRoute) return;
+    setCustomHoldIds(previewRoute.holdIds);
+    setSelectedEditableHoldId(null);
+    setEditMode(false);
+    setActionError(null);
+  }
+
   async function handleContinue() {
-    if (!scan || !selectedCandidate || !previewRoute) return;
+    if (!scan || !selectedCandidate || !displayRoute || !routeIsReady) {
+      setActionError('Select at least two same-colour holds before starting live guidance.');
+      return;
+    }
+
     try {
       setActionError(null);
       await createClimbSessionApi({
         scanId: scan.id,
-        routeId: previewRoute.id,
+        routeId: displayRoute.id,
         selectedColor: selectedCandidate.color,
         difficulty,
         startedAt: new Date().toISOString(),
         cueIndex: 0,
         completed: false,
-        currentTargetHoldId: previewRoute.holds[0]?.id || '',
+        currentTargetHoldId: displayRoute.holds[0]?.id || '',
         status: 'draft',
-        plannedRoute: previewRoute,
+        plannedRoute: displayRoute,
         summaryStats: {
           holdsReached: 0,
-          totalHolds: previewRoute.holds.length,
+          totalHolds: displayRoute.holds.length,
           cueCount: 0,
           recalibrationCount: 0,
           source: scan.wallMap.source,
@@ -126,127 +253,140 @@ export default function SelectDifficultyPage() {
     }
   }
 
+  if (loadingScan) {
+    return (
+      <section className="assist-route-loading">
+        <MascotStatusLoader
+          title={t('Preparing route setup')}
+          message={t('The monkey is carrying the corrected wall into route selection.')}
+        />
+      </section>
+    );
+  }
+
   if (loadError) {
     return (
-      <Card title="Select route and guidance level">
-        <p>{loadError}</p>
-      </Card>
+      <section className="assist-route-loading">
+        <MascotStatusLoader
+          title={t('Preparing route setup')}
+          message={localizeAssistText(loadError, language)}
+        />
+      </section>
     );
   }
 
   if (!scan) {
     return (
-      <Card title="Select route and guidance level">
-        <p>No wall scan found yet. Start by scanning the wall first.</p>
-        <Button onClick={() => navigate(routes.scanWall)}>Go to scan</Button>
-      </Card>
+      <section className="assist-route-loading">
+        <MascotStatusLoader
+          title={t('Preparing route setup')}
+          message={t('Returning to scan.')}
+        />
+      </section>
     );
   }
 
   if (!autonomousReady) {
     return (
-      <Card title="Select route and guidance level">
-        <p>{scanSafetyDecision.detail}</p>
-        <Button onClick={() => navigate(routes.scanWall)}>Retake wall scan</Button>
+      <Card title={t('Select route and guidance level')}>
+        <p>{localizeAssistText(scanSafetyDecision.detail, language)}</p>
+        <Button onClick={() => navigate(routes.scanWall)}>{t('Retake wall scan')}</Button>
       </Card>
     );
   }
 
   return (
-    <div className="assist-route-page">
-      <div className="assist-route-preview-card assist-stable-card">
-        <div className="assist-route-preview-copy">
-          <p className="assist-route-preview-kicker">Route matched</p>
-          <h1>Pick the same-colour route that feels right</h1>
-          <p>
-            The wall stays visible in a stable preview so you can compare the highlighted holds
-            before moving on.
-          </p>
+    <div className="assist-route-page assist-route-builder-page">
+      <div className="assist-route-builder-card assist-stable-card">
+        <div className="assist-route-builder-canvas">
+          <RouteCanvas
+            wallMap={scan.wallMap}
+            backgroundImageUrl={scan.coverImageUrl}
+            plainImagePreview
+            fitContainer
+            highlightHoldIds={displayRoute?.holdIds ?? []}
+            currentHoldId={displayRoute?.holds[0]?.id}
+            selectedHoldId={selectedEditableHoldId ?? undefined}
+            selectedHoldColor={selectedCandidate?.color}
+            onHoldSelect={editMode ? handleEditableHoldToggle : undefined}
+            onRouteSelect={handleRouteSelect}
+            routeOverlays={routeOverlays}
+            helperText={editMode ? t('Tap same-colour holds to add or remove them from the selected route.') : undefined}
+          />
         </div>
 
-        <RouteCanvas
-          wallMap={scan.wallMap}
-          backgroundImageUrl={scan.coverImageUrl}
-          plainImagePreview
-          highlightHoldIds={previewRoute?.holdIds ?? []}
-          currentHoldId={previewRoute?.holds[0]?.id}
-          routeOverlays={routeOverlays}
-          helperText="Stable overlay preview of the scanned wall. Colored lines show each candidate path in move order. The selected route stays solid and highlighted."
-        />
-      </div>
-
-      <Card
-        title="Route recommendation"
-        className="assist-route-selection-card assist-stable-card"
-        bodyClassName="stack-md"
-      >
-        <p>
-          Choose a guidance intensity and then select one of the same-colour route candidates
-          that passed the backend confidence gate.
-        </p>
-
-        <DifficultySelector value={difficulty} onChange={setDifficulty} />
-
-        <div className="segmented-control assist-route-pill-grid">
-          {visibleCandidates.map((candidate) => (
-            <Button
-              key={candidate.id}
-              variant={selectedCandidateId === candidate.id ? 'primary' : 'secondary'}
-              className={`assist-route-pill ${selectedCandidateId === candidate.id ? 'is-active' : ''}`.trim()}
-              onClick={() => setSelectedCandidateId(candidate.id)}
-            >
-              {candidate.color.toUpperCase()} {candidate.startRegion}
-            </Button>
-          ))}
-        </div>
-
-        {selectedCandidate && previewRoute ? (
-          <div className="assist-route-summary">
-            <strong>{previewRoute.summary}</strong>
-            {selectedSemantics ? (
-              <div className="assist-route-insight-grid">
-                <span className="assist-route-insight-pill">Start: {selectedSemantics.startLabel}</span>
-                <span className="assist-route-insight-pill">Finish: {selectedSemantics.finishLabel}</span>
-                <span className="assist-route-insight-pill">Reachability: {selectedSemantics.reachabilityScore}%</span>
-                <span className="assist-route-insight-pill">Stability: {selectedSemantics.stabilityScore}%</span>
-                <span
-                  className={`assist-route-insight-pill ${selectedSemantics.reviewState === 'review-recommended' ? 'is-review' : 'is-approved'}`}
-                >
-                  {selectedSemantics.reviewState === 'review-recommended' ? 'Setter review recommended' : 'Semantic checks passed'}
-                </span>
-              </div>
-            ) : null}
+        <aside className="assist-route-builder-panel">
+          <div className="stack-sm">
+            <strong>{t('Companion route check')}</strong>
             <p className="subtle-text">
-              Confidence {Math.round(selectedCandidate.confidence * 100)}%.
-              {' '}Estimated moves {previewRoute.estimatedMoves}.
-              {' '}The highlighted line shows the selected route order from start to finish.
+              {editMode
+                ? t('Tap same-colour holds on the photo. The connected route updates immediately.')
+                : t('Tap a route line on the photo, choose the guidance level, then confirm for the climber.')}
             </p>
-            {selectedSemantics ? (
-              <p className="subtle-text">{selectedSemantics.reviewSummary}</p>
-            ) : null}
-            {selectedSemantics?.setterNotes.length ? (
-              <ul className="assist-route-note-list">
-                {selectedSemantics.setterNotes.slice(0, 3).map((note) => (
-                  <li key={note}>{note}</li>
-                ))}
-              </ul>
-            ) : null}
-            {selectedSemantics?.reviewHints.length ? (
-              <ul className="assist-route-note-list assist-route-note-list-alert">
-                {selectedSemantics.reviewHints.slice(0, 2).map((note) => (
-                  <li key={note}>{note}</li>
-                ))}
-              </ul>
-            ) : null}
           </div>
-        ) : null}
 
-        {actionError ? <p className="subtle-text">{actionError}</p> : null}
+          <DifficultySelector value={difficulty} onChange={setDifficulty} />
 
-        <Button onClick={() => void handleContinue()} disabled={!selectedCandidate}>
-          Review route recommendation
-        </Button>
-      </Card>
+          <div className="segmented-control assist-route-pill-grid">
+            {visibleCandidates.map((candidate) => (
+              <Button
+                key={candidate.id}
+                variant={selectedCandidateId === candidate.id ? 'primary' : 'secondary'}
+                className={`assist-route-pill ${selectedCandidateId === candidate.id ? 'is-active' : ''}`.trim()}
+                onClick={() => handleRouteSelect(candidate.id)}
+              >
+                {formatHoldColor(candidate.color, language, true)}
+              </Button>
+            ))}
+          </div>
+
+          {selectedCandidate && displayRoute ? (
+            <div className="assist-route-summary assist-route-builder-summary">
+              <strong>{describeRoutePlan(displayRoute, language, selectedCandidate.color)}</strong>
+              {selectedSemantics ? (
+                <div className="assist-route-insight-grid">
+                  <span className="assist-route-insight-pill">{t('Start:')} {formatRouteStartType(selectedSemantics.startType, language)}</span>
+                  <span className="assist-route-insight-pill">{t('Finish:')} {formatRouteFinishType(selectedSemantics.finishType, language)}</span>
+                  <span
+                    className={`assist-route-insight-pill ${selectedSemantics.reviewState === 'review-recommended' ? 'is-review' : 'is-approved'}`}
+                  >
+                    {formatReviewState(selectedSemantics.reviewState, language)}
+                  </span>
+                </div>
+              ) : null}
+              <p className="subtle-text">
+                {editMode
+                  ? `${displayRoute.holds.length} / ${sameColorHoldCount} ${t('same-colour holds in route')}`
+                  : t('The highlighted route is the current choice.')}
+              </p>
+            </div>
+          ) : null}
+
+          {actionError ? <p className="subtle-text" role="alert">{localizeAssistText(actionError, language)}</p> : null}
+
+          <div className="assist-route-builder-actions">
+            <Button
+              type="button"
+              variant={editMode ? 'primary' : 'secondary'}
+              onClick={() => setEditMode((current) => !current)}
+              disabled={!selectedCandidate}
+            >
+              {editMode ? t('Finish route correction') : t('Correct route')}
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handleResetRouteEdits}
+              disabled={!hasCustomEdits && !editMode}
+            >
+              {t('Reset route')}
+            </Button>
+            <Button onClick={() => void handleContinue()} disabled={!selectedCandidate || !routeIsReady}>
+              {t('Confirm route')}
+            </Button>
+          </div>
+        </aside>
+      </div>
     </div>
   );
 }

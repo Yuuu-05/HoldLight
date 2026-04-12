@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type PointerEvent, type PropsWithChildren, type ReactNode } from 'react';
 import Card from '../../../shared/components/ui/Card';
+import { useLanguage } from '../../../app/providers/LanguageProvider';
 
 interface AssistBottomSheetProps extends PropsWithChildren {
   title?: string;
@@ -24,6 +25,7 @@ export default function AssistBottomSheet({
   collapseOffset = 220,
   children,
 }: AssistBottomSheetProps) {
+  const { t } = useLanguage();
   const [entered, setEntered] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
@@ -147,7 +149,7 @@ export default function AssistBottomSheet({
           ref={grabberRef}
           type="button"
           className="assist-floating-sheet-grabber"
-          aria-label={restOffset > 0 ? 'Expand route drawer' : 'Collapse route drawer'}
+          aria-label={restOffset > 0 ? t('Expand route drawer') : t('Collapse route drawer')}
           aria-expanded={restOffset === 0}
           onClick={handleToggle}
           onPointerDown={handlePointerDown}
@@ -156,7 +158,7 @@ export default function AssistBottomSheet({
           onPointerCancel={handlePointerCancel}
         >
           <span className="assist-floating-sheet-handle" />
-          <span className="assist-floating-sheet-caption">Drag for route details</span>
+          <span className="assist-floating-sheet-caption">{t('Drag for route details')}</span>
         </button>
         <Card
           title={title}
@@ -164,7 +166,7 @@ export default function AssistBottomSheet({
           className={`assist-bottom-sheet assist-floating-sheet-card ${className}`.trim()}
           bodyClassName={bodyClassName}
           role="region"
-          aria-label={title ?? 'Route details'}
+          aria-label={title ?? t('Route details')}
           tabIndex={-1}
         >
           {children}

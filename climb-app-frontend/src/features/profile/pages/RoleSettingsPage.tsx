@@ -10,7 +10,7 @@ import Card from '../../../shared/components/ui/Card';
 
 export default function RoleSettingsPage() {
   usePageTitle('Role settings');
-  const { language, t } = useLanguage();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const {
     user,
@@ -22,26 +22,11 @@ export default function RoleSettingsPage() {
   return (
     <section className="stack-lg">
       <Card title={t('Current role')}>
-        <p>
-          {language === 'zh'
-            ? `${t('Your account is currently set to')} `
-            : `${t('Your account is currently set to')} `}
-          <strong>{t(getRoleLabel(user?.role))}</strong>.
-        </p>
-        <p>{t('The interface adapts based on this role, including dashboard guidance and climbing flow shortcuts.')}</p>
-      </Card>
-
-      <Card title={t('Role guide')}>
-        <ul className="clean-list">
-          <li><strong>{t('New climber')}</strong>: {t('focuses on onboarding basics, calmer pacing, and accessible guidance.')}</li>
-          <li><strong>{t('Experienced climber')}</strong>: {t('focuses on faster access to scanning, route guidance, and practical climbing tools.')}</li>
-          <li><strong>{t('Visually impaired climber')}</strong>: {t('prioritises voice-first and accessibility support.')}</li>
-        </ul>
+        <strong>{t(getRoleLabel(user?.role))}</strong>
       </Card>
 
       {isDevAuthBypassAvailable ? (
         <Card title={t('Development role switch')}>
-          <p>{t('In development mode you can switch the active demo role instantly to preview different dashboard and navigation states.')}</p>
           <div className="stack-sm">
             {roleOptions.map((role) => (
               <Button

@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import RouteCanvas from '../components/RouteCanvas';
+import MascotStatusLoader from '../../../shared/components/illustration/MascotStatusLoader';
 import Button from '../../../shared/components/ui/Button';
-import Card from '../../../shared/components/ui/Card';
+import { useLanguage } from '../../../app/providers/LanguageProvider';
 import {
   getClimbSessionApi,
   getLatestClimbScanApi,
@@ -12,32 +13,59 @@ import {
 import { routes } from '../../../shared/constants/routes';
 import { usePageTitle } from '../../../shared/hooks/usePageTitle';
 import { triggerHaptic } from '../../../shared/lib/haptics';
+import { getActiveStoredScan, getActiveStoredSession } from '../store/climbAssist.store';
 import { buildEditableRoutePlan } from '../services/routePlanner.service';
 import type { ClimbScan, ClimbSession, Hold } from '../../../shared/types/climb';
+import {
+  describeRoutePlan,
+  formatHoldColor,
+  formatRouteFinishType,
+  formatRouteStartType,
+  formatReviewState,
+  localizeAssistText,
+} from '../utils/localizedAssistText';
 
 export default function RouteRecommendationPage() {
   const [scan, setScan] = useState<ClimbScan | null>(null);
   const [session, setSession] = useState<ClimbSession | null>(null);
+  const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [editMode, setEditMode] = useState(false);
   const [selectedEditableHoldId, setSelectedEditableHoldId] = useState<string | null>(null);
   const [customHoldIds, setCustomHoldIds] = useState<string[]>([]);
+  const { language, t } = useLanguage();
   const navigate = useNavigate();
   const hasBuzzedRef = useRef(false);
 
-  usePageTitle('Route recommendation');
+  usePageTitle('Route check');
 
   useEffect(() => {
-    Promise.all([getLatestClimbScanApi(), getClimbSessionApi()]).then(
-      ([latestScan, activeSession]) => {
-        setScan(latestScan);
-        setSession(activeSession);
-        setLoadError(null);
-      },
-    ).catch((error) => {
+    let active = true;
+
+    setLoading(true);
+    Promise.all([
+      getLatestClimbScanApi().catch(() => getActiveStoredScan()),
+      getClimbSessionApi().catch(() => getActiveStoredSession()),
+    ]).then(([latestScan, activeSession]) => {
+      if (!active) return;
+      setScan(latestScan ?? getActiveStoredScan());
+      setSession(activeSession ?? getActiveStoredSession());
+      setLoadError(null);
+    }).catch((error) => {
+      if (!active) return;
+      setScan(getActiveStoredScan());
+      setSession(getActiveStoredSession());
       setLoadError(error instanceof Error ? error.message : 'Unable to load the recommended route.');
+    }).finally(() => {
+      if (active) {
+        setLoading(false);
+      }
     });
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -82,7 +110,7 @@ export default function RouteRecommendationPage() {
     return originalIds.length !== nextIds.length || originalIds.some((id, index) => id !== nextIds[index]);
   }, [customHoldIds, session?.plannedRoute]);
 
-  const displayRoute = hasCustomEdits && editedRoute ? editedRoute : session?.plannedRoute ?? null;
+  const displayRoute = (editMode || hasCustomEdits) && editedRoute ? editedRoute : session?.plannedRoute ?? null;
   const routeIsReady = Boolean(displayRoute && displayRoute.holds.length >= 2);
   const routeOverlays = useMemo(
     () =>
@@ -101,7 +129,11 @@ export default function RouteRecommendationPage() {
 
   function handleEditableHoldToggle(hold: Hold) {
     if (!editMode || !session) return;
-    if (hold.color !== session.selectedColor) return;
+
+    if (hold.color !== session.selectedColor) {
+      setActionError('Only tap holds with the selected route color. Correct hold colors from the scan page if this hold belongs here.');
+      return;
+    }
 
     setSelectedEditableHoldId(hold.id);
     setCustomHoldIds((currentIds) =>
@@ -157,152 +189,120 @@ export default function RouteRecommendationPage() {
     }
   }
 
+  if (loading) {
+    return (
+      <section className="assist-route-loading">
+        <MascotStatusLoader
+          title={t('Preparing live guidance')}
+          message={t('The monkey is checking the route before live guidance starts.')}
+        />
+      </section>
+    );
+  }
+
   if (loadError) {
     return (
-      <Card title="Route recommendation">
-        <p>{loadError}</p>
-      </Card>
+      <section className="assist-route-loading">
+        <MascotStatusLoader
+          title={t('Route recommendation')}
+          message={localizeAssistText(loadError, language)}
+        />
+      </section>
     );
   }
 
-    if (!scan || !session?.plannedRoute || !displayRoute) {
-      return (
-        <Card title="Route recommendation">
-          <p>Scan the wall and select a route first.</p>
-      </Card>
+  if (!scan || !session?.plannedRoute || !displayRoute) {
+    return (
+      <section className="assist-route-loading">
+        <MascotStatusLoader
+          title={t('Route recommendation')}
+          message={t('Scan the wall and select a route first.')}
+        />
+        <Button onClick={() => navigate(routes.selectDifficulty)}>{t('Back to route choice')}</Button>
+      </section>
     );
   }
+
+  const selectedColorLabel = formatHoldColor(session.selectedColor, language, true);
 
   return (
-    <div className="assist-route-page assist-route-review-page">
-      <div className="sr-only" aria-live="polite" aria-atomic="true">
-        {`Recommended ${session.selectedColor.toUpperCase()} route is ready. Review the route before starting live guidance.`}
-      </div>
-
-      <div className="assist-route-preview-card assist-stable-card">
-        <div className="assist-route-preview-copy">
-          <p className="assist-route-preview-kicker">Recommendation ready</p>
-          <h1>{session.selectedColor.toUpperCase()} route highlighted</h1>
-          <p>
-            Review the highlighted same-colour holds first. If needed, switch into edit mode,
-            tap holds to add or remove them, and the guided route will follow your edited line.
-          </p>
+    <div className="assist-route-page assist-route-builder-page">
+      <div className="assist-route-builder-card assist-stable-card">
+        <div className="assist-route-builder-canvas">
+          <RouteCanvas
+            wallMap={scan.wallMap}
+            backgroundImageUrl={scan.coverImageUrl}
+            plainImagePreview
+            fitContainer
+            highlightHoldIds={displayRoute.holdIds}
+            currentHoldId={displayRoute.holds[0]?.id}
+            selectedHoldId={selectedEditableHoldId ?? undefined}
+            selectedHoldColor={session.selectedColor}
+            onHoldSelect={editMode ? handleEditableHoldToggle : undefined}
+            routeOverlays={routeOverlays}
+            helperText={editMode ? t('Tap same-colour holds to add or remove them from the selected route.') : undefined}
+          />
         </div>
 
-        <RouteCanvas
-          wallMap={scan.wallMap}
-          backgroundImageUrl={scan.coverImageUrl}
-          plainImagePreview
-          highlightHoldIds={displayRoute.holdIds}
-          currentHoldId={displayRoute.holds[0]?.id}
-          selectedHoldId={selectedEditableHoldId ?? undefined}
-          onHoldSelect={editMode ? handleEditableHoldToggle : undefined}
-          routeOverlays={routeOverlays}
-          helperText={
-            editMode
-              ? 'Edit mode is active. Tap same-colour holds to add or remove them. The highlighted line updates immediately and live guidance will follow the edited route.'
-              : 'Stable preview of the original wall image with detected hold overlays. Highlighted boxes and the route line belong to the selected same-colour route.'
-          }
-        />
-      </div>
+        <aside className="assist-route-builder-panel">
+          <div className="stack-sm">
+            <strong>{t('Companion final route check')}</strong>
+            <p className="subtle-text">
+              {editMode
+                ? t('Tap same-colour holds on the photo. The connected route updates immediately.')
+                : t('Check the highlighted route with the climber. Use route correction if any hold is missing, then confirm to start guidance.')}
+            </p>
+          </div>
 
-      <Card
-        title={`Recommended ${session.selectedColor.toUpperCase()} route`}
-        className="assist-recommendation-card assist-stable-card"
-        bodyClassName="stack-md"
-      >
-        <p>{displayRoute.summary}</p>
-
-        <div className="inline-actions wrap">
-          <Button variant={editMode ? 'primary' : 'secondary'} onClick={() => setEditMode((value) => !value)}>
-            {editMode ? 'Finish route editing' : 'Edit highlighted route'}
-          </Button>
-          <Button variant="secondary" onClick={handleResetEdits} disabled={!hasCustomEdits && !editMode}>
-            Reset to system route
-          </Button>
-        </div>
-
-        <p className="subtle-text">
-          Same-colour holds selected: {customHoldIds.length} / {sameColorHoldCount}.
-          {' '}
-          {hasCustomEdits ? 'Your edited route preview is active.' : 'You are still viewing the system route.'}
-        </p>
-
-        {displayRoute.semantics ? (
-          <div className="assist-route-summary">
+          <div className="assist-route-summary assist-route-builder-summary">
+            <strong>{describeRoutePlan(displayRoute, language, session.selectedColor)}</strong>
             <div className="assist-route-insight-grid">
-              <span className="assist-route-insight-pill">Start: {displayRoute.semantics.startLabel}</span>
-              <span className="assist-route-insight-pill">Finish: {displayRoute.semantics.finishLabel}</span>
-              <span className="assist-route-insight-pill">Reachability: {displayRoute.semantics.reachabilityScore}%</span>
-              <span className="assist-route-insight-pill">Stability: {displayRoute.semantics.stabilityScore}%</span>
-              <span
-                className={`assist-route-insight-pill ${displayRoute.semantics.reviewState === 'review-recommended' ? 'is-review' : 'is-approved'}`}
-              >
-                {displayRoute.semantics.reviewState === 'review-recommended' ? 'Setter review recommended' : 'Semantic checks passed'}
+              <span className="assist-route-insight-pill">{selectedColorLabel}</span>
+              <span className="assist-route-insight-pill">{t(session.difficulty)}</span>
+              <span className="assist-route-insight-pill">
+                {displayRoute.holds.length} / {sameColorHoldCount} {t('same-colour holds in route')}
               </span>
             </div>
-            <p className="subtle-text">{displayRoute.semantics.reviewSummary}</p>
-            <p className="subtle-text">
-              Planner {displayRoute.semantics.plannerVersion}.
-              {' '}
-              {displayRoute.semantics.feedbackReady ? 'Setter feedback hooks are attached to this route plan.' : 'Feedback hooks unavailable.'}
-            </p>
-            {displayRoute.semantics.setterNotes.length ? (
-              <ul className="assist-route-note-list">
-                {displayRoute.semantics.setterNotes.slice(0, 4).map((note) => (
-                  <li key={note}>{note}</li>
-                ))}
-              </ul>
-            ) : null}
-            {displayRoute.semantics.reviewHints.length ? (
-              <ul className="assist-route-note-list assist-route-note-list-alert">
-                {displayRoute.semantics.reviewHints.slice(0, 3).map((note) => (
-                  <li key={note}>{note}</li>
-                ))}
-              </ul>
-            ) : null}
           </div>
-        ) : null}
 
-        {scan.wallMap.analysis ? (
-          <p className="subtle-text">
-            Provider: {scan.wallMap.analysis.provider}. This route only appears because the scan
-            cleared the confidence gate.
-          </p>
-        ) : null}
+          {displayRoute.semantics ? (
+            <div className="assist-route-summary assist-route-builder-summary">
+              <div className="assist-route-insight-grid">
+                <span className="assist-route-insight-pill">{t('Start:')} {formatRouteStartType(displayRoute.semantics.startType, language)}</span>
+                <span className="assist-route-insight-pill">{t('Finish:')} {formatRouteFinishType(displayRoute.semantics.finishType, language)}</span>
+                <span
+                  className={`assist-route-insight-pill ${displayRoute.semantics.reviewState === 'review-recommended' ? 'is-review' : 'is-approved'}`}
+                >
+                  {formatReviewState(displayRoute.semantics.reviewState, language)}
+                </span>
+              </div>
+            </div>
+          ) : null}
 
-        <div className="stats-grid">
-          <div>
-            <strong>{session.difficulty}</strong>
-            <span>Guidance level</span>
+          {actionError ? <p className="subtle-text" role="alert">{localizeAssistText(actionError, language)}</p> : null}
+
+          <div className="assist-route-builder-actions">
+            <Button
+              type="button"
+              variant={editMode ? 'primary' : 'secondary'}
+              onClick={() => setEditMode((value) => !value)}
+            >
+              {editMode ? t('Finish route correction') : t('Correct route')}
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handleResetEdits}
+              disabled={!hasCustomEdits && !editMode}
+            >
+              {t('Reset route')}
+            </Button>
+            <Button onClick={() => void handleStartGuidance()} disabled={!routeIsReady}>
+              {t('Confirm and start guidance')}
+            </Button>
           </div>
-          <div>
-            <strong>{displayRoute.holds.length}</strong>
-            <span>Route holds</span>
-          </div>
-          <div>
-            <strong>{displayRoute.estimatedMoves}</strong>
-            <span>Estimated moves</span>
-          </div>
-        </div>
-
-        <ol className="numbered-list">
-          <li>Verify that the highlighted line matches the intended route.</li>
-          <li>If needed, enable edit mode and tap same-colour holds to add or remove them.</li>
-          <li>Start live guidance only after the edited route looks right.</li>
-        </ol>
-
-        {actionError ? <p className="subtle-text">{actionError}</p> : null}
-
-        <div className="inline-actions wrap">
-          <Button onClick={() => void handleStartGuidance()} disabled={!routeIsReady}>
-            Start live guidance
-          </Button>
-          <Button variant="secondary" onClick={() => navigate(routes.selectDifficulty)}>
-            Adjust route settings
-          </Button>
-        </div>
-      </Card>
+        </aside>
+      </div>
     </div>
   );
 }

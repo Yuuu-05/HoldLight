@@ -1,7 +1,26 @@
 const express = require('express');
 const { getVisionProvider, runVisionInference, runVisionCalibration } = require('../services/visionProvider');
+const auth = require('../middleware/auth');
+const { buildRateLimiterFromEnv } = require('../middleware/rateLimit');
 
 const router = express.Router();
+const getActorKey = (req) => req.user?.id || req.ip || 'anonymous';
+const visionInferenceLimiter = buildRateLimiterFromEnv({
+  envPrefix: 'VISION_RATE_LIMIT',
+  defaultWindowMs: 60_000,
+  defaultMaxRequests: 10,
+  keyPrefix: 'vision-infer',
+  keyFn: getActorKey,
+  message: 'Too many wall scans are running right now. Please wait a moment and try again.',
+});
+const visionCalibrationLimiter = buildRateLimiterFromEnv({
+  envPrefix: 'CALIBRATION_RATE_LIMIT',
+  defaultWindowMs: 60_000,
+  defaultMaxRequests: 45,
+  keyPrefix: 'vision-calibration',
+  keyFn: getActorKey,
+  message: 'Wall alignment is being refreshed too often. Please hold the camera steady and try again.',
+});
 
 function validateRequest(body) {
   if (!body || typeof body.imageDataUrl !== 'string' || !body.imageDataUrl.startsWith('data:image/')) {
@@ -73,18 +92,21 @@ async function handleCalibration(req, res) {
   }
 }
 
-router.get('/health', (_req, res) => {
+router.get('/health', async (req, res) => {
   try {
     const provider = getVisionProvider();
-    return res.json({ success: true, provider: provider.name, status: 'ok' });
+    const result = await provider.health({
+      warm: ['1', 'true', 'yes', 'on'].includes(String(req.query.warm ?? '').trim().toLowerCase()),
+    });
+    return res.json({ success: true, result });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }
 });
 
-router.post('/infer/holds', async (req, res) => handleInference(req, res, 'holds'));
-router.post('/infer/routes', async (req, res) => handleInference(req, res, 'routes'));
-router.post('/infer/full', async (req, res) => handleInference(req, res, 'full'));
-router.post('/calibrate/planar', handleCalibration);
+router.post('/infer/holds', auth, visionInferenceLimiter, async (req, res) => handleInference(req, res, 'holds'));
+router.post('/infer/routes', auth, visionInferenceLimiter, async (req, res) => handleInference(req, res, 'routes'));
+router.post('/infer/full', auth, visionInferenceLimiter, async (req, res) => handleInference(req, res, 'full'));
+router.post('/calibrate/planar', auth, visionCalibrationLimiter, handleCalibration);
 
 module.exports = router;

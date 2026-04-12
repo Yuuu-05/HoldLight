@@ -1,5 +1,7 @@
-import type { MouseEvent } from 'react';
+import { useEffect, useRef, useState, type MouseEvent } from 'react';
+import { useLanguage } from '../../../app/providers/LanguageProvider';
 import type { Hold, WallMap } from '../../../shared/types/climb';
+import { formatHoldColor } from '../utils/localizedAssistText';
 
 interface RouteOverlay {
   id: string;
@@ -13,13 +15,16 @@ interface RouteCanvasProps {
   wallMap?: WallMap;
   backgroundImageUrl?: string;
   plainImagePreview?: boolean;
+  fitContainer?: boolean;
   highlightHoldIds?: string[];
   completedHoldIds?: string[];
   currentHoldId?: string;
   selectedHoldId?: string;
+  selectedHoldColor?: string;
   showDetectionLabels?: boolean;
   onHoldSelect?: (hold: Hold) => void;
   onCanvasSelect?: (position: { xPct: number; yPct: number }) => void;
+  onRouteSelect?: (routeId: string) => void;
   helperText?: string;
   routeOverlays?: RouteOverlay[];
 }
@@ -42,16 +47,76 @@ export default function RouteCanvas({
   wallMap,
   backgroundImageUrl,
   plainImagePreview = false,
+  fitContainer = false,
   highlightHoldIds = [],
   completedHoldIds = [],
   currentHoldId,
   selectedHoldId,
+  selectedHoldColor,
   showDetectionLabels = true,
   onHoldSelect,
   onCanvasSelect,
+  onRouteSelect,
   helperText,
   routeOverlays = [],
 }: RouteCanvasProps) {
+  const { language, t } = useLanguage();
+  const fitContainerRef = useRef<HTMLDivElement>(null);
+  const [fitSize, setFitSize] = useState<{ width: number; height: number } | null>(null);
+  const wallWidth = Math.max(1, wallMap?.width ?? 1);
+  const wallHeight = Math.max(1, wallMap?.height ?? 1);
+  const aspectRatio = `${wallWidth} / ${wallHeight}`;
+  const aspectRatioValue = wallWidth / wallHeight;
+  const useStableOverlayPreview = plainImagePreview && Boolean(backgroundImageUrl);
+
+  useEffect(() => {
+    if (!fitContainer) {
+      setFitSize(null);
+      return undefined;
+    }
+
+    const wrapper = fitContainerRef.current;
+    if (!wrapper) return undefined;
+
+    const updateFitSize = () => {
+      const rect = wrapper.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) return;
+
+      const availableRatio = rect.width / rect.height;
+      const nextSize = availableRatio > aspectRatioValue
+        ? {
+            width: rect.height * aspectRatioValue,
+            height: rect.height,
+          }
+        : {
+            width: rect.width,
+            height: rect.width / aspectRatioValue,
+          };
+
+      setFitSize((current) => {
+        if (
+          current &&
+          Math.abs(current.width - nextSize.width) < 0.5 &&
+          Math.abs(current.height - nextSize.height) < 0.5
+        ) {
+          return current;
+        }
+        return nextSize;
+      });
+    };
+
+    updateFitSize();
+
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', updateFitSize);
+      return () => window.removeEventListener('resize', updateFitSize);
+    }
+
+    const observer = new ResizeObserver(updateFitSize);
+    observer.observe(wrapper);
+    return () => observer.disconnect();
+  }, [aspectRatioValue, fitContainer]);
+
   if (!wallMap) {
     return (
       <div className="route-canvas">
@@ -113,15 +178,14 @@ export default function RouteCanvas({
     });
   }
 
-  const aspectRatio = `${Math.max(1, wallMap.width)} / ${Math.max(1, wallMap.height)}`;
-  const useStableOverlayPreview = plainImagePreview && Boolean(backgroundImageUrl);
-
   const containerClassName = [
     'route-canvas',
     'assist-route-canvas',
     useStableOverlayPreview ? 'assist-route-canvas-preview' : '',
+    fitContainer ? 'is-fit-container' : '',
     backgroundImageUrl ? 'has-image' : 'is-empty',
     onCanvasSelect ? 'is-clickable' : '',
+    onRouteSelect ? 'is-route-selectable' : '',
   ]
     .filter(Boolean)
     .join(' ');
@@ -129,20 +193,41 @@ export default function RouteCanvas({
   const containerStyle = useStableOverlayPreview
     ? {
         position: 'relative' as const,
-        width: '100%',
+        width: fitContainer ? (fitSize ? `${fitSize.width}px` : '100%') : '100%',
+        height: fitContainer && fitSize ? `${fitSize.height}px` : undefined,
+        maxWidth: fitContainer ? '100%' : undefined,
+        maxHeight: fitContainer ? '100%' : undefined,
+        justifySelf: fitContainer ? 'center' : undefined,
+        alignSelf: fitContainer ? 'center' : undefined,
         aspectRatio,
-        minHeight: '340px',
+        minHeight: fitContainer ? 0 : 'var(--assist-route-canvas-min-height, 340px)',
         contain: 'paint' as const,
         isolation: 'isolate' as const,
         overflow: 'hidden' as const,
       }
     : {
+        width: fitContainer ? (fitSize ? `${fitSize.width}px` : '100%') : undefined,
+        height: fitContainer && fitSize ? `${fitSize.height}px` : undefined,
+        maxWidth: fitContainer ? '100%' : undefined,
+        maxHeight: fitContainer ? '100%' : undefined,
+        justifySelf: fitContainer ? 'center' : undefined,
+        alignSelf: fitContainer ? 'center' : undefined,
         aspectRatio,
-        minHeight: '340px',
+        minHeight: fitContainer ? 0 : 'var(--assist-route-canvas-min-height, 340px)',
       };
 
   return (
-    <div className="stack-sm">
+    <div
+      ref={fitContainerRef}
+      className="stack-sm"
+      style={fitContainer ? {
+        display: 'grid',
+        placeItems: 'center',
+        width: '100%',
+        height: '100%',
+        minHeight: 0,
+      } : undefined}
+    >
       <div
         className={containerClassName}
         onClick={onCanvasSelect ? handleCanvasClick : undefined}
@@ -151,13 +236,13 @@ export default function RouteCanvas({
         {backgroundImageUrl ? (
           <img
             src={backgroundImageUrl}
-            alt="Detected climbing wall"
+            alt={t('Detected climbing wall')}
             decoding="async"
             loading="eager"
             draggable={false}
             style={{
-              position: useStableOverlayPreview ? 'relative' : 'absolute',
-              inset: useStableOverlayPreview ? undefined : 0,
+              position: 'absolute',
+              inset: 0,
               zIndex: 0,
               display: 'block',
               width: '100%',
@@ -187,6 +272,7 @@ export default function RouteCanvas({
             viewBox="0 0 100 100"
             preserveAspectRatio="none"
             aria-hidden="true"
+            style={{ pointerEvents: onRouteSelect ? 'auto' : 'none' }}
           >
             {visibleRouteOverlays.map((overlay) => {
               const points = overlay.points
@@ -217,6 +303,22 @@ export default function RouteCanvas({
                     strokeDasharray={isPrimary ? undefined : '1.2 1.6'}
                     opacity={isPrimary ? 0.96 : 0.72}
                   />
+                  {onRouteSelect ? (
+                    <polyline
+                      className="assist-route-path-hit"
+                      points={points}
+                      fill="none"
+                      stroke="transparent"
+                      strokeWidth={isPrimary ? 5.2 : 4.2}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      pointerEvents="stroke"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onRouteSelect(overlay.id);
+                      }}
+                    />
+                  ) : null}
                   <circle
                     cx={start.xPct}
                     cy={start.yPct}
@@ -261,9 +363,12 @@ export default function RouteCanvas({
           const boxWidthPct = hasBox ? Math.max(0.8, hold.x2Pct! - hold.x1Pct!) : 0;
           const boxHeightPct = hasBox ? Math.max(0.8, hold.y2Pct! - hold.y1Pct!) : 0;
           const holdColor = colorMap[hold.color] || colorMap.unknown;
+          const selectedColor = selectedHoldColor
+            ? colorMap[selectedHoldColor] || selectedHoldColor
+            : '#ff4638';
 
           const borderColor = isSelected
-            ? '#ff4638'
+            ? selectedColor
             : isHighlighted
               ? holdColor
               : backgroundImageUrl
@@ -274,8 +379,11 @@ export default function RouteCanvas({
             backgroundImageUrl && hasBox && showDetectionLabels && !useStableOverlayPreview,
           );
 
-          const holdTitle = `${hold.label} (${hold.color})`;
-          const holdLabel = `${hold.label}, ${hold.color}, ${Math.round(hold.confidence * 100)} percent confidence`;
+          const colorLabel = formatHoldColor(hold.color, language);
+          const holdTitle = language === 'zh' ? `${hold.label}（${colorLabel}）` : `${hold.label} (${hold.color})`;
+          const holdLabel = language === 'zh'
+            ? `${hold.label}，${colorLabel}，置信度 ${Math.round(hold.confidence * 100)}%`
+            : `${hold.label}, ${hold.color}, ${Math.round(hold.confidence * 100)} percent confidence`;
 
           const holdStyle = {
             position: 'absolute' as const,
@@ -292,12 +400,14 @@ export default function RouteCanvas({
             borderRadius: hasBox ? '14px' : '999px',
             border: `${hasBox || isHighlighted || isSelected ? 3 : 1.5}px solid ${borderColor}`,
             background: hasBox
-              ? isHighlighted
+              ? isSelected
+                ? `${selectedColor}30`
+                : isHighlighted
                 ? `${holdColor}20`
                 : 'transparent'
               : holdColor,
             boxShadow: isSelected
-              ? '0 0 0 6px rgba(255, 70, 56, 0.2)'
+              ? `0 0 0 6px ${selectedColor}33, 0 0 0 10px rgba(255, 255, 255, 0.62)`
               : isCompleted
                 ? '0 0 0 4px rgba(34, 197, 94, 0.25)'
                 : isCurrent
@@ -333,7 +443,7 @@ export default function RouteCanvas({
                 boxShadow: '0 8px 18px rgba(15, 23, 42, 0.12)',
               }}
             >
-              {hold.color} {Math.round(hold.confidence * 100)}%
+              {colorLabel} {Math.round(hold.confidence * 100)}%
             </div>
           ) : null;
 
@@ -364,12 +474,7 @@ export default function RouteCanvas({
         })}
       </div>
 
-      <p className="subtle-text">
-        {helperText ||
-          (backgroundImageUrl
-            ? `Detection overlay view. ${wallMap.holds.length} holds are drawn on top of the original scan image.`
-            : `Detected holds: ${wallMap.holds.length}. Highlighted nodes show the selected route. The bright ring marks the current target.`)}
-      </p>
+      {helperText ? <span className="sr-only">{helperText}</span> : null}
     </div>
   );
 }

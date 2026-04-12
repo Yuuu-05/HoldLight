@@ -1,16 +1,12 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { saveClimbScanApi } from '../../../shared/api/climbing.api';
 import { runVisionFullApi } from '../../../shared/api/vision.api';
 import type { ClimbScan } from '../../../shared/types/climb';
 import type { ScanProgress } from '../types';
-import { buildScanPayload, buildScanPayloadFromWallMap } from '../services/scan.service';
-
-function delay(ms: number) {
-  return new Promise((resolve) => window.setTimeout(resolve, ms));
-}
+import { buildScanPayloadFromWallMap } from '../services/scan.service';
 
 interface StartScanOptions {
-  source?: 'camera' | 'demo';
+  source?: 'camera';
   gymName?: string;
   videoElement?: HTMLVideoElement | null;
   imageElement?: HTMLImageElement | null;
@@ -106,8 +102,36 @@ export function useScanSession() {
   });
   const [latestScan, setLatestScan] = useState<ClimbScan | null>(null);
 
+  useEffect(() => {
+    if (scanProgress.status !== 'scanning' && scanProgress.status !== 'saving') {
+      return undefined;
+    }
+
+    const step = scanProgress.status === 'scanning' ? 2 : 1;
+    const timer = window.setInterval(() => {
+      setScanProgress((current) => {
+        if (current.status !== 'scanning' && current.status !== 'saving') {
+          return current;
+        }
+
+        const nextCeiling = current.status === 'scanning' ? 82 : 96;
+        const nextStep = current.status === 'scanning' ? step : 1;
+        if (current.progress >= nextCeiling) {
+          return current;
+        }
+
+        return {
+          ...current,
+          progress: Math.min(nextCeiling, current.progress + nextStep),
+        };
+      });
+    }, scanProgress.status === 'scanning' ? 650 : 500);
+
+    return () => window.clearInterval(timer);
+  }, [scanProgress.status]);
+
   const startScan = useCallback(async ({
-    source = 'demo',
+    source = 'camera',
     gymName,
     videoElement,
     imageElement,
@@ -117,32 +141,7 @@ export function useScanSession() {
     try {
       let payload;
 
-      if (source === 'camera') {
-        if (!videoElement) {
-          throw new Error('The live camera preview is not ready yet.');
-        }
-
-        setScanProgress({ status: 'scanning', progress: 8, message: 'Capturing a calm wall frame from the live camera.', error: null });
-        const inferenceImage = captureElementPreview(videoElement, { maxDimension: 1280, quality: 0.84 });
-        const previewImage = captureElementPreview(videoElement, {
-          maxDimension: 640,
-          quality: 0.58,
-          maxDataUrlLength: 190_000,
-        });
-        if (!inferenceImage || !previewImage) {
-          throw new Error('The live camera frame could not be captured yet.');
-        }
-        setScanProgress({ status: 'scanning', progress: 38, message: 'Handing the frame over to route recognition.', error: null });
-        const result = await runVisionFullApi({
-          imageDataUrl: inferenceImage,
-          source: 'camera',
-          gymName,
-          filename: 'camera-capture.jpg',
-        });
-        const wallMap = result.wallMap;
-        setScanProgress({ status: 'saving', progress: 86, message: 'Saving the scanned wall map for the next step.', error: null });
-        payload = buildScanPayloadFromWallMap(wallMap, gymName, previewImage);
-      } else if (uploadType === 'image') {
+      if (uploadType === 'image') {
         if (!imageElement) {
           throw new Error('The uploaded image preview is not ready yet.');
         }
@@ -192,11 +191,33 @@ export function useScanSession() {
         const wallMap = result.wallMap;
         setScanProgress({ status: 'saving', progress: 86, message: 'Saving the uploaded wall map.', error: null });
         payload = buildScanPayloadFromWallMap(wallMap, gymName, previewImage);
+      } else if (source === 'camera') {
+        if (!videoElement) {
+          throw new Error('The live camera preview is not ready yet.');
+        }
+
+        setScanProgress({ status: 'scanning', progress: 8, message: 'Capturing a calm wall frame from the live camera.', error: null });
+        const inferenceImage = captureElementPreview(videoElement, { maxDimension: 1280, quality: 0.84 });
+        const previewImage = captureElementPreview(videoElement, {
+          maxDimension: 640,
+          quality: 0.58,
+          maxDataUrlLength: 190_000,
+        });
+        if (!inferenceImage || !previewImage) {
+          throw new Error('The live camera frame could not be captured yet.');
+        }
+        setScanProgress({ status: 'scanning', progress: 38, message: 'Handing the frame over to route recognition.', error: null });
+        const result = await runVisionFullApi({
+          imageDataUrl: inferenceImage,
+          source: 'camera',
+          gymName,
+          filename: 'camera-capture.jpg',
+        });
+        const wallMap = result.wallMap;
+        setScanProgress({ status: 'saving', progress: 86, message: 'Saving the scanned wall map for the next step.', error: null });
+        payload = buildScanPayloadFromWallMap(wallMap, gymName, previewImage);
       } else {
-        setScanProgress({ status: 'scanning', progress: 10, message: 'Loading the demo wall map.', error: null });
-        await delay(200);
-        setScanProgress({ status: 'saving', progress: 82, message: 'Saving the demo wall map.', error: null });
-        payload = buildScanPayload(source, gymName);
+        throw new Error('Choose a live camera scan or upload a wall image or video to continue.');
       }
 
       const scan = await saveClimbScanApi(payload);

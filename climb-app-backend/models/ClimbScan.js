@@ -23,7 +23,7 @@ const wallMapSchema = new mongoose.Schema(
   {
     id: { type: String, required: true },
     name: { type: String, required: true },
-    source: { type: String, enum: ['camera', 'demo', 'upload'], default: 'camera' },
+    source: { type: String, enum: ['camera', 'upload'], default: 'camera' },
     width: { type: Number, required: true },
     height: { type: Number, required: true },
     colors: [{ type: String, required: true }],

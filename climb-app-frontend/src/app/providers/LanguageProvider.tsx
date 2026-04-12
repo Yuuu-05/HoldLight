@@ -14,9 +14,9 @@ const LANGUAGE_STORAGE_KEY = 'climbAppLanguage';
 const LanguageContext = createContext<LanguageContextValue | undefined>(undefined);
 
 function getInitialLanguage(): Language {
-  if (typeof window === 'undefined') return 'en';
+  if (typeof window === 'undefined') return 'zh';
   const stored = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
-  return stored === 'zh' || stored === 'en' ? stored : 'en';
+  return stored === 'zh' || stored === 'en' ? stored : 'zh';
 }
 
 export default function LanguageProvider({ children }: { children: React.ReactNode }) {

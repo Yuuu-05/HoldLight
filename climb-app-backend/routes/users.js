@@ -29,7 +29,7 @@ function buildUserPreferences(user) {
   const onboarding = preferences.onboarding ?? {};
 
   return {
-    language: preferences.language || 'en',
+    language: preferences.language || 'zh',
     accessibility: {
       ...defaultAccessibilityPreferences,
       ...(preferences.accessibility ?? {}),

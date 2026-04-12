@@ -1,4 +1,5 @@
 import Button from '../../../shared/components/ui/Button';
+import { useLanguage } from '../../../app/providers/LanguageProvider';
 
 interface VoiceCuePanelProps {
   cue: string;
@@ -23,30 +24,32 @@ export default function VoiceCuePanel({
   onRecalibrate,
   isSpeaking = false,
 }: VoiceCuePanelProps) {
+  const { t } = useLanguage();
+
   return (
     <section
       className={`stack voice-cue-panel assist-live-controls ${isSpeaking ? 'is-speaking' : ''}`.trim()}
       role="group"
-      aria-label="Live guidance controls"
+      aria-label={t('Live guidance controls')}
     >
       <div className="assist-live-controls-meta">
-        {progressLabel ? <span className="badge voice-cue-pill">Current cue {progressLabel}</span> : null}
+        {progressLabel ? <span className="badge voice-cue-pill">{t('Current cue')} {progressLabel}</span> : null}
         <span className={`assist-live-voice-state ${isSpeaking ? 'is-speaking' : ''}`.trim()}>
-          {isSpeaking ? 'Voice is guiding now' : 'Voice ready'}
+          {isSpeaking ? t('Voice is guiding now') : t('Voice ready')}
         </span>
       </div>
       <p className="subtle-text assist-live-controls-copy">{cue}</p>
       <div className="inline-actions wrap voice-cue-actions assist-live-utility-actions">
         <Button variant="secondary" onClick={onSpeak}>
-          {isSpeaking ? 'Speak again' : 'Speak cue'}
+          {isSpeaking ? t('Speak again') : t('Speak cue')}
         </Button>
-        <Button variant="ghost" onClick={onRepeat}>Repeat</Button>
-        {onAdvance ? <Button variant="ghost" onClick={onAdvance}>Reached hold</Button> : null}
-        {onRecalibrate ? <Button variant="secondary" onClick={onRecalibrate}>Need recalibration</Button> : null}
+        <Button variant="ghost" onClick={onRepeat}>{t('Repeat')}</Button>
+        {onAdvance ? <Button variant="ghost" onClick={onAdvance}>{t('Reached hold')}</Button> : null}
+        {onRecalibrate ? <Button variant="secondary" onClick={onRecalibrate}>{t('Need recalibration')}</Button> : null}
       </div>
       <div className="assist-live-primary-actions">
-        {onNext ? <Button className="assist-live-primary-button" onClick={onNext}>Next</Button> : null}
-        {onFinish ? <Button variant="danger" className="assist-live-primary-button" onClick={onFinish}>End</Button> : null}
+        {onNext ? <Button className="assist-live-primary-button" onClick={onNext}>{t('Next')}</Button> : null}
+        {onFinish ? <Button variant="danger" className="assist-live-primary-button" onClick={onFinish}>{t('End')}</Button> : null}
       </div>
     </section>
   );

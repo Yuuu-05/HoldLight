@@ -92,12 +92,20 @@ export interface WallAnalysis {
   routeCandidates: RouteCandidate[];
   detectionSummary: VisionDetectionSummary;
   modelNotes: string[];
+  manualReview?: WallManualReview;
+}
+
+export interface WallManualReview {
+  holdColorsReviewed: boolean;
+  reviewedAt: string;
+  colorCorrectionCount: number;
+  reviewer: 'companion';
 }
 
 export interface WallMap {
   id: string;
   name: string;
-  source: 'camera' | 'demo' | 'upload';
+  source: 'camera' | 'upload';
   width: number;
   height: number;
   colors: HoldColor[];
@@ -135,7 +143,7 @@ export interface ClimbSessionSummary {
   totalHolds: number;
   cueCount: number;
   recalibrationCount: number;
-  source: 'camera' | 'demo' | 'upload';
+  source: 'camera' | 'upload';
 }
 
 export interface ClimbSession {

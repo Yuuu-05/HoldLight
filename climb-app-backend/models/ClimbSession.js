@@ -74,7 +74,11 @@ const climbSessionSchema = new mongoose.Schema(
       totalHolds: { type: Number, default: 0 },
       cueCount: { type: Number, default: 0 },
       recalibrationCount: { type: Number, default: 0 },
-      source: { type: String, default: 'demo' },
+      source: {
+        type: String,
+        enum: ['camera', 'upload'],
+        default: 'camera',
+      },
     },
   },
   {

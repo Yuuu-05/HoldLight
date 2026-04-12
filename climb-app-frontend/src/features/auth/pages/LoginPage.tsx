@@ -19,15 +19,11 @@ export default function LoginPage() {
       <div className="page-card stack-md">
         <div className="stack-sm">
           <h1>{t('Login')}</h1>
-          <p>{t('Sign in to continue your climbing sessions, scans, and route guidance.')}</p>
         </div>
 
         {showDevShortcut ? (
           <div className="page-card stack-sm">
             <h2>{t('Development shortcut')}</h2>
-            <p>
-              {t('Backend login is not required in development mode. Use a temporary dev account to view protected pages.')}
-            </p>
             <div className="stack-sm">
               {roleOptions.map((role) => (
                 <Button

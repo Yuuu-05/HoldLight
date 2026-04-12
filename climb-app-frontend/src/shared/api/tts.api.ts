@@ -1,4 +1,5 @@
 import { env } from '../../app/config/env';
+import { readStorage, storageKeys } from '../lib/storage';
 
 export type NaturalSpeechLanguage = 'ZH' | 'EN';
 
@@ -7,6 +8,15 @@ const WARMUP_TIMEOUT_MS = 45000;
 
 function buildUrl(path: string) {
   return `${env.apiBaseUrl.replace(/\/$/, '')}${path}`;
+}
+
+function buildAuthHeaders(baseHeaders: HeadersInit = {}) {
+  const headers = new Headers(baseHeaders);
+  const token = readStorage<string | null>(storageKeys.token, null);
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+  return headers;
 }
 
 function createTimeoutSignal(timeoutMs: number, externalSignal?: AbortSignal) {
@@ -50,10 +60,10 @@ export async function fetchNaturalSpeechAudio(payload: {
   try {
     const response = await fetch(buildUrl('/tts/speak'), {
       method: 'POST',
-      headers: {
+      headers: buildAuthHeaders({
         Accept: 'audio/wav',
         'Content-Type': 'application/json',
-      },
+      }),
       body: JSON.stringify({
         text: payload.text,
         language: payload.language,
@@ -84,9 +94,9 @@ export async function warmNaturalSpeechVoice(language: NaturalSpeechLanguage) {
   try {
     const response = await fetch(buildUrl(`/tts/health?warm=1&language=${encodeURIComponent(language)}`), {
       method: 'GET',
-      headers: {
+      headers: buildAuthHeaders({
         Accept: 'application/json',
-      },
+      }),
       signal: timeout.signal,
     });
 

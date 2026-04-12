@@ -1,9 +1,13 @@
 const path = require('path');
+const readline = require('readline');
+const { randomUUID } = require('crypto');
 const { spawn } = require('child_process');
 const { resolvePythonCommand } = require('./pythonRuntime');
 
 const PYTHON_COMMAND = resolvePythonCommand('VISION_PYTHON_COMMAND', ['.venv', '.venv-1']);
 const PROVIDER_NAME = 'xiaoxiae-detectron2-triplet';
+const VISION_SERVICE_SCRIPT = path.join(__dirname, '..', 'vision_service', 'server.py');
+const REQUEST_TIMEOUT_MS = Number.parseInt(process.env.VISION_REQUEST_TIMEOUT_MS || '120000', 10);
 
 function normalizeProviderMode(value) {
   const normalized = (value || 'xiaoxiae').trim().toLowerCase();
@@ -12,65 +16,206 @@ function normalizeProviderMode(value) {
   throw new Error(`Unsupported VISION_PROVIDER "${value}". Only "xiaoxiae" is available now.`);
 }
 
-function runPythonScript(scriptFilename, payload, providerMode) {
-  return new Promise((resolve, reject) => {
-    const scriptPath = path.join(__dirname, '..', 'vision_service', scriptFilename);
-    const child = spawn(PYTHON_COMMAND, [scriptPath], {
-      cwd: path.join(__dirname, '..'),
-      stdio: ['pipe', 'pipe', 'pipe'],
-      env: {
-        ...process.env,
-        ...(providerMode ? { VISION_PROVIDER_MODE: providerMode } : {}),
-      },
-    });
+class VisionBridge {
+  constructor() {
+    this.child = null;
+    this.stdoutReader = null;
+    this.pending = new Map();
+    this.stderrHistory = [];
+    this.lastError = '';
+    this.startPromise = null;
+  }
 
-    let stdout = '';
-    let stderr = '';
+  async infer(payload) {
+    return this.request('infer', payload);
+  }
 
-    child.stdout.on('data', (chunk) => {
-      stdout += chunk.toString();
-    });
+  async calibrate(payload) {
+    return this.request('calibrate', payload);
+  }
 
-    child.stderr.on('data', (chunk) => {
-      stderr += chunk.toString();
-    });
+  async warmUp() {
+    return this.health({ warm: true });
+  }
 
-    child.on('error', (error) => {
-      reject(error);
-    });
+  async health({ warm = false } = {}) {
+    if (!this.child && !warm) {
+      return {
+        provider: PROVIDER_NAME,
+        status: 'idle',
+        ready: false,
+        modelLoaded: false,
+        processActive: false,
+        pythonCommand: PYTHON_COMMAND,
+        lastError: this.lastError,
+      };
+    }
 
-    child.on('close', (code) => {
-      if (code !== 0) {
-        reject(new Error(stderr.trim() || `Vision provider exited with code ${code}`));
-        return;
-      }
+    const response = await this.request('health', { warm });
+    return {
+      provider: response.provider || PROVIDER_NAME,
+      status: response.ready ? 'ready' : 'starting',
+      ready: Boolean(response.ready),
+      modelLoaded: Boolean(response.modelLoaded),
+      processActive: Boolean(this.child),
+      pythonCommand: PYTHON_COMMAND,
+      runtime: response.runtime,
+      lastError: this.lastError,
+    };
+  }
+
+  async request(action, payload) {
+    const child = await this.ensureChild();
+    return new Promise((resolve, reject) => {
+      const id = randomUUID();
+      const timeoutHandle = setTimeout(() => {
+        this.pending.delete(id);
+        reject(new Error(`Vision request timed out after ${REQUEST_TIMEOUT_MS}ms.`));
+      }, REQUEST_TIMEOUT_MS);
+
+      this.pending.set(id, {
+        resolve: (value) => {
+          clearTimeout(timeoutHandle);
+          resolve(value);
+        },
+        reject: (error) => {
+          clearTimeout(timeoutHandle);
+          reject(error);
+        },
+      });
 
       try {
-        const parsed = JSON.parse(stdout);
-        if (!parsed.success) {
-          reject(new Error(parsed.message || 'Vision inference failed.'));
-          return;
-        }
-        resolve(parsed.result);
+        child.stdin.write(`${JSON.stringify({ id, action, ...payload })}\n`);
       } catch (error) {
-        reject(new Error(`Vision provider returned invalid JSON. ${error.message}`));
+        this.pending.delete(id);
+        clearTimeout(timeoutHandle);
+        reject(error);
       }
     });
+  }
 
-    child.stdin.write(JSON.stringify(payload));
-    child.stdin.end();
-  });
+  async ensureChild() {
+    if (this.child && !this.child.killed) {
+      return this.child;
+    }
+
+    if (this.startPromise) {
+      return this.startPromise;
+    }
+
+    this.startPromise = new Promise((resolve, reject) => {
+      const child = spawn(PYTHON_COMMAND, [VISION_SERVICE_SCRIPT], {
+        cwd: path.join(__dirname, '..'),
+        stdio: ['pipe', 'pipe', 'pipe'],
+        env: {
+          ...process.env,
+          VISION_PROVIDER_MODE: normalizeProviderMode(process.env.VISION_PROVIDER || 'xiaoxiae'),
+          PYTHONIOENCODING: 'utf-8',
+        },
+      });
+
+      let settled = false;
+
+      const finalizeResolve = () => {
+        if (settled) return;
+        settled = true;
+        this.child = child;
+        this.startPromise = null;
+        resolve(child);
+      };
+
+      const finalizeReject = (error) => {
+        if (settled) return;
+        settled = true;
+        this.startPromise = null;
+        reject(error);
+      };
+
+      child.once('spawn', finalizeResolve);
+      child.once('error', (error) => {
+        this.lastError = error.message;
+        finalizeReject(error);
+      });
+
+      this.stdoutReader = readline.createInterface({ input: child.stdout });
+      this.stdoutReader.on('line', (line) => {
+        this.handleMessageLine(line);
+      });
+
+      child.stderr.on('data', (chunk) => {
+        this.captureStderr(chunk.toString());
+      });
+
+      child.on('close', (code) => {
+        const stderrSummary = this.stderrHistory.join(' ').trim();
+        const message =
+          code === 0
+            ? 'Vision service stopped.'
+            : [stderrSummary, `Vision service exited with code ${code}.`].filter(Boolean).join(' ');
+        this.lastError = message;
+        this.rejectAllPending(new Error(message));
+        this.child = null;
+        this.startPromise = null;
+        if (this.stdoutReader) {
+          this.stdoutReader.removeAllListeners();
+          this.stdoutReader.close();
+          this.stdoutReader = null;
+        }
+      });
+    });
+
+    return this.startPromise;
+  }
+
+  handleMessageLine(line) {
+    let parsed;
+    try {
+      parsed = JSON.parse(line);
+    } catch (_error) {
+      this.lastError = `Vision service returned invalid JSON: ${line}`;
+      return;
+    }
+
+    const pendingRequest = parsed?.id ? this.pending.get(parsed.id) : null;
+    if (!pendingRequest) {
+      return;
+    }
+
+    this.pending.delete(parsed.id);
+    if (!parsed.success) {
+      pendingRequest.reject(new Error(parsed.message || 'Vision request failed.'));
+      return;
+    }
+
+    pendingRequest.resolve(parsed.result);
+  }
+
+  captureStderr(chunk) {
+    const trimmed = chunk.trim();
+    if (!trimmed) return;
+    this.stderrHistory.push(trimmed);
+    while (this.stderrHistory.length > 12) {
+      this.stderrHistory.shift();
+    }
+  }
+
+  rejectAllPending(error) {
+    for (const pending of this.pending.values()) {
+      pending.reject(error);
+    }
+    this.pending.clear();
+  }
 }
 
-function runPythonInference(payload, providerMode) {
-  return runPythonScript('infer.py', payload, providerMode);
-}
+const bridge = new VisionBridge();
 
 function getVisionProvider() {
-  const providerMode = normalizeProviderMode(process.env.VISION_PROVIDER || 'xiaoxiae');
   return {
     name: PROVIDER_NAME,
-    infer: (payload) => runPythonInference(payload, providerMode),
+    infer: (payload) => bridge.infer(payload),
+    calibrate: (payload) => bridge.calibrate(payload),
+    health: (options) => bridge.health(options),
+    warmUp: () => bridge.warmUp(),
   };
 }
 
@@ -84,15 +229,22 @@ async function runVisionInference(payload) {
 }
 
 async function runVisionCalibration(payload) {
-  const result = await runPythonScript('calibrate.py', payload, null);
+  const provider = getVisionProvider();
+  const result = await provider.calibrate(payload);
   return {
-    provider: 'python-opencv-planar-calibration',
+    provider: result.provider || 'python-opencv-planar-calibration',
     ...result,
   };
+}
+
+async function warmVisionRuntime() {
+  const provider = getVisionProvider();
+  return provider.warmUp();
 }
 
 module.exports = {
   getVisionProvider,
   runVisionInference,
   runVisionCalibration,
+  warmVisionRuntime,
 };

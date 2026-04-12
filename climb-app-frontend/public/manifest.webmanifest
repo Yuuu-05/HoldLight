@@ -1,6 +1,6 @@
 {
-  "name": "Climb App",
-  "short_name": "Climb",
+  "name": "HoldLight",
+  "short_name": "HoldLight",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0f172a",

@@ -175,7 +175,7 @@ export function useLiveWallAlignment({
   const lastVideoTimeRef = useRef(-1);
   const lastSuccessAtRef = useRef(0);
 
-  const requiresReferenceAlignment = Boolean(wallMap && wallMap.source !== 'demo');
+  const requiresReferenceAlignment = Boolean(wallMap);
   const hasReferenceData = Boolean(requiresReferenceAlignment && referenceImageUrl && wallMap?.holds.length);
 
   useEffect(() => {

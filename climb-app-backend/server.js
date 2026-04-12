@@ -11,12 +11,52 @@ const climbSessionRoutes = require('./routes/climbSessions');
 const guidanceLogRoutes = require('./routes/guidanceLogs');
 const visionRoutes = require('./routes/vision');
 const ttsRoutes = require('./routes/tts');
+const { warmVisionRuntime } = require('./services/visionProvider');
+const { getTtsProvider } = require('./services/ttsProvider');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 const MONGO_URI = process.env.MONGO_URI?.trim();
+const CORS_ORIGINS = String(process.env.CORS_ORIGINS || '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+const TRUST_PROXY = String(process.env.TRUST_PROXY || '')
+  .trim()
+  .toLowerCase();
 
-app.use(cors());
+function buildCorsOptions() {
+  if (CORS_ORIGINS.length === 0) {
+    return {
+      origin: true,
+      credentials: true,
+    };
+  }
+
+  return {
+    origin(origin, callback) {
+      if (!origin || CORS_ORIGINS.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+      callback(new Error('CORS origin is not allowed.'));
+    },
+    credentials: true,
+  };
+}
+
+function isEnabled(value, fallback = false) {
+  const normalized = String(value ?? '').trim().toLowerCase();
+  if (!normalized) return fallback;
+  return ['1', 'true', 'yes', 'on'].includes(normalized);
+}
+
+if (TRUST_PROXY) {
+  app.set('trust proxy', TRUST_PROXY === 'true' ? 1 : TRUST_PROXY);
+}
+
+app.disable('x-powered-by');
+app.use(cors(buildCorsOptions()));
 app.use(express.json({ limit: process.env.BODY_LIMIT || '12mb' }));
 
 app.use('/api/auth', authRoutes);
@@ -43,6 +83,22 @@ app.get('/', (_req, res) => {
   res.send('Climb App Backend is running!');
 });
 
+async function warmProductionServices() {
+  if (isEnabled(process.env.VISION_WARM_ON_START, true)) {
+    warmVisionRuntime().then(
+      () => console.log('Vision runtime warmed successfully.'),
+      (error) => console.warn('Vision runtime warm-up failed:', error.message),
+    );
+  }
+
+  if (isEnabled(process.env.TTS_WARM_ON_START, true)) {
+    getTtsProvider().health({ warm: true, language: process.env.MELO_TTS_DEFAULT_LANGUAGE || 'ZH' }).then(
+      () => console.log('TTS runtime warmed successfully.'),
+      (error) => console.warn('TTS runtime warm-up failed:', error.message),
+    );
+  }
+}
+
 async function startServer() {
   if (!MONGO_URI) {
     throw new Error('MONGO_URI is required. The backend only runs against a real MongoDB database.');
@@ -53,6 +109,7 @@ async function startServer() {
 
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
+    void warmProductionServices();
   });
 }
 

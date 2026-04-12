@@ -16,7 +16,7 @@ const completionFieldTotal = 5;
 type ProfileActionIconKind = 'edit' | 'role' | 'guide' | 'preview';
 
 export default function ProfilePage() {
-  const { user, isProfileComplete, isUsingDevAuth, updateProfile } = useAuth();
+  const { user, isProfileComplete, updateProfile } = useAuth();
   const { t } = useLanguage();
   const [previewOpen, setPreviewOpen] = useState(false);
   const [badgeSaving, setBadgeSaving] = useState(false);
@@ -31,7 +31,6 @@ export default function ProfilePage() {
   const birthday = user.profile?.birthday ? formatDate(user.profile.birthday) : t('Not set yet');
   const lastUpdated = user.updatedAt ? formatDate(user.updatedAt) : t('Not set yet');
   const replayGuideLabel = t('View guide again');
-  const replayGuideHint = t('If you skipped the first guide or want to review the main entry points again, reopen it here.');
   const ownedBadgeIds = getOwnedBadgeIds(user, isProfileComplete);
   const visibleBadgeIds = getVisibleBadgeIds(user, isProfileComplete);
   const visibleBadges = profileBadgeCatalog.filter((badge) => visibleBadgeIds.includes(badge.id));
@@ -61,9 +60,6 @@ export default function ProfilePage() {
       : '',
   ].filter(Boolean);
   const accessibilityHeadline = accessibilitySignals[0] || t('No accessibility note yet');
-  const accessibilityDescription =
-    user.profile?.accessibilityNeeds ||
-    t('These preferences help shape read-aloud support and focus guidance.');
   const passportFacts = [
     { label: t('Birthday'), value: birthday },
     { label: t('Height (cm)'), value: user.profile?.height ? `${user.profile.height}` : t('Not set yet') },
@@ -74,21 +70,18 @@ export default function ProfilePage() {
     {
       to: routes.profileEdit,
       label: t('Edit profile'),
-      copy: t('Update personal details, climbing experience, and personal notes.'),
       icon: 'edit' as const,
       toneClassName: 'profile-action-tone-sand',
     },
     {
       to: routes.roleSettings,
       label: t('Role settings'),
-      copy: t('The interface adapts based on this role, including dashboard guidance and climbing flow shortcuts.'),
       icon: 'role' as const,
       toneClassName: 'profile-action-tone-sky',
     },
     {
       to: `${routes.dashboard}?guide=replay`,
       label: replayGuideLabel,
-      copy: replayGuideHint,
       icon: 'guide' as const,
       toneClassName: 'profile-action-tone-lilac',
     },
@@ -175,7 +168,6 @@ export default function ProfilePage() {
           tabIndex={0}
           role="group"
           aria-labelledby="profile-completion-heading"
-          aria-describedby="profile-completion-copy"
         >
           <span className="profile-card-doodle profile-card-doodle-warm" aria-hidden="true" />
 
@@ -188,13 +180,7 @@ export default function ProfilePage() {
           </div>
 
           <div className="stack-sm profile-utility-copy">
-            <p className="subtle-text">{t('Profile completion')}</p>
-            <h2 id="profile-completion-heading">{t('Passport completion')}</h2>
-            <p id="profile-completion-copy">
-              {isProfileComplete
-                ? t('Your passport is ready for role-based guidance.')
-                : t('Add a few more basics to finish your climbing passport.')}
-            </p>
+            <h2 id="profile-completion-heading">{t('Profile completion')}</h2>
           </div>
 
           <div className="profile-utility-footer">
@@ -212,14 +198,12 @@ export default function ProfilePage() {
           aria-live="polite"
           aria-atomic="true"
           aria-labelledby="profile-a11y-heading"
-          aria-describedby="profile-a11y-copy"
         >
           <span className="profile-card-doodle profile-card-doodle-cool" aria-hidden="true" />
 
           <div className="stack-sm profile-utility-copy">
             <p className="subtle-text">{t('Accessibility preferences')}</p>
             <h2 id="profile-a11y-heading">{accessibilityHeadline}</h2>
-            <p id="profile-a11y-copy">{accessibilityDescription}</p>
           </div>
 
           <div className="profile-a11y-tags" role="list">
@@ -236,30 +220,9 @@ export default function ProfilePage() {
         </section>
       </div>
 
-      {!isProfileComplete || isUsingDevAuth ? (
-        <div className="profile-note-grid">
-          {!isProfileComplete ? (
-            <article className="page-card profile-note-card profile-note-card-warm">
-              <p className="subtle-text">{t('Profile completion')}</p>
-              <strong>{t('Your profile is still missing some basic information used for personalization.')}</strong>
-            </article>
-          ) : null}
-
-          {isUsingDevAuth ? (
-            <article className="page-card profile-note-card profile-note-card-cool">
-              <p className="subtle-text">{t('Development account')}</p>
-              <strong>{t('You are currently using the development auth shortcut. Role and profile changes are stored locally for preview purposes.')}</strong>
-            </article>
-          ) : null}
-        </div>
-      ) : null}
-
       <section className="page-card profile-badge-section" aria-labelledby="profile-badges-heading">
         <div className="profile-section-heading">
           <div className="stack-sm">
-            <p className="subtle-text">
-              {t('Collected route badges can be shown on your profile card. Tap an earned badge to show or hide it.')}
-            </p>
             <h2 id="profile-badges-heading">{t('My climbing footprints')}</h2>
           </div>
 
@@ -281,7 +244,6 @@ export default function ProfilePage() {
       <section className="page-card profile-actions-section" aria-labelledby="profile-actions-heading">
         <div className="profile-section-heading">
           <div className="stack-sm">
-            <p className="subtle-text">{t('Passport tools')}</p>
             <h2 id="profile-actions-heading">{t('Quick actions')}</h2>
           </div>
         </div>
@@ -292,14 +254,13 @@ export default function ProfilePage() {
               key={action.label}
               className={`profile-action-block ${action.toneClassName}`.trim()}
               to={action.to}
-              aria-label={`${action.label}. ${action.copy}`}
+              aria-label={action.label}
             >
               <span className="profile-action-icon" aria-hidden="true">
                 <ProfileActionIcon kind={action.icon} />
               </span>
               <span className="profile-action-copy">
                 <strong>{action.label}</strong>
-                <span>{action.copy}</span>
               </span>
             </Link>
           ))}
@@ -310,14 +271,13 @@ export default function ProfilePage() {
             onClick={() => setPreviewOpen(true)}
             aria-haspopup="dialog"
             aria-expanded={previewOpen}
-            aria-label={`${t('Open profile card preview')}. ${t('This preview shows the badge wall and identity details currently selected on your profile card.')}`}
+            aria-label={t('Open profile card preview')}
           >
             <span className="profile-action-icon" aria-hidden="true">
               <ProfileActionIcon kind="preview" />
             </span>
             <span className="profile-action-copy">
               <strong>{t('Profile card preview')}</strong>
-              <span>{t('This preview shows the badge wall and identity details currently selected on your profile card.')}</span>
             </span>
           </button>
         </div>

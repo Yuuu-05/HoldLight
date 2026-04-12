@@ -31,15 +31,12 @@ export default function ProfileBusinessCardPreview({
       open={open}
       onClose={onClose}
       title={t('Profile card preview')}
-      description={t('This preview shows the badge wall and identity details currently selected on your profile card.')}
       variant="sheet"
       panelClassName="profile-sheet profile-card-sheet"
     >
       <div className="profile-sheet-grabber" aria-hidden="true" />
 
       <div className="profile-card-preview-shell">
-        <p className="profile-sheet-kicker">{t('Climber card')}</p>
-
         <article className="profile-card-preview">
           <span className="profile-card-preview-compass" aria-hidden="true" />
           <span className="profile-card-preview-ridge" aria-hidden="true" />
@@ -50,7 +47,6 @@ export default function ProfileBusinessCardPreview({
             </div>
 
             <div className="stack-sm profile-card-preview-copy">
-              <p className="profile-card-preview-kicker">{t('Climber card')}</p>
               <h3>{user.username}</h3>
               <p className="profile-card-preview-role">{roleLabel}</p>
             </div>
@@ -79,7 +75,7 @@ export default function ProfileBusinessCardPreview({
           {accessibilityNote ? (
             <section className="profile-card-preview-note">
               <span>{t('Accessibility preferences')}</span>
-              <strong>{accessibilityNote}</strong>
+              <strong>{t(accessibilityNote)}</strong>
             </section>
           ) : null}
 

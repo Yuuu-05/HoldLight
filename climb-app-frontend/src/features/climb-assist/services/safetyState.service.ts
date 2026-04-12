@@ -46,15 +46,6 @@ export function buildScanSafetyDecision(scan: ClimbScan | null): AssistSafetyDec
     );
   }
 
-  if (scan.wallMap.source === 'demo') {
-    return buildDecision(
-      'ready',
-      'Demo wall ready',
-      'The demo wall can proceed without live safety gating.',
-      ['Demo wall source bypasses real-world scan uncertainty.'],
-    );
-  }
-
   const analysis = scan.wallMap.analysis;
   if (!analysis) {
     return buildDecision(
@@ -65,7 +56,19 @@ export function buildScanSafetyDecision(scan: ClimbScan | null): AssistSafetyDec
     );
   }
 
-  if (analysis.shouldAllowAutonomousGuidance) {
+  if (analysis.manualReview?.holdColorsReviewed && analysis.routeCandidates.length > 0) {
+    return buildDecision(
+      'ready',
+      'Companion review complete',
+      'A companion reviewed the detected hold colors before route setup.',
+      [
+        `${analysis.manualReview.colorCorrectionCount} hold color correction${analysis.manualReview.colorCorrectionCount === 1 ? '' : 's'} saved.`,
+        `${analysis.routeCandidates.length} route candidate${analysis.routeCandidates.length === 1 ? '' : 's'} available after review.`,
+      ],
+    );
+  }
+
+  if (analysis.shouldAllowAutonomousGuidance && analysis.routeCandidates.length > 0) {
     return buildDecision(
       'ready',
       'Scan gate cleared',
@@ -111,7 +114,7 @@ export function buildLiveGuidanceSafetyDecision({
     };
   }
 
-  const requiresAlignment = Boolean(scan && scan.wallMap.source !== 'demo');
+  const requiresAlignment = Boolean(scan);
 
   if (requiresAlignment && (!alignmentState.active || alignmentState.status === 'unavailable')) {
     return buildDecision(
@@ -194,12 +197,12 @@ export function buildLiveGuidanceSafetyDecision({
   }
 
   return buildDecision(
-    'ready',
-    'Live guidance ready',
-    'Pose tracking, wall alignment, and scan safety all look stable enough for live cueing.',
-    [
-      `Pose quality ${poseState.poseQualityPct}%.`,
-      requiresAlignment ? `Wall alignment ${alignmentState.qualityPct}%.` : 'Demo wall source.',
-    ],
-  );
+      'ready',
+      'Live guidance ready',
+      'Pose tracking, wall alignment, and scan safety all look stable enough for live cueing.',
+      [
+        `Pose quality ${poseState.poseQualityPct}%.`,
+        `Wall alignment ${alignmentState.qualityPct}%.`,
+      ],
+    );
 }

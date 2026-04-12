@@ -7,7 +7,6 @@ export const storageKeys = {
   devAuthRole: `${env.storagePrefix}:dev-auth-role`,
   notificationReadIds: `${env.storagePrefix}:notification-read-ids`,
   accessibility: `${env.storagePrefix}:accessibility`,
-  studyMode: `${env.storagePrefix}:study-mode`,
   climbScans: `${env.storagePrefix}:climb-scans`,
   activeClimbScanId: `${env.storagePrefix}:active-climb-scan-id`,
   climbSessions: `${env.storagePrefix}:climb-sessions`,

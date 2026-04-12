@@ -62,7 +62,7 @@ export default function ProfileBadgeWall({
                 }}
                 aria-haspopup="dialog"
                 aria-pressed={owned ? visible : undefined}
-                aria-label={`${stateLabel}. ${t(badge.label)}. ${owned ? t(badge.summary) : t(badge.unlockHint)}`}
+                aria-label={`${stateLabel}. ${t(badge.label)}`}
               >
                 <span className="profile-badge-glyph" aria-hidden="true" />
                 <span className="profile-badge-pin" aria-hidden="true">
@@ -71,7 +71,6 @@ export default function ProfileBadgeWall({
 
                 <span className="profile-badge-copy">
                   <strong>{t(badge.label)}</strong>
-                  <span>{owned ? t(badge.summary) : t(badge.unlockHint)}</span>
                 </span>
 
                 <span className="profile-badge-state">{stateLabel}</span>
@@ -86,7 +85,6 @@ export default function ProfileBadgeWall({
           open
           onClose={() => setActiveBadgeId(null)}
           title={t(activeBadge.label)}
-          description={t(activeBadge.unlockHint)}
           variant="sheet"
           panelClassName="profile-sheet profile-badge-sheet"
         >
@@ -103,11 +101,7 @@ export default function ProfileBadgeWall({
               </span>
 
               <div className="stack-sm profile-badge-detail-copy">
-                <p className="profile-badge-detail-kicker">
-                  {activeBadgeOwned ? t('Collected badge') : t('Locked badge')}
-                </p>
                 <h3>{t(activeBadge.label)}</h3>
-                <p>{activeBadgeOwned ? t(activeBadge.summary) : t(activeBadge.unlockHint)}</p>
               </div>
             </div>
 
@@ -127,14 +121,6 @@ export default function ProfileBadgeWall({
                 </strong>
               </div>
             </div>
-
-            <p className="subtle-text">
-              {activeBadgeOwned
-                ? activeBadgeVisible
-                  ? t('This badge is pinned to your public climber card.')
-                  : t('This badge is saved but hidden from your public climber card.')
-                : t(activeBadge.unlockHint)}
-            </p>
 
             {activeBadgeOwned ? (
               <div className="inline-actions wrap profile-badge-detail-actions">

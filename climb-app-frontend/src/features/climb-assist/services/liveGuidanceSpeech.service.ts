@@ -228,7 +228,7 @@ export function buildLiveSafetyPauseSpeechZh({
     return '实时引导已准备好。';
   }
 
-  const requiresAlignment = Boolean(scan && scan.wallMap.source !== 'demo');
+  const requiresAlignment = Boolean(scan);
 
   if (poseState.error) {
     return '请暂停，姿态识别暂时不可用。请检查镜头，并让全身重新进入画面。';

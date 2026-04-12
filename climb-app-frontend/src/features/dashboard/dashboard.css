@@ -1063,3 +1063,129 @@
     animation: none;
   }
 }
+
+@media (max-width: 640px) {
+  .dashboard-page {
+    gap: 0.75rem;
+  }
+
+  .dashboard-page::before,
+  .dashboard-page::after {
+    content: none;
+  }
+
+  .dashboard-header {
+    align-items: center;
+    gap: 0.75rem;
+    padding-top: 0;
+  }
+
+  .dashboard-header-kicker,
+  .dashboard-header-subcopy,
+  .dashboard-role-caption,
+  .dashboard-guide-card,
+  .dashboard-strip-shell,
+  .dashboard-secondary-grid {
+    display: none;
+  }
+
+  .dashboard-header h1 {
+    margin-top: 0;
+    font-size: 1.45rem;
+    line-height: 1.08;
+    letter-spacing: 0;
+  }
+
+  .dashboard-avatar {
+    width: 2.45rem;
+    height: 2.45rem;
+    border-radius: 12px;
+    font-size: 0.95rem;
+  }
+
+  .dashboard-status-pill {
+    min-height: 1.65rem;
+    padding: 0.25rem 0.48rem;
+    border-radius: 10px;
+    font-size: 0.68rem;
+  }
+
+  .dashboard-hero-card {
+    grid-template-columns: 1fr;
+    min-height: auto;
+    gap: 0.75rem;
+    padding: 0.8rem;
+    border-radius: 14px;
+  }
+
+  .dashboard-hero-card::before,
+  .dashboard-hero-card::after,
+  .dashboard-hero-illustration {
+    display: none;
+  }
+
+  .dashboard-hero-copy {
+    min-height: 0;
+    gap: 0.7rem;
+  }
+
+  .dashboard-hero-stack {
+    gap: 0.35rem;
+  }
+
+  .dashboard-hero-stack h2 {
+    font-size: 1.28rem;
+    line-height: 1.08;
+    letter-spacing: 0;
+  }
+
+  .dashboard-hero-stack p {
+    font-size: 0.84rem;
+    line-height: 1.4;
+  }
+
+  .dashboard-hero-eyebrow,
+  .dashboard-hero-cta {
+    min-height: 1.8rem;
+    padding: 0.28rem 0.55rem;
+    border-radius: 10px;
+    font-size: 0.7rem;
+  }
+
+  .dashboard-hero-footer {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 0.55rem;
+  }
+
+  .dashboard-actions-header {
+    display: none;
+  }
+
+  .dashboard-actions-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.55rem;
+  }
+
+  .dashboard-action-card {
+    min-height: 0;
+    gap: 0.32rem;
+    padding: 0.72rem;
+    border-radius: 14px;
+  }
+
+  .dashboard-action-mark,
+  .dashboard-action-copy {
+    display: none;
+  }
+
+  .dashboard-action-kicker,
+  .dashboard-action-footer {
+    font-size: 0.68rem;
+  }
+
+  .dashboard-action-title {
+    font-size: 0.92rem;
+    line-height: 1.18;
+  }
+}

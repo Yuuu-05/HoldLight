@@ -1,4 +1,5 @@
 import { memo, useMemo } from 'react';
+import { useLanguage } from '../../../app/providers/LanguageProvider';
 import type { GuidanceLimb, Hold, RoutePlan, WallMap } from '../../../shared/types/climb';
 import type { LivePoseState } from '../hooks/useLivePoseTracker';
 import {
@@ -199,6 +200,7 @@ const StaticRouteLayer = memo(function StaticRouteLayer({
   currentHold?: OverlayHold | null;
   completedHoldIds: string[];
 }) {
+  const { language } = useLanguage();
   const completedSet = useMemo(() => new Set(completedHoldIds), [completedHoldIds]);
 
   const completedHolds = useMemo(
@@ -217,7 +219,7 @@ const StaticRouteLayer = memo(function StaticRouteLayer({
         <SmallCompletedDot key={hold.id} hold={hold} />
       ))}
 
-      {nextHold ? <TargetBox hold={nextHold} label="next" dashed /> : null}
+      {nextHold ? <TargetBox hold={nextHold} label={language === 'zh' ? '下一步' : 'next'} dashed /> : null}
       {currentHold ? <TargetBox hold={currentHold} label={currentHold.label} /> : null}
     </>
   );
