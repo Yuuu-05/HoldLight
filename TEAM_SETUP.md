@@ -1,36 +1,21 @@
-## 队友启动说明
+﻿# 队友启动说明
 
 这份文档用于帮助队友从零开始在本地运行项目。
 
-### 1. 需要从维护者那里拿到什么
-
-每个队友都需要：
-
-- GitHub 仓库地址：`https://github.com/Yuuu-05/CPT208-ClimbApp.git`
-- 对这个私有仓库的访问权限
-
-当前团队开发流程里，仓库已经直接跟踪了前后端 `.env` 文件，组员拉取最新代码后不需要再单独索要 `.env`。
-
-如果未来仓库改成公开仓库，必须立刻移除这些 `.env` 文件并轮换相关密钥。
-
-### 2. 需要安装什么
-
-如果只是正常运行前后端开发环境，需要安装：
+## 1. 先准备什么
 
 - Git
 - Git LFS
-- Node.js 20
-- npm
+- Node.js 20+
+- Python 3.10+
 
-如果要使用视觉识别功能，还需要安装：
+仓库地址：
 
-- Python 3
-- heuristic 模式需要的 Python 包：`numpy`、`opencv-python`
-- 完整 xiaoxiae 模式额外需要：`torch`、`torchvision`、`detectron2`
+```bash
+https://github.com/Yuuu-05/CPT208-ClimbApp.git
+```
 
-如果只是先把项目跑起来并进行普通开发，建议先使用 `VISION_PROVIDER=heuristic`，这样不会一开始就卡在完整模型环境上。
-
-### 3. 克隆仓库
+## 2. 克隆仓库并拉取模型文件
 
 ```bash
 git lfs install
@@ -39,66 +24,49 @@ cd CPT208-ClimbApp
 git lfs pull
 ```
 
-### 4. `.env` 现在怎么处理
+## 3. 环境变量
 
-当前私有团队仓库已经直接包含：
+当前私有团队仓库仍然跟踪开发用 `.env` 文件：
 
 - `climb-app-frontend/.env`
 - `climb-app-backend/.env`
 
-所以在现在这套团队协作方式下，组员拉取最新代码后一般不需要再手动创建 `.env`。
-
-如果以后不想继续把真实配置提交到 Git，请改回使用：
+如果后续不再跟踪真实配置，请改用：
 
 - `climb-app-frontend/.env.example`
 - `climb-app-backend/.env.example`
 
-然后把真实配置通过私下渠道发给组员。
+并通过私下渠道分发真实密钥。
 
-### 6. 模型放到哪个目录
+## 4. 安装依赖
 
-完整 xiaoxiae 视觉模型文件现在通过 Git LFS 跟随仓库分发。
-
-组员完成 `git lfs install`、`git clone`、`git lfs pull` 后，模型文件应该出现在下面这两个准确路径：
-
-- `climb-app-backend/vision_service/models/xiaoxiae/hold_detector/model_final.pth`
-- `climb-app-backend/vision_service/models/xiaoxiae/route_triplet/triplet_network_final.pt`
-
-目录结构应如下：
-
-```text
-climb-app-backend/
-  vision_service/
-    models/
-      xiaoxiae/
-        experiment_config.yml
-        hold_detector/
-          model_final.pth
-        route_triplet/
-          triplet_network_final.pt
-```
-
-### 7. 安装依赖
-
-前端和后端 Node.js 依赖可以直接在仓库根目录安装：
+先安装前后端的 Node.js 依赖：
 
 ```bash
 npm run install:all
 ```
 
-如果使用 Python 的 heuristic 视觉模式，安装：
-
-```bash
-python -m pip install -r climb-app-backend/requirements-heuristic.txt
-```
-
-如果要运行完整 xiaoxiae 模式，安装：
+再安装后端 Python 依赖：
 
 ```bash
 python -m pip install -r climb-app-backend/requirements-xiaoxiae.txt
 ```
 
-### 8. 前后端分别怎么启动
+注意：
+
+- `VISION_PROVIDER=heuristic` 已经移除
+- 现在只支持 `VISION_PROVIDER=xiaoxiae`
+
+## 5. 检查模型文件
+
+完整视觉功能依赖以下两个模型文件：
+
+- `climb-app-backend/vision_service/models/xiaoxiae/hold_detector/model_final.pth`
+- `climb-app-backend/vision_service/models/xiaoxiae/route_triplet/triplet_network_final.pt`
+
+如果 `git lfs pull` 成功，这两个文件应该已经在仓库中。
+
+## 6. 启动项目
 
 先启动后端：
 
@@ -106,33 +74,34 @@ python -m pip install -r climb-app-backend/requirements-xiaoxiae.txt
 npm run dev:backend
 ```
 
-然后在另一个终端启动前端：
+再启动前端：
 
 ```bash
 npm run dev:frontend
 ```
 
-默认本地地址：
+默认地址：
 
 - 前端：`http://localhost:5173`
 - 后端：`http://localhost:5000`
 
-### 9. 启动后快速检查
+## 7. 快速检查
 
-后端启动后，可以检查：
+后端启动后先看：
 
 - `http://localhost:5000/api/health`
-- 可选：`http://localhost:5000/api/vision/health`
+- `http://localhost:5000/api/vision/health`
 
-如果前端连不上后端，请检查：
+如果视觉功能报错，优先检查：
 
-- 前端 `.env` 是否正确
-- 后端 `.env` 是否正确
-- 后端是否真的运行在 `5000` 端口
+- `VISION_PROVIDER` 是否为 `xiaoxiae`
+- Python 环境是否可用
+- 两个模型文件是否存在
+- `torch`、`torchvision`、`detectron2` 是否安装成功
 
-如果视觉推理失败，请检查：
+## 8. 部署文档
 
-- `VISION_PROVIDER` 配置是否正确
-- Python 是否已安装并可用
-- 模型文件是否放在上面写的准确目录里
-- 如果启用了完整模型模式，`torch`、`torchvision`、`detectron2` 是否已经安装
+云端部署看：
+
+- `DEPLOYMENT.md`
+- `deploy/northflank/README.md`

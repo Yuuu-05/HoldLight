@@ -5,6 +5,8 @@ const { buildRateLimiterFromEnv } = require('../middleware/rateLimit');
 
 const router = express.Router();
 const getActorKey = (req) => req.user?.id || req.ip || 'anonymous';
+const isEnabled = (value) => ['1', 'true', 'yes', 'on'].includes(String(value ?? '').trim().toLowerCase());
+const ALLOW_PUBLIC_HEALTH_WARM = isEnabled(process.env.VISION_ALLOW_PUBLIC_WARM_HEALTH);
 const visionInferenceLimiter = buildRateLimiterFromEnv({
   envPrefix: 'VISION_RATE_LIMIT',
   defaultWindowMs: 60_000,
@@ -94,9 +96,17 @@ async function handleCalibration(req, res) {
 
 router.get('/health', async (req, res) => {
   try {
+    const warmRequested = isEnabled(req.query.warm);
+    if (warmRequested && !ALLOW_PUBLIC_HEALTH_WARM) {
+      return res.status(403).json({
+        success: false,
+        message: 'Public vision warm-up is disabled.',
+      });
+    }
+
     const provider = getVisionProvider();
     const result = await provider.health({
-      warm: ['1', 'true', 'yes', 'on'].includes(String(req.query.warm ?? '').trim().toLowerCase()),
+      warm: warmRequested,
     });
     return res.json({ success: true, result });
   } catch (error) {

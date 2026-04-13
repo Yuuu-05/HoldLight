@@ -22,9 +22,17 @@ const CORS_ORIGINS = String(process.env.CORS_ORIGINS || '')
 const TRUST_PROXY = String(process.env.TRUST_PROXY || '')
   .trim()
   .toLowerCase();
+const IS_PRODUCTION = String(process.env.NODE_ENV || '').trim().toLowerCase() === 'production';
 
 function buildCorsOptions() {
   if (CORS_ORIGINS.length === 0) {
+    if (IS_PRODUCTION) {
+      return {
+        origin: false,
+        credentials: true,
+      };
+    }
+
     return {
       origin: true,
       credentials: true,
@@ -53,6 +61,10 @@ if (TRUST_PROXY) {
   app.set('trust proxy', TRUST_PROXY === 'true' ? 1 : TRUST_PROXY);
 }
 
+if (IS_PRODUCTION && CORS_ORIGINS.length === 0) {
+  console.warn('CORS_ORIGINS is empty in production; cross-origin browser requests will be denied.');
+}
+
 app.disable('x-powered-by');
 app.use(cors(buildCorsOptions()));
 app.use(express.json({ limit: process.env.BODY_LIMIT || '12mb' }));
@@ -66,13 +78,17 @@ app.use('/api/guidance-logs', guidanceLogRoutes);
 app.use('/api/vision', visionRoutes);
 
 app.get('/api/health', async (_req, res) => {
+  const databaseConnected = mongoose.connection.readyState === 1;
+
   try {
     const vision = await getVisionProvider().health();
-    res.json({
-      success: true,
-      status: vision.ready ? 'ok' : 'degraded',
+    const healthy = databaseConnected && vision.ready;
+
+    res.status(healthy ? 200 : 503).json({
+      success: healthy,
+      status: healthy ? 'ok' : 'degraded',
       database: {
-        state: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+        state: databaseConnected ? 'connected' : 'disconnected',
         name: mongoose.connection.name || '',
       },
       vision,
@@ -82,7 +98,7 @@ app.get('/api/health', async (_req, res) => {
       success: false,
       status: 'degraded',
       database: {
-        state: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+        state: databaseConnected ? 'connected' : 'disconnected',
         name: mongoose.connection.name || '',
       },
       vision: {

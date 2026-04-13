@@ -37,19 +37,13 @@ If this repository is ever made public, remove the committed `.env` files and ro
    npm run install:all
    ```
 
-5. Install Python dependencies:
-
-   Heuristic-only vision mode:
-
-   ```bash
-   python -m pip install -r climb-app-backend/requirements-heuristic.txt
-   ```
-
-   Full xiaoxiae mode:
+5. Install Python dependencies for the supported xiaoxiae vision pipeline:
 
    ```bash
    python -m pip install -r climb-app-backend/requirements-xiaoxiae.txt
    ```
+
+   `VISION_PROVIDER=heuristic` is no longer supported.
 
 6. Start the backend and frontend in separate terminals:
 
