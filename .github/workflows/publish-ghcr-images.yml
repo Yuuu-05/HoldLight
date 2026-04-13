@@ -63,6 +63,7 @@ jobs:
         with:
           context: ./climb-app-frontend
           file: ./climb-app-frontend/Dockerfile
+          platforms: linux/amd64
           push: true
           tags: ${{ steps.frontend_meta.outputs.tags }}
           labels: ${{ steps.frontend_meta.outputs.labels }}
@@ -85,6 +86,15 @@ jobs:
         with:
           context: ./climb-app-backend
           file: ./climb-app-backend/Dockerfile
+          platforms: linux/amd64
           push: true
           tags: ${{ steps.backend_meta.outputs.tags }}
           labels: ${{ steps.backend_meta.outputs.labels }}
+
+      - name: Trigger frontend Render deploy hook
+        if: github.ref == 'refs/heads/main' && secrets.RENDER_FRONTEND_DEPLOY_HOOK_URL != ''
+        run: curl -fsS -X POST "${{ secrets.RENDER_FRONTEND_DEPLOY_HOOK_URL }}"
+
+      - name: Trigger backend Render deploy hook
+        if: github.ref == 'refs/heads/main' && secrets.RENDER_BACKEND_DEPLOY_HOOK_URL != ''
+        run: curl -fsS -X POST "${{ secrets.RENDER_BACKEND_DEPLOY_HOOK_URL }}"

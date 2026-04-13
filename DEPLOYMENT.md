@@ -32,6 +32,34 @@ Notes for this path:
 - the backend stays private and is not exposed directly on the public internet
 - if the backend runs out of memory during model warm-up, move it to a larger Render instance before public testing
 
+### Render Existing Image path
+
+If GitHub LFS downloads are blocked on Render, do not let Render clone this repository for deploys.
+
+Instead:
+
+- build the frontend and backend Docker images on your local machine
+- push those images to GHCR
+- let Render deploy from `Existing Image`
+
+This repository now includes:
+
+- `deploy/render-image/publish-ghcr.ps1`
+- `deploy/render-image/trigger-render-deploy.ps1`
+- `deploy/render-image/README.md`
+
+Why this path works better for this repo:
+
+- your local checkout already has the real model files
+- Render no longer spends Git LFS bandwidth trying to clone the repository
+- Render only pulls the final GHCR images
+
+Important:
+
+- existing Render services created with `runtime: docker` cannot be switched in place to `runtime: image`
+- create new image-backed services instead, verify them, then move your custom domain over
+- for the full step-by-step flow, see `deploy/render-image/README.md`
+
 ### Alibaba Cloud single-server path
 
 If you want the simplest full deployment on one Alibaba Cloud ECS instance, this repository now includes:
