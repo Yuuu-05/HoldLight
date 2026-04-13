@@ -38,6 +38,7 @@ Create a `.env` file using `.env.example`.
 
 ## Render deployment
 
+- For the full app on Render with one public URL and a private proxied backend, import the repository root `render.yaml`.
 - Create a Static Site on Render
 - Root directory: this frontend folder
 - Build command: `npm ci && npm run build`

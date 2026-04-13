@@ -7,6 +7,31 @@ This project is not a frontend-only website. A full public deployment needs all 
 - A real MongoDB database
 - A Python runtime on the backend host for vision inference
 
+### Render Blueprint path
+
+If you already have MongoDB Atlas, the repository root now includes `render.yaml` for a Render deployment that behaves like one public website:
+
+- `climb-app-frontend` runs as the public web service
+- `climb-app-backend` runs as a private service
+- the frontend proxies `/api/*` to the backend over Render private networking
+- the browser keeps using the frontend origin, so you do not need a second public API domain for normal app usage
+
+Quick start on Render:
+
+1. Push the latest repo to GitHub and make sure the Git LFS model files are present in the repository history used for deploys.
+2. In Render, choose `New` -> `Blueprint` and import this repository.
+3. During the first import, provide:
+   - `MONGO_URI`: your MongoDB Atlas connection string
+4. Let Render create both services from the root `render.yaml`.
+5. Add your custom domain to the frontend service after the first successful deploy.
+6. If you later expose the backend publicly for debugging or a separate API domain, then set `CORS_ORIGINS` on the backend to your allowed frontend origins.
+
+Notes for this path:
+
+- the frontend build is pinned to `VITE_API_BASE_URL=/api`
+- the backend stays private and is not exposed directly on the public internet
+- if the backend runs out of memory during model warm-up, move it to a larger Render instance before public testing
+
 ### Alibaba Cloud single-server path
 
 If you want the simplest full deployment on one Alibaba Cloud ECS instance, this repository now includes:
