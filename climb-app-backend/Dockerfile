@@ -31,9 +31,15 @@ RUN python -m venv "$VIRTUAL_ENV" \
     && pip install --upgrade pip setuptools wheel
 
 COPY requirements-vision-base.txt ./
-RUN pip install -r requirements-vision-base.txt \
-    && pip install torch==1.10.1+cpu torchvision==0.11.2+cpu -f https://download.pytorch.org/whl/cpu/torch_stable.html \
-    && pip install detectron2==0.6 -f https://dl.fbaipublicfiles.com/detectron2/wheels/cpu/torch1.10/index.html
+RUN python --version \
+    && pip --version \
+    && pip install -r requirements-vision-base.txt
+
+RUN pip install torch==1.10.1+cpu torchvision==0.11.2+cpu \
+    -f https://download.pytorch.org/whl/cpu/torch_stable.html
+
+RUN pip install detectron2==0.6 \
+    -f https://dl.fbaipublicfiles.com/detectron2/wheels/cpu/torch1.10/index.html
 
 COPY . .
 
