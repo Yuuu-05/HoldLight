@@ -16,6 +16,7 @@ interface RouteCanvasProps {
   backgroundImageUrl?: string;
   plainImagePreview?: boolean;
   fitContainer?: boolean;
+  holdOverlayStyle?: 'default' | 'subtle';
   highlightHoldIds?: string[];
   completedHoldIds?: string[];
   currentHoldId?: string;
@@ -48,6 +49,7 @@ export default function RouteCanvas({
   backgroundImageUrl,
   plainImagePreview = false,
   fitContainer = false,
+  holdOverlayStyle = 'default',
   highlightHoldIds = [],
   completedHoldIds = [],
   currentHoldId,
@@ -63,11 +65,59 @@ export default function RouteCanvas({
   const { language, t } = useLanguage();
   const fitContainerRef = useRef<HTMLDivElement>(null);
   const [fitSize, setFitSize] = useState<{ width: number; height: number } | null>(null);
+  const [previewAspectRatioValue, setPreviewAspectRatioValue] = useState<number | null>(null);
   const wallWidth = Math.max(1, wallMap?.width ?? 1);
   const wallHeight = Math.max(1, wallMap?.height ?? 1);
-  const aspectRatio = `${wallWidth} / ${wallHeight}`;
   const aspectRatioValue = wallWidth / wallHeight;
   const useStableOverlayPreview = plainImagePreview && Boolean(backgroundImageUrl);
+  const effectiveAspectRatioValue = useStableOverlayPreview && previewAspectRatioValue
+    ? previewAspectRatioValue
+    : aspectRatioValue;
+
+  useEffect(() => {
+    if (!useStableOverlayPreview || !backgroundImageUrl) {
+      setPreviewAspectRatioValue(null);
+      return undefined;
+    }
+
+    let cancelled = false;
+    const image = new Image();
+
+    const updateAspectRatio = () => {
+      if (cancelled) return;
+
+      const naturalWidth = Math.max(1, image.naturalWidth || wallWidth);
+      const naturalHeight = Math.max(1, image.naturalHeight || wallHeight);
+      const nextAspectRatioValue = naturalWidth / naturalHeight;
+
+      setPreviewAspectRatioValue((current) => {
+        if (current && Math.abs(current - nextAspectRatioValue) < 0.001) {
+          return current;
+        }
+        return nextAspectRatioValue;
+      });
+    };
+
+    const clearAspectRatio = () => {
+      if (!cancelled) {
+        setPreviewAspectRatioValue(null);
+      }
+    };
+
+    image.addEventListener('load', updateAspectRatio);
+    image.addEventListener('error', clearAspectRatio);
+    image.src = backgroundImageUrl;
+
+    if (image.complete && image.naturalWidth > 0 && image.naturalHeight > 0) {
+      updateAspectRatio();
+    }
+
+    return () => {
+      cancelled = true;
+      image.removeEventListener('load', updateAspectRatio);
+      image.removeEventListener('error', clearAspectRatio);
+    };
+  }, [backgroundImageUrl, useStableOverlayPreview, wallHeight, wallWidth]);
 
   useEffect(() => {
     if (!fitContainer) {
@@ -83,14 +133,14 @@ export default function RouteCanvas({
       if (rect.width <= 0 || rect.height <= 0) return;
 
       const availableRatio = rect.width / rect.height;
-      const nextSize = availableRatio > aspectRatioValue
+      const nextSize = availableRatio > effectiveAspectRatioValue
         ? {
-            width: rect.height * aspectRatioValue,
+            width: rect.height * effectiveAspectRatioValue,
             height: rect.height,
           }
         : {
             width: rect.width,
-            height: rect.width / aspectRatioValue,
+            height: rect.width / effectiveAspectRatioValue,
           };
 
       setFitSize((current) => {
@@ -115,7 +165,7 @@ export default function RouteCanvas({
     const observer = new ResizeObserver(updateFitSize);
     observer.observe(wrapper);
     return () => observer.disconnect();
-  }, [aspectRatioValue, fitContainer]);
+  }, [effectiveAspectRatioValue, fitContainer]);
 
   if (!wallMap) {
     return (
@@ -199,7 +249,7 @@ export default function RouteCanvas({
         maxHeight: fitContainer ? '100%' : undefined,
         justifySelf: fitContainer ? 'center' : undefined,
         alignSelf: fitContainer ? 'center' : undefined,
-        aspectRatio,
+        aspectRatio: effectiveAspectRatioValue,
         minHeight: fitContainer ? 0 : 'var(--assist-route-canvas-min-height, 340px)',
         contain: 'paint' as const,
         isolation: 'isolate' as const,
@@ -212,7 +262,7 @@ export default function RouteCanvas({
         maxHeight: fitContainer ? '100%' : undefined,
         justifySelf: fitContainer ? 'center' : undefined,
         alignSelf: fitContainer ? 'center' : undefined,
-        aspectRatio,
+        aspectRatio: effectiveAspectRatioValue,
         minHeight: fitContainer ? 0 : 'var(--assist-route-canvas-min-height, 340px)',
       };
 
@@ -247,7 +297,7 @@ export default function RouteCanvas({
               display: 'block',
               width: '100%',
               height: '100%',
-              objectFit: useStableOverlayPreview ? 'fill' : 'cover',
+              objectFit: useStableOverlayPreview ? 'contain' : 'cover',
               pointerEvents: 'none',
               userSelect: 'none',
             }}
@@ -366,6 +416,22 @@ export default function RouteCanvas({
           const selectedColor = selectedHoldColor
             ? colorMap[selectedHoldColor] || selectedHoldColor
             : '#ff4638';
+          const useSubtleHoldOverlay = holdOverlayStyle === 'subtle' && Boolean(backgroundImageUrl);
+          const boxMinSidePct = hasBox ? Math.min(boxWidthPct, boxHeightPct) : 0;
+          const baseBorderWidth = useSubtleHoldOverlay
+            ? hasBox
+              ? Math.min(2.2, Math.max(1.2, boxMinSidePct * 0.24))
+              : 1.35
+            : hasBox || isHighlighted || isSelected
+              ? 3
+              : 1.5;
+          const borderWidth = useSubtleHoldOverlay
+            ? isSelected
+              ? baseBorderWidth + 0.65
+              : isHighlighted
+                ? baseBorderWidth + 0.35
+                : baseBorderWidth
+            : baseBorderWidth;
 
           const borderColor = isSelected
             ? selectedColor
@@ -374,6 +440,23 @@ export default function RouteCanvas({
               : backgroundImageUrl
                 ? `${holdColor}dd`
                 : 'rgba(15, 23, 42, 0.28)';
+          const overlayFill = hasBox
+            ? isSelected
+              ? useSubtleHoldOverlay
+                ? `${selectedColor}18`
+                : `${selectedColor}30`
+              : isHighlighted
+                ? useSubtleHoldOverlay
+                  ? `${holdColor}10`
+                  : `${holdColor}20`
+                : 'transparent'
+            : useSubtleHoldOverlay
+              ? isSelected
+                ? `${selectedColor}14`
+                : isHighlighted
+                  ? `${holdColor}0d`
+                  : 'transparent'
+              : holdColor;
 
           const labelVisible = Boolean(
             backgroundImageUrl && hasBox && showDetectionLabels && !useStableOverlayPreview,
@@ -398,20 +481,20 @@ export default function RouteCanvas({
             appearance: 'none' as const,
             WebkitAppearance: 'none' as const,
             borderRadius: hasBox ? '14px' : '999px',
-            border: `${hasBox || isHighlighted || isSelected ? 3 : 1.5}px solid ${borderColor}`,
-            background: hasBox
-              ? isSelected
-                ? `${selectedColor}30`
-                : isHighlighted
-                ? `${holdColor}20`
-                : 'transparent'
-              : holdColor,
+            border: `${borderWidth}px solid ${borderColor}`,
+            background: overlayFill,
             boxShadow: isSelected
-              ? `0 0 0 6px ${selectedColor}33, 0 0 0 10px rgba(255, 255, 255, 0.62)`
+              ? useSubtleHoldOverlay
+                ? `0 0 0 3px ${selectedColor}22, 0 0 0 6px rgba(255, 255, 255, 0.52)`
+                : `0 0 0 6px ${selectedColor}33, 0 0 0 10px rgba(255, 255, 255, 0.62)`
               : isCompleted
-                ? '0 0 0 4px rgba(34, 197, 94, 0.25)'
+                ? useSubtleHoldOverlay
+                  ? '0 0 0 3px rgba(34, 197, 94, 0.18)'
+                  : '0 0 0 4px rgba(34, 197, 94, 0.25)'
                 : isCurrent
-                  ? `0 0 0 5px ${holdColor}44`
+                  ? useSubtleHoldOverlay
+                    ? `0 0 0 3px ${holdColor}22`
+                    : `0 0 0 5px ${holdColor}44`
                   : hasBox && backgroundImageUrl && !useStableOverlayPreview
                     ? `0 2px 10px ${holdColor}20`
                     : 'none',

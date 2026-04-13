@@ -8,8 +8,5 @@
     "dev:frontend": "npm run dev --prefix climb-app-frontend",
     "dev:backend": "npm run dev --prefix climb-app-backend",
     "build:frontend": "npm run build --prefix climb-app-frontend"
-  },
-  "dependencies": {
-    "mongodb": "^7.1.0"
   }
 }

@@ -881,6 +881,44 @@ export const translations = {
       'Request help, browse upcoming support sessions, and express contact intent with low friction from inside the community module.',
     'This page shows the lightweight contact mechanism used in the volunteer module inside Social. Instead of full chat, users send structured messages attached to support requests.':
       'This page shows the lightweight contact mechanism used in the volunteer module inside Social. Instead of full chat, users send structured messages attached to support requests.',
+    'Hold correction': 'Hold correction',
+    'Correct missing or mistaken holds': 'Correct missing or mistaken holds',
+    'Add missing holds, remove mistakes, and adjust colors before continuing.':
+      'Add missing holds, remove mistakes, and adjust colors before continuing.',
+    'Manual correction summary': 'Manual correction summary',
+    Holds: 'Holds',
+    'Color edits': 'Color edits',
+    Added: 'Added',
+    Removed: 'Removed',
+    'Correction tools': 'Correction tools',
+    'Edit colors': 'Edit colors',
+    'Add hold': 'Add hold',
+    'Delete hold': 'Delete hold',
+    'Add missing holds': 'Add missing holds',
+    'Delete false holds': 'Delete false holds',
+    'Edit hold colors': 'Edit hold colors',
+    'Choose a color, then tap the wall photo to place a missing hold.':
+      'Choose a color, then tap the wall photo to place a missing hold.',
+    'Pick a detected hold, then remove it if the scan marked a false hold.':
+      'Pick a detected hold, then remove it if the scan marked a false hold.',
+    'Select a hold, then adjust its color if needed.':
+      'Select a hold, then adjust its color if needed.',
+    'Color for new holds': 'Color for new holds',
+    'Selected hold color': 'Selected hold color',
+    'Select a hold first': 'Select a hold first',
+    'Delete this hold if it was detected by mistake.':
+      'Delete this hold if it was detected by mistake.',
+    'Delete selected hold': 'Delete selected hold',
+    'Tap a detected hold to choose which one to remove.':
+      'Tap a detected hold to choose which one to remove.',
+    'Tap the wall photo to place a missing hold.':
+      'Tap the wall photo to place a missing hold.',
+    'Tap a detected hold, then remove it if needed.':
+      'Tap a detected hold, then remove it if needed.',
+    'Tap a hold to inspect it or adjust its color.':
+      'Tap a hold to inspect it or adjust its color.',
+    'Reset edits': 'Reset edits',
+    'At least one hold must remain on the wall.': 'At least one hold must remain on the wall.',
     Read: 'Read',
     Unread: 'Unread',
     'Mark all read': 'Mark all read',
@@ -1944,6 +1982,44 @@ export const translations = {
       '更关注入门基础、平缓节奏和无障碍引导。',
     'holds are drawn on top of the original scan image.': '个岩点已绘制在原始扫描图上。',
     'Joined ': '已加入 ',
+    'Hold correction': '岩点纠正',
+    'Correct missing or mistaken holds': '补上缺失岩点，去掉误识别岩点',
+    'Add missing holds, remove mistakes, and adjust colors before continuing.':
+      '继续前先把漏检岩点补上、误检岩点删除，并把颜色调整正确。',
+    'Manual correction summary': '手动纠正摘要',
+    Holds: '岩点总数',
+    'Color edits': '改色数量',
+    Added: '新增',
+    Removed: '删除',
+    'Correction tools': '纠正工具',
+    'Edit colors': '改颜色',
+    'Add hold': '增岩点',
+    'Delete hold': '删岩点',
+    'Add missing holds': '补加漏检岩点',
+    'Delete false holds': '删除误检岩点',
+    'Edit hold colors': '修改岩点颜色',
+    'Choose a color, then tap the wall photo to place a missing hold.':
+      '先选颜色，再点墙面照片，把漏检岩点补上去。',
+    'Pick a detected hold, then remove it if the scan marked a false hold.':
+      '先选中一个已识别岩点，如果它是误检就将它删除。',
+    'Select a hold, then adjust its color if needed.':
+      '先选中岩点，再按需要调整它的颜色。',
+    'Color for new holds': '新增岩点颜色',
+    'Selected hold color': '当前选中颜色',
+    'Select a hold first': '请先选中一个岩点',
+    'Delete this hold if it was detected by mistake.':
+      '如果这个岩点是误识别出来的，就把它删除。',
+    'Delete selected hold': '删除当前岩点',
+    'Tap a detected hold to choose which one to remove.':
+      '点一下已识别岩点，先选中你要删除的那个。',
+    'Tap the wall photo to place a missing hold.':
+      '点击墙面照片，把漏掉的岩点放上去。',
+    'Tap a detected hold, then remove it if needed.':
+      '点击已识别岩点，确认后可将它删除。',
+    'Tap a hold to inspect it or adjust its color.':
+      '点击岩点可查看并调整它的颜色。',
+    'Reset edits': '重置全部修改',
+    'At least one hold must remain on the wall.': '墙面上至少要保留一个岩点。',
     Read: '\u5df2\u8bfb',
     Unread: '\u672a\u8bfb',
     'Mark all read': '\u5168\u90e8\u6807\u8bb0\u4e3a\u5df2\u8bfb',

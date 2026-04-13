@@ -14,7 +14,6 @@ build/
 
 # python environments
 .venv/
-.venv-tts/
 
 # local python caches
 climb-app-backend/vision_service/__pycache__/

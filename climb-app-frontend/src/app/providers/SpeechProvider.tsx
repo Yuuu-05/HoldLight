@@ -6,13 +6,12 @@ import {
   useRef,
   type PropsWithChildren,
 } from 'react';
-import { canUseSpeechOutput, speakText, stopSpeaking, warmNaturalSpeechOutput } from '../../shared/lib/speech';
-import type { NaturalSpeechLanguage } from '../../shared/api/tts.api';
+import { canUseSpeechOutput, speakText, stopSpeaking, warmSpeechOutput, type SpeechLanguage } from '../../shared/lib/speech';
 import { useAccessibility } from './AccessibilityProvider';
 import { useLanguage } from './LanguageProvider';
 
 interface SpeechOptions {
-  language?: NaturalSpeechLanguage;
+  language?: SpeechLanguage;
 }
 
 interface SpeechState {
@@ -22,7 +21,7 @@ interface SpeechState {
   repeat: () => void;
   repeatWithOptions: (options?: SpeechOptions) => void;
   stop: () => void;
-  warm: (language?: NaturalSpeechLanguage) => void;
+  warm: (language?: SpeechLanguage) => void;
 }
 
 const SpeechContext = createContext<SpeechState | null>(null);
@@ -38,7 +37,7 @@ export default function SpeechProvider({ children }: PropsWithChildren) {
   } = useAccessibility();
   const { language } = useLanguage();
   const speechLanguage = language === 'zh' ? 'ZH' : 'EN';
-  const lastSpokenLanguageRef = useRef<NaturalSpeechLanguage>(speechLanguage);
+  const lastSpokenLanguageRef = useRef<SpeechLanguage>(speechLanguage);
 
   useEffect(() => {
     if (!speechEnabled) {
@@ -46,7 +45,7 @@ export default function SpeechProvider({ children }: PropsWithChildren) {
       return;
     }
 
-    void warmNaturalSpeechOutput(speechLanguage);
+    void warmSpeechOutput(speechLanguage);
   }, [speechEnabled, speechLanguage]);
 
   const value = useMemo<SpeechState>(
@@ -84,9 +83,9 @@ export default function SpeechProvider({ children }: PropsWithChildren) {
         });
       },
       stop: stopSpeaking,
-      warm: (languageOverride?: NaturalSpeechLanguage) => {
+      warm: (languageOverride?: SpeechLanguage) => {
         if (!speechEnabled) return;
-        void warmNaturalSpeechOutput(languageOverride ?? speechLanguage);
+        void warmSpeechOutput(languageOverride ?? speechLanguage);
       },
     }),
     [announce, lastAnnouncement, setLastAnnouncement, speechEnabled, speechLanguage, speechRate, speechVolume],

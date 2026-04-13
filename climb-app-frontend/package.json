@@ -11,7 +11,6 @@
   },
   "dependencies": {
     "axios": "^1.9.0",
-    "onnxruntime-web": "^1.24.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^7.6.1"

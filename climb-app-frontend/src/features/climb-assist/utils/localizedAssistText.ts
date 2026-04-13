@@ -118,6 +118,12 @@ const exactTextZh: Record<string, string> = {
   'Unable to save hold color review.': '无法保存岩点颜色检查。',
   'No same-colour route is available after color review.':
     '颜色检查后没有可用的同色路线。',
+  'A companion reviewed the detected holds before route setup.':
+    '陪同者已在进入路线设置前检查识别出的岩点。',
+  'Companion reviewed hold detections before route setup.':
+    '陪同者已在进入路线设置前检查岩点识别结果。',
+  'Manual hold review saved.': '人工岩点检查结果已保存。',
+  'At least one hold must remain on the wall.': '墙面上至少要保留一个岩点。',
   'Only tap holds with the selected route color. Correct hold colors from the scan page if this hold belongs here.':
     '请只点击当前路线颜色的岩点。如果这个岩点应属于路线，请先回扫描页纠正颜色。',
   'Companion recommended': '建议有人陪同',

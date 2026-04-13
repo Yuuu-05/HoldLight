@@ -36,6 +36,11 @@ function buildDecision(
   };
 }
 
+function formatManualCorrectionReason(count: number, singular: string, plural = `${singular}s`) {
+  if (count <= 0) return null;
+  return `${count} ${count === 1 ? singular : plural} saved.`;
+}
+
 export function buildScanSafetyDecision(scan: ClimbScan | null): AssistSafetyDecision {
   if (!scan) {
     return buildDecision(
@@ -57,12 +62,26 @@ export function buildScanSafetyDecision(scan: ClimbScan | null): AssistSafetyDec
   }
 
   if (analysis.manualReview?.holdColorsReviewed && analysis.routeCandidates.length > 0) {
+    const colorCorrectionCount = analysis.manualReview.colorCorrectionCount ?? 0;
+    const holdAdditionCount = analysis.manualReview.holdAdditionCount ?? 0;
+    const holdDeletionCount = analysis.manualReview.holdDeletionCount ?? 0;
+    const totalCorrectionCount =
+      analysis.manualReview.totalCorrectionCount
+      ?? colorCorrectionCount + holdAdditionCount + holdDeletionCount;
+    const correctionReasons = [
+      formatManualCorrectionReason(colorCorrectionCount, 'hold color correction'),
+      formatManualCorrectionReason(holdAdditionCount, 'added hold'),
+      formatManualCorrectionReason(holdDeletionCount, 'removed hold'),
+    ].filter((reason): reason is string => Boolean(reason));
+
     return buildDecision(
       'ready',
       'Companion review complete',
-      'A companion reviewed the detected hold colors before route setup.',
+      'A companion reviewed the detected holds before route setup.',
       [
-        `${analysis.manualReview.colorCorrectionCount} hold color correction${analysis.manualReview.colorCorrectionCount === 1 ? '' : 's'} saved.`,
+        ...(correctionReasons.length
+          ? correctionReasons
+          : [formatManualCorrectionReason(totalCorrectionCount, 'manual hold correction', 'manual hold corrections') ?? 'Manual hold review saved.']),
         `${analysis.routeCandidates.length} route candidate${analysis.routeCandidates.length === 1 ? '' : 's'} available after review.`,
       ],
     );

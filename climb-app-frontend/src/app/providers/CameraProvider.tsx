@@ -8,7 +8,7 @@ import {
   useState,
   type PropsWithChildren,
 } from 'react';
-import { requestCameraStream } from '../../shared/lib/camera';
+import { isClearlyFrontCameraStream, requestCameraStream } from '../../shared/lib/camera';
 
 interface CameraState {
   stream: MediaStream | null;
@@ -36,7 +36,12 @@ export default function CameraProvider({ children }: PropsWithChildren) {
     const currentStream = streamRef.current;
     const currentVideoTrack = currentStream?.getVideoTracks()[0];
 
-    if (currentStream && currentStream.active && currentVideoTrack?.readyState === 'live') {
+    if (
+      currentStream &&
+      currentStream.active &&
+      currentVideoTrack?.readyState === 'live' &&
+      !isClearlyFrontCameraStream(currentStream)
+    ) {
       return currentStream;
     }
 

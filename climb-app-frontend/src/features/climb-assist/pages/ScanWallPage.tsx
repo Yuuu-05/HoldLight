@@ -22,6 +22,12 @@ import {
 } from '../utils/localizedAssistText';
 
 type ScanMobileStep = 'capture' | 'status' | 'review';
+type ReviewToolMode = 'select' | 'add' | 'delete';
+
+interface CanvasPosition {
+  xPct: number;
+  yPct: number;
+}
 
 const HOLD_COLOR_OPTIONS: HoldColor[] = [
   'blue',
@@ -36,7 +42,7 @@ const HOLD_COLOR_OPTIONS: HoldColor[] = [
   'unknown',
 ];
 
-const HOLD_COLOR_REVIEW_GUIDANCE = 'Companion reviewed hold colors before route setup.';
+const HOLD_MANUAL_REVIEW_GUIDANCE = 'Companion reviewed hold detections before route setup.';
 
 function getWallMapColorsFromHolds(holds: Hold[]): HoldColor[] {
   return Array.from(
@@ -54,12 +60,127 @@ function countHoldColorChanges(originalWallMap: WallMap | undefined, nextWallMap
 
   const originalColors = new Map(originalWallMap.holds.map((hold) => [hold.id, hold.color]));
   return nextWallMap.holds.reduce(
-    (count, hold) => count + (originalColors.get(hold.id) !== hold.color ? 1 : 0),
+    (count, hold) => {
+      const originalColor = originalColors.get(hold.id);
+      return count + (originalColor && originalColor !== hold.color ? 1 : 0);
+    },
     0,
   );
 }
 
-function refreshWallMapAfterColorReview(
+function countAddedHolds(originalWallMap: WallMap | undefined, nextWallMap: WallMap | null) {
+  if (!originalWallMap || !nextWallMap) return 0;
+
+  const originalIds = new Set(originalWallMap.holds.map((hold) => hold.id));
+  return nextWallMap.holds.reduce(
+    (count, hold) => count + (originalIds.has(hold.id) ? 0 : 1),
+    0,
+  );
+}
+
+function countDeletedHolds(originalWallMap: WallMap | undefined, nextWallMap: WallMap | null) {
+  if (!originalWallMap || !nextWallMap) return 0;
+
+  const nextIds = new Set(nextWallMap.holds.map((hold) => hold.id));
+  return originalWallMap.holds.reduce(
+    (count, hold) => count + (nextIds.has(hold.id) ? 0 : 1),
+    0,
+  );
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function getHoldRadiusPct(hold: Hold) {
+  if (typeof hold.radiusPct === 'number' && Number.isFinite(hold.radiusPct) && hold.radiusPct > 0) {
+    return hold.radiusPct;
+  }
+
+  const hasBox =
+    hold.x1Pct !== undefined &&
+    hold.y1Pct !== undefined &&
+    hold.x2Pct !== undefined &&
+    hold.y2Pct !== undefined;
+
+  if (hasBox) {
+    return Math.max((hold.x2Pct! - hold.x1Pct!) / 2, (hold.y2Pct! - hold.y1Pct!) / 2);
+  }
+
+  return 2.8;
+}
+
+function getSuggestedManualHoldRadiusPct(holds: Hold[]) {
+  const radii = holds
+    .map(getHoldRadiusPct)
+    .filter((radius): radius is number => Number.isFinite(radius) && radius > 0)
+    .sort((left, right) => left - right);
+
+  if (radii.length === 0) {
+    return 2.8;
+  }
+
+  const middleIndex = Math.floor(radii.length / 2);
+  const medianRadius = radii.length % 2 === 0
+    ? (radii[middleIndex - 1] + radii[middleIndex]) / 2
+    : radii[middleIndex];
+
+  return Number(clamp(medianRadius, 1.8, 5.6).toFixed(2));
+}
+
+function getNextManualHoldLabel(holds: Hold[]) {
+  const highestNumber = holds.reduce((currentHighest, hold) => {
+    const matches = hold.label.match(/\d+/g);
+    const lastMatch = matches?.[matches.length - 1];
+    const parsedNumber = lastMatch ? Number.parseInt(lastMatch, 10) : Number.NaN;
+    return Number.isFinite(parsedNumber) ? Math.max(currentHighest, parsedNumber) : currentHighest;
+  }, 0);
+
+  return `Hold ${highestNumber + 1}`;
+}
+
+function inferManualHoldSize(radiusPct: number): Hold['size'] {
+  if (radiusPct >= 4.1) return 'l';
+  if (radiusPct <= 2.3) return 's';
+  return 'm';
+}
+
+function findNearbyHold(holds: Hold[], position: CanvasPosition): Hold | null {
+  let closestHold: Hold | null = null;
+  let closestDistance = Number.POSITIVE_INFINITY;
+
+  holds.forEach((hold) => {
+    const dx = hold.xPct - position.xPct;
+    const dy = hold.yPct - position.yPct;
+    const distance = Math.hypot(dx, dy);
+    const threshold = Math.max(getHoldRadiusPct(hold) * 1.35, 2.6);
+
+    if (distance <= threshold && distance < closestDistance) {
+      closestHold = hold;
+      closestDistance = distance;
+    }
+  });
+
+  return closestHold;
+}
+
+function createManualHold(baseWallMap: WallMap, position: CanvasPosition, color: HoldColor): Hold {
+  const radiusPct = getSuggestedManualHoldRadiusPct(baseWallMap.holds);
+
+  return {
+    id: `manual_hold_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    label: getNextManualHoldLabel(baseWallMap.holds),
+    color,
+    xPct: position.xPct,
+    yPct: position.yPct,
+    confidence: 0.99,
+    role: 'intermediate',
+    size: inferManualHoldSize(radiusPct),
+    radiusPct,
+  };
+}
+
+function refreshWallMapAfterManualReview(
   wallMap: WallMap,
   manualReview?: WallManualReview,
 ): WallMap {
@@ -89,7 +210,7 @@ function refreshWallMapAfterColorReview(
         shouldAllowAutonomousGuidance:
           hasRouteCandidates && (baseWallMap.analysis.shouldAllowAutonomousGuidance || canProceedAfterManualReview),
         captureGuidance: manualReview
-          ? Array.from(new Set([HOLD_COLOR_REVIEW_GUIDANCE, ...baseWallMap.analysis.captureGuidance]))
+          ? Array.from(new Set([HOLD_MANUAL_REVIEW_GUIDANCE, ...baseWallMap.analysis.captureGuidance]))
           : baseWallMap.analysis.captureGuidance,
         routeCandidates,
         detectionSummary: {
@@ -142,12 +263,15 @@ export default function ScanWallPage() {
   const [overlayPreviewUrl, setOverlayPreviewUrl] = useState<string | null>(null);
   const [mobileStep, setMobileStep] = useState<ScanMobileStep>('capture');
   const [correctedWallMap, setCorrectedWallMap] = useState<WallMap | null>(null);
+  const [reviewMode, setReviewMode] = useState<ReviewToolMode>('select');
+  const [pendingAddColor, setPendingAddColor] = useState<HoldColor>('blue');
   const [selectedCorrectionHoldId, setSelectedCorrectionHoldId] = useState<string | null>(null);
   const [colorReviewSaving, setColorReviewSaving] = useState(false);
   const [colorReviewError, setColorReviewError] = useState<string | null>(null);
   const hasSecureContext = typeof window === 'undefined' ? true : window.isSecureContext;
   const scanBusy = scanProgress.status === 'scanning' || scanProgress.status === 'saving';
   const previousScanStatusRef = useRef(scanProgress.status);
+  const displayScan = activeScan ?? latestScan;
 
   usePageTitle('Assist');
 
@@ -168,11 +292,6 @@ export default function ScanWallPage() {
 
     const source = activeScan?.wallMap.source ?? latestScan?.wallMap.source;
     const coverImageUrl = activeScan?.coverImageUrl ?? latestScan?.coverImageUrl ?? null;
-
-    if (source === 'upload' && uploadType === 'image' && uploadPreviewUrl) {
-      setOverlayPreviewUrl(uploadPreviewUrl);
-      return () => undefined;
-    }
 
     if (!coverImageUrl) {
       setOverlayPreviewUrl(null);
@@ -333,67 +452,95 @@ export default function ScanWallPage() {
   }
 
   function handleCorrectionColorChange(color: HoldColor) {
-    if (!displayScan || !selectedCorrectionHoldId) return;
+    const baseWallMap = correctedWallMap ?? displayScan?.wallMap ?? null;
+    if (!baseWallMap || !selectedCorrectionHoldId) return;
 
-    setCorrectedWallMap((currentWallMap) => {
-      const baseWallMap = currentWallMap ?? displayScan.wallMap;
-      const nextWallMap: WallMap = {
-        ...baseWallMap,
-        holds: baseWallMap.holds.map((hold) =>
-          hold.id === selectedCorrectionHoldId ? { ...hold, color } : hold,
-        ),
-      };
+    const targetHold = baseWallMap.holds.find((hold) => hold.id === selectedCorrectionHoldId);
+    if (!targetHold || targetHold.color === color) return;
 
-      return refreshWallMapAfterColorReview(nextWallMap);
-    });
+    const nextWallMap: WallMap = {
+      ...baseWallMap,
+      holds: baseWallMap.holds.map((hold) =>
+        hold.id === selectedCorrectionHoldId ? { ...hold, color } : hold,
+      ),
+    };
+
+    setCorrectedWallMap(refreshWallMapAfterManualReview(nextWallMap));
     setColorReviewError(null);
+  }
+
+  function handleAddHoldAtPosition(position: CanvasPosition) {
+    const baseWallMap = correctedWallMap ?? displayScan?.wallMap ?? null;
+    if (!baseWallMap) return;
+
+    const nearbyHold = findNearbyHold(baseWallMap.holds, position);
+    if (nearbyHold) {
+      setSelectedCorrectionHoldId(nearbyHold.id);
+      setReviewMode('select');
+      setColorReviewError(null);
+      return;
+    }
+
+    const nextHold = createManualHold(baseWallMap, position, pendingAddColor);
+    const nextWallMap: WallMap = {
+      ...baseWallMap,
+      holds: [...baseWallMap.holds, nextHold],
+    };
+
+    setCorrectedWallMap(refreshWallMapAfterManualReview(nextWallMap));
+    setSelectedCorrectionHoldId(nextHold.id);
+    setColorReviewError(null);
+  }
+
+  function handleDeleteSelectedHold() {
+    const baseWallMap = correctedWallMap ?? displayScan?.wallMap ?? null;
+    if (!baseWallMap || !selectedCorrectionHoldId) return;
+
+    if (baseWallMap.holds.length <= 1) {
+      setColorReviewError('At least one hold must remain on the wall.');
+      return;
+    }
+
+    const nextHolds = baseWallMap.holds.filter((hold) => hold.id !== selectedCorrectionHoldId);
+    if (nextHolds.length === baseWallMap.holds.length) return;
+
+    const nextWallMap: WallMap = {
+      ...baseWallMap,
+      holds: nextHolds,
+    };
+
+    setCorrectedWallMap(refreshWallMapAfterManualReview(nextWallMap));
+    setSelectedCorrectionHoldId(nextHolds[0]?.id ?? null);
+    setColorReviewError(null);
+  }
+
+  function handleReviewModeChange(mode: ReviewToolMode) {
+    setReviewMode(mode);
+    setColorReviewError(null);
+
+    if (mode !== 'add' && !selectedCorrectionHoldId) {
+      const nextHoldId = (correctedWallMap ?? displayScan?.wallMap ?? null)?.holds[0]?.id ?? null;
+      setSelectedCorrectionHoldId(nextHoldId);
+    }
+  }
+
+  function handleReviewColorPick(color: HoldColor) {
+    if (reviewMode === 'add') {
+      setPendingAddColor(color);
+      setColorReviewError(null);
+      return;
+    }
+
+    handleCorrectionColorChange(color);
   }
 
   function handleResetColorReview() {
     setCorrectedWallMap(null);
-    setSelectedCorrectionHoldId(null);
+    setReviewMode('select');
+    setSelectedCorrectionHoldId(displayScan?.wallMap.holds[0]?.id ?? null);
     setColorReviewError(null);
   }
 
-  async function handleSaveColorReview() {
-    if (!displayScan) return;
-
-    try {
-      setColorReviewSaving(true);
-      setColorReviewError(null);
-
-      const manualReview: WallManualReview = {
-        holdColorsReviewed: true,
-        reviewedAt: new Date().toISOString(),
-        colorCorrectionCount,
-        reviewer: 'companion',
-      };
-      const reviewedWallMap = refreshWallMapAfterColorReview(
-        correctedWallMap ?? displayScan.wallMap,
-        manualReview,
-      );
-      if (!reviewedWallMap.analysis?.routeCandidates.length) {
-        throw new Error('No same-colour route is available after color review.');
-      }
-
-      const updatedScan = await updateClimbScanApi(displayScan.id, {
-        availableColors: reviewedWallMap.colors,
-        wallMap: reviewedWallMap,
-      });
-
-      setActiveScan(updatedScan);
-      setCorrectedWallMap(null);
-      setSelectedCorrectionHoldId(null);
-      triggerHaptic(24);
-      navigate(routes.selectDifficulty);
-    } catch (error) {
-      setColorReviewError(error instanceof Error ? error.message : 'Unable to save hold color review.');
-    } finally {
-      setColorReviewSaving(false);
-    }
-  }
-
-  const displayScan = activeScan ?? latestScan;
   const reviewScan = useMemo(
     () =>
       displayScan && correctedWallMap
@@ -409,7 +556,58 @@ export default function ScanWallPage() {
     () => countHoldColorChanges(displayScan?.wallMap, correctedWallMap),
     [correctedWallMap, displayScan?.wallMap],
   );
-  const hasUnsavedColorReview = Boolean(correctedWallMap);
+  const addedHoldCount = useMemo(
+    () => countAddedHolds(displayScan?.wallMap, correctedWallMap),
+    [correctedWallMap, displayScan?.wallMap],
+  );
+  const deletedHoldCount = useMemo(
+    () => countDeletedHolds(displayScan?.wallMap, correctedWallMap),
+    [correctedWallMap, displayScan?.wallMap],
+  );
+  const totalCorrectionCount = colorCorrectionCount + addedHoldCount + deletedHoldCount;
+  const hasPendingManualCorrections = totalCorrectionCount > 0;
+
+  async function handleSaveColorReview() {
+    if (!displayScan) return;
+
+    try {
+      setColorReviewSaving(true);
+      setColorReviewError(null);
+
+      const manualReview: WallManualReview = {
+        holdColorsReviewed: true,
+        reviewedAt: new Date().toISOString(),
+        colorCorrectionCount,
+        holdAdditionCount: addedHoldCount,
+        holdDeletionCount: deletedHoldCount,
+        totalCorrectionCount,
+        reviewer: 'companion',
+      };
+      const reviewedWallMap = refreshWallMapAfterManualReview(
+        correctedWallMap ?? displayScan.wallMap,
+        manualReview,
+      );
+      if (!reviewedWallMap.analysis?.routeCandidates.length) {
+        throw new Error('No same-colour route is available after color review.');
+      }
+
+      const updatedScan = await updateClimbScanApi(displayScan.id, {
+        availableColors: reviewedWallMap.colors,
+        wallMap: reviewedWallMap,
+      });
+
+      setActiveScan(updatedScan);
+      setCorrectedWallMap(null);
+      setReviewMode('select');
+      setSelectedCorrectionHoldId(null);
+      triggerHaptic(24);
+      navigate(routes.selectDifficulty);
+    } catch (error) {
+      setColorReviewError(error instanceof Error ? error.message : 'Unable to save hold color review.');
+    } finally {
+      setColorReviewSaving(false);
+    }
+  }
   const scanSafetyDecision = buildScanSafetyDecision(reviewScan);
   const shouldShowRetryNotice = Boolean(
     scanProgress.error
@@ -423,9 +621,30 @@ export default function ScanWallPage() {
   const scanAnnouncement = scanProgress.status === 'error'
     ? `${t('Scan paused.')} ${localizedScanError || t('We could not finish this scan.')}`
     : localizedScanProgressMessage;
+  const activeReviewColor = reviewMode === 'add'
+    ? pendingAddColor
+    : selectedCorrectionHold?.color ?? null;
+  const reviewCanvasHelperText = reviewMode === 'add'
+    ? t('Tap the wall photo to place a missing hold.')
+    : reviewMode === 'delete'
+      ? t('Tap a detected hold, then remove it if needed.')
+      : t('Tap a hold to inspect it or adjust its color.');
+  const reviewModeTitle = reviewMode === 'add'
+    ? t('Add missing holds')
+    : reviewMode === 'delete'
+      ? t('Delete false holds')
+      : t('Edit hold colors');
+  const reviewModeDescription = reviewMode === 'add'
+    ? t('Choose a color, then tap the wall photo to place a missing hold.')
+    : reviewMode === 'delete'
+      ? t('Pick a detected hold, then remove it if the scan marked a false hold.')
+      : t('Select a hold, then adjust its color if needed.');
+
   useEffect(() => {
     setCorrectedWallMap(null);
-    setSelectedCorrectionHoldId(null);
+    setReviewMode('select');
+    setPendingAddColor(displayScan?.availableColors[0] ?? displayScan?.wallMap.colors[0] ?? 'blue');
+    setSelectedCorrectionHoldId(displayScan?.wallMap.holds[0]?.id ?? null);
     setColorReviewError(null);
   }, [displayScan?.id]);
 
@@ -436,9 +655,13 @@ export default function ScanWallPage() {
   }, [reviewScan?.id, scanBusy]);
 
   useEffect(() => {
-    if (!reviewScan || selectedCorrectionHoldId) return;
+    if (!reviewScan || reviewMode === 'add') return;
+
+    const hasSelectedHold = reviewScan.wallMap.holds.some((hold) => hold.id === selectedCorrectionHoldId);
+    if (hasSelectedHold) return;
+
     setSelectedCorrectionHoldId(reviewScan.wallMap.holds[0]?.id ?? null);
-  }, [reviewScan, selectedCorrectionHoldId]);
+  }, [reviewMode, reviewScan, selectedCorrectionHoldId]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -446,6 +669,28 @@ export default function ScanWallPage() {
 
     document.getElementById('main-content')?.scrollIntoView({ block: 'start' });
   }, [mobileStep]);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    if (!reviewScan) return undefined;
+
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+    const previousHtmlOverscroll = document.documentElement.style.overscrollBehavior;
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousBodyOverscroll = document.body.style.overscrollBehavior;
+
+    document.documentElement.style.overflow = 'hidden';
+    document.documentElement.style.overscrollBehavior = 'none';
+    document.body.style.overflow = 'hidden';
+    document.body.style.overscrollBehavior = 'none';
+
+    return () => {
+      document.documentElement.style.overflow = previousHtmlOverflow;
+      document.documentElement.style.overscrollBehavior = previousHtmlOverscroll;
+      document.body.style.overflow = previousBodyOverflow;
+      document.body.style.overscrollBehavior = previousBodyOverscroll;
+    };
+  }, [reviewScan]);
 
   return (
     <section className={`stack-lg assist-shell ${reviewScan ? 'assist-shell-review-mode' : ''}`.trim()}>
@@ -612,70 +857,125 @@ export default function ScanWallPage() {
           className="assist-scan-review-card assist-stable-card"
           bodyClassName="assist-color-review-layout"
         >
-          <div className="assist-color-review-canvas">
-            <RouteCanvas
-              wallMap={reviewScan.wallMap}
-              backgroundImageUrl={overlayPreviewUrl ?? reviewScan.coverImageUrl}
-              plainImagePreview
-              fitContainer
-              selectedHoldId={selectedCorrectionHoldId ?? undefined}
-              selectedHoldColor={selectedCorrectionHold?.color}
-              onHoldSelect={handleCorrectionHoldSelect}
-              helperText={t('Tap a hold circle, then choose its correct color.')}
-            />
+          <div className={`assist-color-review-canvas is-${reviewMode}-mode`.trim()}>
+            <div className="assist-review-phone-stage">
+              <RouteCanvas
+                wallMap={reviewScan.wallMap}
+                backgroundImageUrl={overlayPreviewUrl ?? reviewScan.coverImageUrl}
+                plainImagePreview
+                fitContainer
+                holdOverlayStyle="subtle"
+                selectedHoldId={selectedCorrectionHoldId ?? undefined}
+                selectedHoldColor={reviewMode === 'delete' ? 'red' : activeReviewColor ?? undefined}
+                onHoldSelect={reviewMode === 'add' ? undefined : handleCorrectionHoldSelect}
+                onCanvasSelect={reviewMode === 'add' ? handleAddHoldAtPosition : undefined}
+                helperText={reviewCanvasHelperText}
+              />
+            </div>
           </div>
           <div className="assist-color-review-panel">
             <div className="assist-color-review-head">
-              <div className="stack-sm">
-                <strong>{t('Tap a circle, choose the right color')}</strong>
-                <p className="subtle-text">
-                  {t('Confirming saves the corrected wall and opens route setup.')}
-                </p>
+              <div className="assist-review-title-row">
+                <span className="assist-review-kicker">{t('Hold correction')}</span>
+                <strong>{t('Correct missing or mistaken holds')}</strong>
+              </div>
+            </div>
+
+            <div className="assist-review-tool-shell">
+              <div className="assist-review-tool-toggle" role="group" aria-label={t('Correction tools')}>
+                {[
+                  { id: 'select' as const, label: t('Edit colors') },
+                  { id: 'add' as const, label: t('Add hold') },
+                  { id: 'delete' as const, label: t('Delete hold') },
+                ].map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={`assist-review-tool-button ${reviewMode === item.id ? 'is-active' : ''}`.trim()}
+                    aria-pressed={reviewMode === item.id}
+                    onClick={() => handleReviewModeChange(item.id)}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+              <div className="assist-review-tool-copy">
+                <strong>{reviewModeTitle}</strong>
+                <p className="subtle-text">{reviewModeDescription}</p>
               </div>
             </div>
 
             <div className="assist-color-picker-shell">
-              {selectedCorrectionHold ? (
+              {reviewMode === 'delete' ? (
+                selectedCorrectionHold ? (
+                  <div className="assist-review-selection-card">
+                    <div className="assist-review-selection-row">
+                      <strong>{selectedCorrectionHold.label}</strong>
+                      <span className={`assist-review-color-pill is-${selectedCorrectionHold.color}`.trim()}>
+                        {formatHoldColor(selectedCorrectionHold.color, language, true)}
+                      </span>
+                    </div>
+                    <p className="subtle-text">
+                      {t('Delete this hold if it was detected by mistake.')}
+                    </p>
+                    <Button
+                      type="button"
+                      variant="danger"
+                      onClick={handleDeleteSelectedHold}
+                      disabled={colorReviewSaving}
+                    >
+                      {t('Delete selected hold')}
+                    </Button>
+                  </div>
+                ) : (
+                  <p className="subtle-text">{t('Tap a detected hold to choose which one to remove.')}</p>
+                )
+              ) : (
                 <>
+                  <div className="assist-color-selection-summary">
+                    <strong>{reviewMode === 'add' ? t('Color for new holds') : t('Selected hold color')}</strong>
+                  </div>
                   <div className="assist-color-swatch-grid" role="group" aria-label={t('Choose corrected hold color')}>
                     {HOLD_COLOR_OPTIONS.map((color) => (
                       <button
                         key={color}
                         type="button"
-                        className={`assist-color-swatch assist-color-swatch-${color} ${selectedCorrectionHold.color === color ? 'is-active' : ''}`.trim()}
-                        aria-pressed={selectedCorrectionHold.color === color}
-                        onClick={() => handleCorrectionColorChange(color)}
+                        className={`assist-color-swatch assist-color-swatch-${color} ${activeReviewColor === color ? 'is-active' : ''}`.trim()}
+                        aria-pressed={activeReviewColor === color}
+                        onClick={() => handleReviewColorPick(color)}
                       >
                         {formatHoldColor(color, language, true)}
                       </button>
                     ))}
                   </div>
+                  {reviewMode === 'select' && !selectedCorrectionHold ? (
+                    <p className="subtle-text">{t('Tap any detected hold circle to edit its color.')}</p>
+                  ) : null}
                 </>
-              ) : (
-                <p className="subtle-text">{t('Tap any detected hold circle to edit its color.')}</p>
               )}
             </div>
 
             <div className="assist-color-action-row">
               <Button
                 type="button"
-                variant="secondary"
-                onClick={handleResetColorReview}
-                disabled={!hasUnsavedColorReview || colorReviewSaving}
-              >
-                {t('Reset color changes')}
-              </Button>
-              <Button type="button" variant="secondary" onClick={() => navigate(routes.scanWall)} disabled={colorReviewSaving}>
-                {t('Retake scan')}
-              </Button>
-              <Button
-                type="button"
+                className="assist-review-confirm-button"
                 onClick={() => void handleSaveColorReview()}
                 disabled={colorReviewSaving}
               >
                 {colorReviewSaving
                   ? t('Saving...')
                   : t('Confirm and set route')}
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={handleResetColorReview}
+                disabled={!hasPendingManualCorrections || colorReviewSaving}
+              >
+                {t('Reset edits')}
+              </Button>
+              <Button type="button" variant="secondary" onClick={() => navigate(routes.scanWall)} disabled={colorReviewSaving}>
+                {t('Retake scan')}
               </Button>
             </div>
 

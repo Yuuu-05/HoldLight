@@ -10,9 +10,7 @@ const climbScanRoutes = require('./routes/climbScans');
 const climbSessionRoutes = require('./routes/climbSessions');
 const guidanceLogRoutes = require('./routes/guidanceLogs');
 const visionRoutes = require('./routes/vision');
-const ttsRoutes = require('./routes/tts');
 const { warmVisionRuntime } = require('./services/visionProvider');
-const { getTtsProvider } = require('./services/ttsProvider');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -66,7 +64,6 @@ app.use('/api/climb-scans', climbScanRoutes);
 app.use('/api/climb-sessions', climbSessionRoutes);
 app.use('/api/guidance-logs', guidanceLogRoutes);
 app.use('/api/vision', visionRoutes);
-app.use('/api/tts', ttsRoutes);
 
 app.get('/api/health', (_req, res) => {
   res.json({
@@ -88,13 +85,6 @@ async function warmProductionServices() {
     warmVisionRuntime().then(
       () => console.log('Vision runtime warmed successfully.'),
       (error) => console.warn('Vision runtime warm-up failed:', error.message),
-    );
-  }
-
-  if (isEnabled(process.env.TTS_WARM_ON_START, true)) {
-    getTtsProvider().health({ warm: true, language: process.env.MELO_TTS_DEFAULT_LANGUAGE || 'ZH' }).then(
-      () => console.log('TTS runtime warmed successfully.'),
-      (error) => console.warn('TTS runtime warm-up failed:', error.message),
     );
   }
 }

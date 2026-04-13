@@ -51,14 +51,6 @@ If this repository is ever made public, remove the committed `.env` files and ro
    python -m pip install -r climb-app-backend/requirements-xiaoxiae.txt
    ```
 
-   Natural voice with MeloTTS:
-
-   ```bash
-   python -m venv .venv-tts
-   .venv-tts/Scripts/python -m pip install -r climb-app-backend/requirements-melo-tts.txt
-   .venv-tts/Scripts/python -m unidic download
-   ```
-
 6. Start the backend and frontend in separate terminals:
 
    ```bash
@@ -88,6 +80,6 @@ They are configured for Git LFS so teammates can clone the repo and fetch them d
 
 See `TEAM_SETUP.md` for the full teammate setup guide and troubleshooting notes.
 
-## Natural voice
+## Spoken guidance
 
-The frontend now prefers backend-generated MeloTTS audio for spoken guidance and automatically falls back to the browser `speechSynthesis` voice if the natural voice service is unavailable.
+Spoken guidance now uses the browser `speechSynthesis` voice directly. No extra backend TTS service or MeloTTS environment is required.

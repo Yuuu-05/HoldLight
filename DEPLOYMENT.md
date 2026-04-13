@@ -6,7 +6,6 @@ This project is not a frontend-only website. A full public deployment needs all 
 - A public Node.js backend for `climb-app-backend/server.js`
 - A real MongoDB database
 - A Python runtime on the backend host for vision inference
-- An optional Python runtime for MeloTTS if you want natural voice instead of browser speech only
 
 ### Alibaba Cloud single-server path
 
@@ -52,7 +51,7 @@ Before you run that command:
 
 Important:
 
-- The first backend image build can take a long time because it installs `torch`, `detectron2`, and MeloTTS dependencies
+- The first backend image build can take a long time because it installs `torch` and `detectron2` dependencies
 - The first warm-up after launch is also heavier because the vision runtime loads large models into memory
 - If your ECS CPU and RAM are too small, the site will still work but wall scans will feel slow
 
@@ -70,7 +69,7 @@ git lfs pull
 - Frontend domain, for example `https://app.example.com`
 - Backend API domain, for example `https://api.example.com`
 - MongoDB database, managed or self-hosted
-- One backend host with Node.js 20+, Python 3.10+, enough disk for model files, and enough RAM for `torch`, `torchvision`, `detectron2`, OpenCV, and optional MeloTTS
+- One backend host with Node.js 20+, Python 3.10+, enough disk for model files, and enough RAM for `torch`, `torchvision`, `detectron2`, and OpenCV
 
 For a first real deployment, keep frontend and backend separate:
 
@@ -90,14 +89,6 @@ PORT=5000
 BODY_LIMIT=12mb
 VISION_PROVIDER=xiaoxiae
 VISION_PYTHON_COMMAND=python
-TTS_ENABLED=true
-TTS_PYTHON_COMMAND=python
-TTS_REQUEST_TIMEOUT_MS=90000
-TTS_CACHE_SIZE=24
-MELO_TTS_DEVICE=cpu
-MELO_TTS_DEFAULT_LANGUAGE=ZH
-MELO_TTS_ZH_SPEAKER=ZH
-MELO_TTS_EN_SPEAKER=EN-Default
 ```
 
 Install JavaScript dependencies:
@@ -110,14 +101,6 @@ Install Python vision dependencies:
 
 ```powershell
 python -m pip install -r climb-app-backend/requirements-xiaoxiae.txt
-```
-
-If you want MeloTTS natural voice, use a separate environment:
-
-```powershell
-python -m venv .venv-tts
-.\.venv-tts\Scripts\python -m pip install -r climb-app-backend/requirements-melo-tts.txt
-.\.venv-tts\Scripts\python -m unidic download
 ```
 
 Start the backend:
@@ -172,15 +155,15 @@ Verify these paths in order:
 5. Scan a real wall photo
 6. Reach route selection and route recommendation
 7. Start live guidance
-8. Confirm TTS works, or confirm browser speech fallback works if TTS is disabled
+8. Confirm browser speech guidance works
 
 ### 8. Recommended hardening before public release
 
 - Restrict CORS to your real frontend origin instead of leaving it fully open
 - Add authentication to any expensive inference endpoints that should not be public
-- Add rate limiting for `/api/vision/*` and `/api/tts/*`
+- Add rate limiting for `/api/vision/*`
 - Add process supervision and restart policies for the backend service
-- Add health checks for backend, MongoDB, vision runtime, and TTS runtime
+- Add health checks for backend, MongoDB, and vision runtime
 - Monitor CPU, RAM, request latency, and error rates
 - Pin Python package versions more tightly if you want more reproducible rebuilds
 
@@ -195,7 +178,4 @@ The minimum practical production stack is:
 - MongoDB
 - Python vision runtime on the backend host
 
-Natural voice is optional:
-
-- Keep `TTS_ENABLED=true` if the backend host can run MeloTTS
-- Set `TTS_ENABLED=false` if you want to launch earlier and rely on browser speech synthesis first
+Spoken guidance is provided by the browser `speechSynthesis` voice on the frontend, so no separate TTS backend runtime is required.

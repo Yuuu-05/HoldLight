@@ -31,14 +31,12 @@ RUN npm ci --omit=dev
 RUN python -m venv "$VIRTUAL_ENV" \
     && pip install --upgrade pip setuptools wheel
 
-COPY requirements-vision-base.txt requirements-xiaoxiae.txt requirements-melo-tts.txt ./
-RUN pip install -r requirements-xiaoxiae.txt \
-    && pip install -r requirements-melo-tts.txt \
-    && python -m unidic download
+COPY requirements-vision-base.txt requirements-xiaoxiae.txt ./
+RUN pip install -r requirements-xiaoxiae.txt
 
 COPY . .
 
-RUN python -m compileall vision_service tts_service
+RUN python -m compileall vision_service
 
 EXPOSE 5000
 

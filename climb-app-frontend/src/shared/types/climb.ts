@@ -99,6 +99,9 @@ export interface WallManualReview {
   holdColorsReviewed: boolean;
   reviewedAt: string;
   colorCorrectionCount: number;
+  holdAdditionCount?: number;
+  holdDeletionCount?: number;
+  totalCorrectionCount?: number;
   reviewer: 'companion';
 }
 
