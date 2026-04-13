@@ -31,8 +31,10 @@ RUN npm ci --omit=dev
 RUN python -m venv "$VIRTUAL_ENV" \
     && pip install --upgrade pip setuptools wheel
 
-COPY requirements-vision-base.txt requirements-xiaoxiae.txt ./
-RUN pip install -r requirements-xiaoxiae.txt
+COPY requirements-vision-base.txt ./
+RUN pip install -r requirements-vision-base.txt \
+    && pip install torch==2.4.1 torchvision==0.19.1 \
+    && pip install --no-build-isolation "git+https://github.com/facebookresearch/detectron2.git"
 
 COPY . .
 
