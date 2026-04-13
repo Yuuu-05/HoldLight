@@ -36,6 +36,8 @@ RUN pip install -r requirements-xiaoxiae.txt
 
 COPY . .
 
+RUN python scripts/verifyVisionAssets.py
+
 RUN python -m compileall vision_service
 
 EXPOSE 5000

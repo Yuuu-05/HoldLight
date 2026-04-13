@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   runVisionPlanarCalibrationApi,
   type AlignmentPointPct,
+  type AlignmentWallMapPayload,
   type CalibratedHold,
 } from '../../../shared/api/vision.api';
 import type { Hold, RoutePlan, WallMap } from '../../../shared/types/climb';
@@ -22,13 +23,18 @@ export interface LiveWallAlignmentState {
   alignedHoldMap: Record<string, CalibratedHold>;
 }
 
-const ALIGNMENT_INTERVAL_MS = 1400;
-const MAX_FRAME_DIMENSION = 720;
-const FRAME_QUALITY = 0.66;
-const REFERENCE_MAX_DIMENSION = 720;
-const REFERENCE_QUALITY = 0.68;
+const INITIAL_ALIGNMENT_DELAY_MS = 120;
+const LOCKED_ALIGNMENT_INTERVAL_MS = 2400;
+const PARTIAL_ALIGNMENT_INTERVAL_MS = 1700;
+const UNAVAILABLE_ALIGNMENT_INTERVAL_MS = 2200;
+const MAX_FRAME_DIMENSION = 640;
+const FRAME_QUALITY = 0.6;
+const FRAME_MAX_DATA_URL_LENGTH = 240_000;
+const REFERENCE_MAX_DIMENSION = 640;
+const REFERENCE_QUALITY = 0.62;
+const REFERENCE_MAX_DATA_URL_LENGTH = 260_000;
 const HOLD_BLEND_ALPHA = 0.4;
-const HOLD_STALE_GRACE_MS = 5500;
+const HOLD_STALE_GRACE_MS = 9000;
 
 const EMPTY_ALIGNMENT_STATE: LiveWallAlignmentState = {
   status: 'idle',
@@ -48,6 +54,7 @@ function captureElementPreview(
   element: HTMLVideoElement | HTMLImageElement,
   maxDimension: number,
   quality: number,
+  maxDataUrlLength?: number,
 ) {
   const sourceWidth = 'videoWidth' in element ? element.videoWidth : element.naturalWidth;
   const sourceHeight = 'videoHeight' in element ? element.videoHeight : element.naturalHeight;
@@ -64,7 +71,36 @@ function captureElementPreview(
   if (!context) return null;
 
   context.drawImage(element, 0, 0, sourceWidth, sourceHeight, 0, 0, width, height);
-  return canvas.toDataURL('image/jpeg', quality);
+  let nextQuality = quality;
+  let output = canvas.toDataURL('image/jpeg', nextQuality);
+
+  if (!maxDataUrlLength || output.length <= maxDataUrlLength) {
+    return output;
+  }
+
+  while (output.length > maxDataUrlLength && nextQuality > 0.42) {
+    nextQuality = Number((nextQuality - 0.08).toFixed(2));
+    output = canvas.toDataURL('image/jpeg', nextQuality);
+  }
+
+  if (output.length <= maxDataUrlLength) {
+    return output;
+  }
+
+  let shrinkScale = 0.88;
+  while (output.length > maxDataUrlLength && width * shrinkScale >= 320 && height * shrinkScale >= 240) {
+    const nextCanvas = document.createElement('canvas');
+    nextCanvas.width = Math.max(1, Math.round(width * shrinkScale));
+    nextCanvas.height = Math.max(1, Math.round(height * shrinkScale));
+    const nextContext = nextCanvas.getContext('2d');
+    if (!nextContext) break;
+
+    nextContext.drawImage(canvas, 0, 0, width, height, 0, 0, nextCanvas.width, nextCanvas.height);
+    output = nextCanvas.toDataURL('image/jpeg', Math.max(0.42, nextQuality));
+    shrinkScale -= 0.08;
+  }
+
+  return output;
 }
 
 async function normalizeReferenceImage(imageSource: string) {
@@ -78,11 +114,24 @@ async function normalizeReferenceImage(imageSource: string) {
     }
 
     image.onload = () => {
-      resolve(captureElementPreview(image, REFERENCE_MAX_DIMENSION, REFERENCE_QUALITY));
+      resolve(
+        captureElementPreview(
+          image,
+          REFERENCE_MAX_DIMENSION,
+          REFERENCE_QUALITY,
+          REFERENCE_MAX_DATA_URL_LENGTH,
+        ),
+      );
     };
     image.onerror = () => resolve(null);
     image.src = imageSource;
   });
+}
+
+function buildAlignmentWallMapPayload(wallMap: WallMap): AlignmentWallMapPayload {
+  return {
+    holds: wallMap.holds,
+  };
 }
 
 function blendValue(previousValue: number | undefined, nextValue: number | undefined, alpha = HOLD_BLEND_ALPHA) {
@@ -151,6 +200,18 @@ function buildAlignedHold(
   return alignedHoldMap[hold.id] ?? hold;
 }
 
+function getNextAlignmentDelay(state: LiveWallAlignmentState, consecutiveFailures: number) {
+  if (state.active && state.status === 'locked') {
+    return LOCKED_ALIGNMENT_INTERVAL_MS;
+  }
+
+  if (state.active || state.status === 'partial' || state.status === 'aligning') {
+    return PARTIAL_ALIGNMENT_INTERVAL_MS;
+  }
+
+  return UNAVAILABLE_ALIGNMENT_INTERVAL_MS + Math.min(1200, consecutiveFailures * 220);
+}
+
 export function useLiveWallAlignment({
   videoElement,
   referenceImageUrl,
@@ -174,6 +235,7 @@ export function useLiveWallAlignment({
   const busyRef = useRef(false);
   const lastVideoTimeRef = useRef(-1);
   const lastSuccessAtRef = useRef(0);
+  const consecutiveFailuresRef = useRef(0);
 
   const requiresReferenceAlignment = Boolean(wallMap);
   const hasReferenceData = Boolean(requiresReferenceAlignment && referenceImageUrl && wallMap?.holds.length);
@@ -236,6 +298,7 @@ export function useLiveWallAlignment({
   const runCalibration = useCallback(async (force = false) => {
     if (!enabled || !videoElement || !wallMap?.holds.length) return;
     if (busyRef.current) return;
+    if (typeof document !== 'undefined' && document.hidden) return;
     if (!referenceImageDataUrlRef.current) {
       applyUnavailableState('The scan reference image is not ready for wall alignment.');
       return;
@@ -243,7 +306,12 @@ export function useLiveWallAlignment({
     if (videoElement.readyState < 2 || videoElement.videoWidth === 0 || videoElement.videoHeight === 0) return;
     if (!force && videoElement.currentTime === lastVideoTimeRef.current) return;
 
-    const frameImageDataUrl = captureElementPreview(videoElement, MAX_FRAME_DIMENSION, FRAME_QUALITY);
+    const frameImageDataUrl = captureElementPreview(
+      videoElement,
+      MAX_FRAME_DIMENSION,
+      FRAME_QUALITY,
+      FRAME_MAX_DATA_URL_LENGTH,
+    );
     if (!frameImageDataUrl) return;
 
     busyRef.current = true;
@@ -262,12 +330,13 @@ export function useLiveWallAlignment({
       const result = await runVisionPlanarCalibrationApi({
         referenceImageDataUrl: referenceImageDataUrlRef.current,
         frameImageDataUrl,
-        wallMap,
+        wallMap: buildAlignmentWallMapPayload(wallMap),
       });
 
       if (disposedRef.current) return;
 
       if (result.status === 'unavailable' || result.alignedHolds.length === 0) {
+        consecutiveFailuresRef.current += 1;
         applyUnavailableState(result.message || 'Wall alignment is not reliable yet.');
         return;
       }
@@ -279,6 +348,7 @@ export function useLiveWallAlignment({
       }, {});
 
       lastSuccessAtRef.current = Date.now();
+      consecutiveFailuresRef.current = 0;
 
       const nextState: LiveWallAlignmentState = {
         status: result.status,
@@ -302,6 +372,7 @@ export function useLiveWallAlignment({
       setAlignmentState(nextState);
     } catch (error) {
       if (disposedRef.current) return;
+      consecutiveFailuresRef.current += 1;
       const message = error instanceof Error ? error.message : 'Wall alignment failed.';
       applyUnavailableState(message);
     } finally {
@@ -330,7 +401,7 @@ export function useLiveWallAlignment({
 
     let cancelled = false;
 
-    const schedule = (delayMs = ALIGNMENT_INTERVAL_MS) => {
+    const schedule = (delayMs = getNextAlignmentDelay(alignmentRef.current, consecutiveFailuresRef.current)) => {
       if (timerRef.current !== null) {
         window.clearTimeout(timerRef.current);
       }
@@ -338,11 +409,11 @@ export function useLiveWallAlignment({
         if (cancelled) return;
         await runCalibration();
         if (cancelled) return;
-        schedule(ALIGNMENT_INTERVAL_MS);
+        schedule(getNextAlignmentDelay(alignmentRef.current, consecutiveFailuresRef.current));
       }, delayMs);
     };
 
-    schedule(80);
+    schedule(INITIAL_ALIGNMENT_DELAY_MS);
 
     return () => {
       cancelled = true;
@@ -354,6 +425,7 @@ export function useLiveWallAlignment({
   }, [enabled, hasReferenceData, referenceImageUrl, requiresReferenceAlignment, runCalibration, videoElement, wallMap]);
 
   const recalibrate = useCallback(async () => {
+    consecutiveFailuresRef.current = 0;
     await runCalibration(true);
   }, [runCalibration]);
 

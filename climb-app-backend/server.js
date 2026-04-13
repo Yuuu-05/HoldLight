@@ -10,7 +10,7 @@ const climbScanRoutes = require('./routes/climbScans');
 const climbSessionRoutes = require('./routes/climbSessions');
 const guidanceLogRoutes = require('./routes/guidanceLogs');
 const visionRoutes = require('./routes/vision');
-const { warmVisionRuntime } = require('./services/visionProvider');
+const { getVisionProvider, warmVisionRuntime } = require('./services/visionProvider');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -65,15 +65,32 @@ app.use('/api/climb-sessions', climbSessionRoutes);
 app.use('/api/guidance-logs', guidanceLogRoutes);
 app.use('/api/vision', visionRoutes);
 
-app.get('/api/health', (_req, res) => {
-  res.json({
-    success: true,
-    status: 'ok',
-    database: {
-      state: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
-      name: mongoose.connection.name || '',
-    },
-  });
+app.get('/api/health', async (_req, res) => {
+  try {
+    const vision = await getVisionProvider().health();
+    res.json({
+      success: true,
+      status: vision.ready ? 'ok' : 'degraded',
+      database: {
+        state: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+        name: mongoose.connection.name || '',
+      },
+      vision,
+    });
+  } catch (error) {
+    res.status(503).json({
+      success: false,
+      status: 'degraded',
+      database: {
+        state: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+        name: mongoose.connection.name || '',
+      },
+      vision: {
+        ready: false,
+        lastError: error.message,
+      },
+    });
+  }
 });
 
 app.get('/', (_req, res) => {

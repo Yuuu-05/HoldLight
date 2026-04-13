@@ -79,6 +79,7 @@ They are configured for Git LFS so teammates can clone the repo and fetch them d
 ## More detail
 
 See `TEAM_SETUP.md` for the full teammate setup guide and troubleshooting notes.
+See `DEPLOYMENT.md` and `deploy/northflank/README.md` for cloud deployment paths.
 
 ## Spoken guidance
 

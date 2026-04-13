@@ -1,0 +1,90 @@
+name: Publish GHCR Images
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/publish-ghcr-images.yml"
+      - "climb-app-backend/**"
+      - "climb-app-frontend/**"
+      - "README.md"
+      - "DEPLOYMENT.md"
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository with Git LFS assets
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Ensure Git LFS assets are present
+        run: |
+          git lfs pull
+          ls -lh climb-app-backend/vision_service/models/xiaoxiae/hold_detector/model_final.pth
+          ls -lh climb-app-backend/vision_service/models/xiaoxiae/route_triplet/triplet_network_final.pt
+          ls -lh climb-app-backend/vision_service/models/xiaoxiae/color_classifier/neutral_hold_classifier.pt
+
+      - name: Normalize GHCR owner name
+        id: prep
+        shell: bash
+        run: echo "owner=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Prepare frontend image metadata
+        id: frontend_meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ steps.prep.outputs.owner }}/climb-app-frontend
+          tags: |
+            type=raw,value=latest
+            type=sha
+            type=ref,event=branch
+
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./climb-app-frontend
+          file: ./climb-app-frontend/Dockerfile
+          push: true
+          tags: ${{ steps.frontend_meta.outputs.tags }}
+          labels: ${{ steps.frontend_meta.outputs.labels }}
+          build-args: |
+            VITE_API_BASE_URL=/api
+            VITE_ENABLE_DEV_AUTH_BYPASS=false
+
+      - name: Prepare backend image metadata
+        id: backend_meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ steps.prep.outputs.owner }}/climb-app-backend
+          tags: |
+            type=raw,value=latest
+            type=sha
+            type=ref,event=branch
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./climb-app-backend
+          file: ./climb-app-backend/Dockerfile
+          push: true
+          tags: ${{ steps.backend_meta.outputs.tags }}
+          labels: ${{ steps.backend_meta.outputs.labels }}

@@ -28,10 +28,14 @@ export interface CalibratedHold extends Hold {
   alignmentConfidence?: number;
 }
 
+export interface AlignmentWallMapPayload {
+  holds: WallMap['holds'];
+}
+
 interface PlanarCalibrationRequest {
   referenceImageDataUrl: string;
   frameImageDataUrl: string;
-  wallMap: WallMap;
+  wallMap: AlignmentWallMapPayload;
 }
 
 interface PlanarCalibrationResponse {

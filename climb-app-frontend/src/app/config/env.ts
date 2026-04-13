@@ -1,5 +1,7 @@
+const fallbackApiBaseUrl = import.meta.env.PROD ? '/api' : 'http://localhost:5000/api';
+
 export const env = {
-  apiBaseUrl: import.meta.env.VITE_API_BASE_URL?.trim() || 'http://localhost:5000/api',
+  apiBaseUrl: import.meta.env.VITE_API_BASE_URL?.trim() || fallbackApiBaseUrl,
   appName: 'HoldLight',
   appTagline: 'Accessible climbing guidance for visually impaired climbers.',
   storagePrefix: 'climb-app',

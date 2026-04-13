@@ -11,6 +11,7 @@ build/
 .env
 .env.*
 !.env.example
+!deploy/.env.aliyun.example
 
 # python environments
 .venv/
@@ -39,3 +40,6 @@ _incoming_zip/
 
 # test
 coverage/
+
+# generated frontend vendor assets
+climb-app-frontend/public/vendor/

@@ -1,5 +1,10 @@
 const MEDIAPIPE_POSE_RUNTIME_CANDIDATES = [
   {
+    scriptId: 'mediapipe-pose-script-local',
+    scriptUrl: '/vendor/mediapipe/pose/pose.js',
+    assetBase: '/vendor/mediapipe/pose',
+  },
+  {
     scriptId: 'mediapipe-pose-script-jsdelivr',
     scriptUrl: 'https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js',
     assetBase: 'https://cdn.jsdelivr.net/npm/@mediapipe/pose',

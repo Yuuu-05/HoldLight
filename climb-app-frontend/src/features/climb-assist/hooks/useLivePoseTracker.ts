@@ -5,6 +5,7 @@ import {
   type PoseFrame,
   type PoseJointName,
   type PosePoint,
+  type PoseTrackerRuntimeOptions,
 } from '../services/poseTracker.service';
 import {
   createPoseSubjectLockState,
@@ -57,8 +58,6 @@ interface PoseFrameState {
 }
 
 const UI_SYNC_INTERVAL_MS = 120;
-const INFERENCE_INTERVAL_MS = 90;
-const MAX_INPUT_WIDTH = 640;
 const MIN_VISIBLE_POINT = 0.35;
 const DISPLAY_JOINTS: PoseJointName[] = [
   'head',
@@ -77,6 +76,62 @@ function toAnchor(point?: PosePoint): PoseAnchor | null {
     xPct: Number(point.xPct.toFixed(2)),
     yPct: Number(point.yPct.toFixed(2)),
     visibility: Number(point.visibility.toFixed(2)),
+  };
+}
+
+function buildPoseRuntimeProfile(): Required<PoseTrackerRuntimeOptions> & {
+  inferenceIntervalMs: number;
+  maxInputWidth: number;
+} {
+  if (typeof navigator === 'undefined') {
+    return {
+      modelComplexity: 1,
+      minDetectionConfidence: 0.58,
+      minTrackingConfidence: 0.62,
+      inferenceIntervalMs: 100,
+      maxInputWidth: 540,
+    };
+  }
+
+  const runtimeNavigator = navigator as Navigator & {
+    deviceMemory?: number;
+    connection?: {
+      saveData?: boolean;
+      effectiveType?: string;
+    };
+  };
+
+  const cores = runtimeNavigator.hardwareConcurrency ?? 4;
+  const deviceMemory = runtimeNavigator.deviceMemory ?? 4;
+  const saveData = Boolean(runtimeNavigator.connection?.saveData);
+  const constrainedNetwork = ['slow-2g', '2g'].includes(runtimeNavigator.connection?.effectiveType ?? '');
+
+  if (saveData || constrainedNetwork || deviceMemory <= 4 || cores <= 4) {
+    return {
+      modelComplexity: 1,
+      minDetectionConfidence: 0.56,
+      minTrackingConfidence: 0.6,
+      inferenceIntervalMs: 125,
+      maxInputWidth: 480,
+    };
+  }
+
+  if (deviceMemory <= 6 || cores <= 6) {
+    return {
+      modelComplexity: 1,
+      minDetectionConfidence: 0.58,
+      minTrackingConfidence: 0.62,
+      inferenceIntervalMs: 105,
+      maxInputWidth: 540,
+    };
+  }
+
+  return {
+    modelComplexity: 2,
+    minDetectionConfidence: 0.6,
+    minTrackingConfidence: 0.65,
+    inferenceIntervalMs: 90,
+    maxInputWidth: 640,
   };
 }
 
@@ -186,6 +241,7 @@ export function useLivePoseTracker(videoElement: HTMLVideoElement | null, enable
   const workCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const busyRef = useRef(false);
   const subjectLockStateRef = useRef(createPoseSubjectLockState());
+  const runtimeProfileRef = useRef(buildPoseRuntimeProfile());
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -209,6 +265,7 @@ export function useLivePoseTracker(videoElement: HTMLVideoElement | null, enable
 
     const video = videoElement;
     let disposed = false;
+    const runtimeProfile = runtimeProfileRef.current;
 
     async function boot() {
       try {
@@ -219,7 +276,11 @@ export function useLivePoseTracker(videoElement: HTMLVideoElement | null, enable
         lastVideoTimeRef.current = -1;
         subjectLockStateRef.current = createPoseSubjectLockState();
 
-        const tracker = await createPoseTracker();
+        const tracker = await createPoseTracker({
+          modelComplexity: runtimeProfile.modelComplexity,
+          minDetectionConfidence: runtimeProfile.minDetectionConfidence,
+          minTrackingConfidence: runtimeProfile.minTrackingConfidence,
+        });
         if (disposed) return;
 
         trackerRef.current = tracker;
@@ -240,13 +301,13 @@ export function useLivePoseTracker(videoElement: HTMLVideoElement | null, enable
           if (video.readyState < 2 || video.videoWidth === 0 || video.videoHeight === 0) return;
 
           const now = performance.now();
-          if (now - lastInferenceAtRef.current < INFERENCE_INTERVAL_MS) return;
+          if (now - lastInferenceAtRef.current < runtimeProfile.inferenceIntervalMs) return;
           if (video.currentTime === lastVideoTimeRef.current) return;
 
           const canvas = workCanvasRef.current;
           if (!canvas) return;
 
-          const scale = Math.min(1, MAX_INPUT_WIDTH / video.videoWidth);
+          const scale = Math.min(1, runtimeProfile.maxInputWidth / video.videoWidth);
           const width = Math.max(1, Math.round(video.videoWidth * scale));
           const height = Math.max(1, Math.round(video.videoHeight * scale));
 

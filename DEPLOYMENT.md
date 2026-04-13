@@ -54,6 +54,36 @@ Important:
 - The first backend image build can take a long time because it installs `torch` and `detectron2` dependencies
 - The first warm-up after launch is also heavier because the vision runtime loads large models into memory
 - If your ECS CPU and RAM are too small, the site will still work but wall scans will feel slow
+- For a small 4-user internal test, start with `VISION_INFER_WORKERS=1` and `VISION_CALIBRATION_WORKERS=2`, then increase only if the server still has spare CPU and RAM
+- The frontend now prefers self-hosted MediaPipe Pose assets from `public/vendor/mediapipe/pose`, with CDN fallback only if those assets are missing
+
+### Northflank path
+
+If you want a managed HTTPS platform without Mainland ICP filing, the cleanest fit for this repository is Northflank with:
+
+- one `frontend` service from `climb-app-frontend/Dockerfile`
+- one `backend` service from `climb-app-backend/Dockerfile`
+- one managed MongoDB addon
+- one shared public domain with `/api` path routing to the backend
+
+Important for this repository:
+
+- the backend image contains large Git LFS vision weights
+- the safest deployment path is to publish Docker images from GitHub Actions with `actions/checkout lfs: true`
+- then let Northflank deploy from GHCR instead of building directly from the Git repository
+
+The repository now includes:
+
+- `.github/workflows/publish-ghcr-images.yml`
+- `deploy/northflank/backend.env.example`
+- `deploy/northflank/README.md`
+
+Recommended starting point for a 4-user internal test on Northflank:
+
+- backend: start with 4 vCPU / 16 GB RAM in one Asia region
+- frontend: smallest paid always-on service in the same region
+- MongoDB addon: same region, TLS enabled, at least 20 GB storage
+- backend env: `VISION_INFER_WORKERS=1` and `VISION_CALIBRATION_WORKERS=2`
 
 ### 1. Prepare the repository
 
@@ -89,6 +119,10 @@ PORT=5000
 BODY_LIMIT=12mb
 VISION_PROVIDER=xiaoxiae
 VISION_PYTHON_COMMAND=python
+VISION_INFER_WORKERS=1
+VISION_CALIBRATION_WORKERS=2
+VISION_WARM_INFER_WORKERS=1
+VISION_BOOT_CALIBRATION_WORKERS=1
 ```
 
 Install JavaScript dependencies:

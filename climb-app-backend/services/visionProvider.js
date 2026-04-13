@@ -16,80 +16,115 @@ function normalizeProviderMode(value) {
   throw new Error(`Unsupported VISION_PROVIDER "${value}". Only "xiaoxiae" is available now.`);
 }
 
-class VisionBridge {
-  constructor() {
+function parseWorkerCount(value, fallback) {
+  const parsed = Number.parseInt(value || '', 10);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.max(1, parsed);
+}
+
+function clampWarmCount(value, max, fallback) {
+  const parsed = Number.parseInt(value || '', 10);
+  if (!Number.isFinite(parsed)) return Math.min(max, fallback);
+  return Math.max(0, Math.min(max, parsed));
+}
+
+class VisionWorker {
+  constructor(poolName, index) {
+    this.poolName = poolName;
+    this.index = index;
     this.child = null;
     this.stdoutReader = null;
     this.pending = new Map();
     this.stderrHistory = [];
     this.lastError = '';
     this.startPromise = null;
+    this.inflightCount = 0;
+    this.lastHealth = null;
   }
 
-  async infer(payload) {
-    return this.request('infer', payload);
+  get label() {
+    return `${this.poolName}-${this.index + 1}`;
   }
 
-  async calibrate(payload) {
-    return this.request('calibrate', payload);
+  getLoadScore() {
+    return this.inflightCount + (this.startPromise ? 0.5 : 0);
   }
 
-  async warmUp() {
-    return this.health({ warm: true });
-  }
-
-  async health({ warm = false } = {}) {
-    if (!this.child && !warm) {
-      return {
-        provider: PROVIDER_NAME,
-        status: 'idle',
-        ready: false,
-        modelLoaded: false,
-        processActive: false,
-        pythonCommand: PYTHON_COMMAND,
-        lastError: this.lastError,
-      };
-    }
-
-    const response = await this.request('health', { warm });
+  getSnapshot() {
     return {
-      provider: response.provider || PROVIDER_NAME,
-      status: response.ready ? 'ready' : 'starting',
-      ready: Boolean(response.ready),
-      modelLoaded: Boolean(response.modelLoaded),
+      worker: this.label,
       processActive: Boolean(this.child),
-      pythonCommand: PYTHON_COMMAND,
-      runtime: response.runtime,
+      starting: Boolean(this.startPromise),
+      inflightCount: this.inflightCount,
+      ready: Boolean(this.lastHealth?.ready),
+      modelLoaded: Boolean(this.lastHealth?.modelLoaded),
       lastError: this.lastError,
     };
   }
 
+  async ensureStarted() {
+    await this.ensureChild();
+    return this.getSnapshot();
+  }
+
+  async requestHealth({ warm = false, start = false } = {}) {
+    if (!this.child && !this.startPromise && !warm && !start) {
+      return this.getSnapshot();
+    }
+
+    if (start && !warm) {
+      await this.ensureChild();
+    }
+
+    const response = await this.request('health', { warm });
+    this.lastHealth = response;
+    return {
+      ...this.getSnapshot(),
+      provider: response.provider || PROVIDER_NAME,
+      runtime: response.runtime,
+      ready: Boolean(response.ready),
+      modelLoaded: Boolean(response.modelLoaded),
+    };
+  }
+
   async request(action, payload) {
-    const child = await this.ensureChild();
+    this.inflightCount += 1;
+
+    let child;
+    try {
+      child = await this.ensureChild();
+    } catch (error) {
+      this.inflightCount = Math.max(0, this.inflightCount - 1);
+      this.lastError = error.message;
+      throw error;
+    }
+
     return new Promise((resolve, reject) => {
       const id = randomUUID();
-      const timeoutHandle = setTimeout(() => {
+      let settled = false;
+
+      const finalize = (handler, value) => {
+        if (settled) return;
+        settled = true;
         this.pending.delete(id);
-        reject(new Error(`Vision request timed out after ${REQUEST_TIMEOUT_MS}ms.`));
+        this.inflightCount = Math.max(0, this.inflightCount - 1);
+        clearTimeout(timeoutHandle);
+        handler(value);
+      };
+
+      const timeoutHandle = setTimeout(() => {
+        finalize(reject, new Error(`Vision request timed out after ${REQUEST_TIMEOUT_MS}ms.`));
       }, REQUEST_TIMEOUT_MS);
 
       this.pending.set(id, {
-        resolve: (value) => {
-          clearTimeout(timeoutHandle);
-          resolve(value);
-        },
-        reject: (error) => {
-          clearTimeout(timeoutHandle);
-          reject(error);
-        },
+        resolve: (value) => finalize(resolve, value),
+        reject: (error) => finalize(reject, error),
       });
 
       try {
         child.stdin.write(`${JSON.stringify({ id, action, ...payload })}\n`);
       } catch (error) {
-        this.pending.delete(id);
-        clearTimeout(timeoutHandle);
-        reject(error);
+        finalize(reject, error);
       }
     });
   }
@@ -153,6 +188,7 @@ class VisionBridge {
             ? 'Vision service stopped.'
             : [stderrSummary, `Vision service exited with code ${code}.`].filter(Boolean).join(' ');
         this.lastError = message;
+        this.lastHealth = null;
         this.rejectAllPending(new Error(message));
         this.child = null;
         this.startPromise = null;
@@ -181,7 +217,6 @@ class VisionBridge {
       return;
     }
 
-    this.pending.delete(parsed.id);
     if (!parsed.success) {
       pendingRequest.reject(new Error(parsed.message || 'Vision request failed.'));
       return;
@@ -200,22 +235,127 @@ class VisionBridge {
   }
 
   rejectAllPending(error) {
-    for (const pending of this.pending.values()) {
+    const pendingRequests = Array.from(this.pending.values());
+    for (const pending of pendingRequests) {
       pending.reject(error);
     }
     this.pending.clear();
   }
 }
 
-const bridge = new VisionBridge();
+class VisionWorkerPool {
+  constructor(poolName, workerCount) {
+    this.poolName = poolName;
+    this.workers = Array.from({ length: workerCount }, (_unused, index) => new VisionWorker(poolName, index));
+  }
+
+  ensureConfigured() {
+    if (this.workers.length === 0) {
+      throw new Error(`Vision worker pool "${this.poolName}" has no configured workers.`);
+    }
+  }
+
+  selectWorker() {
+    this.ensureConfigured();
+    return this.workers.reduce((bestWorker, candidate) =>
+      candidate.getLoadScore() < bestWorker.getLoadScore() ? candidate : bestWorker,
+    );
+  }
+
+  buildSnapshot() {
+    const workerSnapshots = this.workers.map((worker) => worker.getSnapshot());
+    return {
+      pool: this.poolName,
+      workerCount: this.workers.length,
+      activeWorkers: workerSnapshots.filter((worker) => worker.processActive).length,
+      startingWorkers: workerSnapshots.filter((worker) => worker.starting).length,
+      readyWorkers: workerSnapshots.filter((worker) => worker.ready).length,
+      modelLoadedWorkers: workerSnapshots.filter((worker) => worker.modelLoaded).length,
+      inflightRequests: workerSnapshots.reduce((sum, worker) => sum + worker.inflightCount, 0),
+      lastError: workerSnapshots.map((worker) => worker.lastError).find(Boolean) || '',
+      workers: workerSnapshots,
+    };
+  }
+
+  async request(action, payload) {
+    return this.selectWorker().request(action, payload);
+  }
+
+  async startWorkers(count) {
+    const targets = this.workers.slice(0, clampWarmCount(String(count), this.workers.length, this.workers.length));
+    await Promise.all(targets.map((worker) => worker.ensureStarted()));
+    return this.buildSnapshot();
+  }
+
+  async warmWorkers(count) {
+    const targets = this.workers.slice(0, clampWarmCount(String(count), this.workers.length, this.workers.length));
+    await Promise.all(targets.map((worker) => worker.requestHealth({ warm: true })));
+    return this.buildSnapshot();
+  }
+}
+
+const INFERENCE_WORKER_COUNT = parseWorkerCount(process.env.VISION_INFER_WORKERS, 1);
+const CALIBRATION_WORKER_COUNT = parseWorkerCount(process.env.VISION_CALIBRATION_WORKERS, 2);
+const WARM_INFERENCE_WORKER_COUNT = clampWarmCount(
+  process.env.VISION_WARM_INFER_WORKERS,
+  INFERENCE_WORKER_COUNT,
+  1,
+);
+const BOOT_CALIBRATION_WORKER_COUNT = clampWarmCount(
+  process.env.VISION_BOOT_CALIBRATION_WORKERS,
+  CALIBRATION_WORKER_COUNT,
+  1,
+);
+
+const inferencePool = new VisionWorkerPool('inference', INFERENCE_WORKER_COUNT);
+const calibrationPool = new VisionWorkerPool('calibration', CALIBRATION_WORKER_COUNT);
+
+function buildProviderHealthStatus() {
+  const inference = inferencePool.buildSnapshot();
+  const calibration = calibrationPool.buildSnapshot();
+  const processActive = inference.activeWorkers > 0 || calibration.activeWorkers > 0;
+  const starting = inference.startingWorkers > 0 || calibration.startingWorkers > 0;
+  const ready = inference.readyWorkers > 0 && (calibration.workerCount === 0 || calibration.activeWorkers > 0);
+
+  return {
+    provider: PROVIDER_NAME,
+    status: ready ? 'ready' : starting || processActive ? 'starting' : 'idle',
+    ready,
+    modelLoaded: inference.modelLoadedWorkers > 0,
+    processActive,
+    pythonCommand: PYTHON_COMMAND,
+    workerPools: {
+      inference,
+      calibration,
+    },
+    lastError: [inference.lastError, calibration.lastError].find(Boolean) || '',
+  };
+}
+
+async function warmVisionRuntime() {
+  await Promise.all([
+    inferencePool.warmWorkers(WARM_INFERENCE_WORKER_COUNT),
+    calibrationPool.startWorkers(BOOT_CALIBRATION_WORKER_COUNT),
+  ]);
+
+  return buildProviderHealthStatus();
+}
+
+async function getVisionHealth({ warm = false } = {}) {
+  if (warm) {
+    return warmVisionRuntime();
+  }
+
+  return buildProviderHealthStatus();
+}
 
 function getVisionProvider() {
   return {
     name: PROVIDER_NAME,
-    infer: (payload) => bridge.infer(payload),
-    calibrate: (payload) => bridge.calibrate(payload),
-    health: (options) => bridge.health(options),
-    warmUp: () => bridge.warmUp(),
+    infer: (payload) => inferencePool.request('infer', payload),
+    calibrate: (payload) => calibrationPool.request('calibrate', payload),
+    health: (options) => getVisionHealth(options),
+    warmUp: () => warmVisionRuntime(),
   };
 }
 
@@ -235,11 +375,6 @@ async function runVisionCalibration(payload) {
     provider: result.provider || 'python-opencv-planar-calibration',
     ...result,
   };
-}
-
-async function warmVisionRuntime() {
-  const provider = getVisionProvider();
-  return provider.warmUp();
 }
 
 module.exports = {

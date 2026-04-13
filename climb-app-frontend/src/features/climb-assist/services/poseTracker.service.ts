@@ -65,6 +65,12 @@ export interface PoseTracker {
   dispose: () => void;
 }
 
+export interface PoseTrackerRuntimeOptions {
+  modelComplexity?: 0 | 1 | 2;
+  minDetectionConfidence?: number;
+  minTrackingConfidence?: number;
+}
+
 const LOW_VISIBILITY_THRESHOLD = 0.35;
 const CORE_SMOOTHING_ALPHA = 0.6;
 const LIMB_SMOOTHING_ALPHA = 0.72;
@@ -421,7 +427,7 @@ export function limbToPoseJointName(limb: GuidanceLimb | undefined): PoseJointNa
   }
 }
 
-export async function createPoseTracker(): Promise<PoseTracker> {
+export async function createPoseTracker(options: PoseTrackerRuntimeOptions = {}): Promise<PoseTracker> {
   const assetBase = await loadMediapipePoseScript();
 
   let latestFrame: PoseFrame | null = null;
@@ -445,12 +451,12 @@ export async function createPoseTracker(): Promise<PoseTracker> {
     },
     {
       assetBase,
-      modelComplexity: 2,
+      modelComplexity: options.modelComplexity ?? 1,
       selfieMode: false,
       smoothLandmarks: false,
       enableSegmentation: false,
-      minDetectionConfidence: 0.6,
-      minTrackingConfidence: 0.65,
+      minDetectionConfidence: options.minDetectionConfidence ?? 0.58,
+      minTrackingConfidence: options.minTrackingConfidence ?? 0.62,
     },
   );
 
