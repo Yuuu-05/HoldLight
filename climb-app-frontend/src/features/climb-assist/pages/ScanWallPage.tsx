@@ -728,22 +728,17 @@ export default function ScanWallPage() {
 
           <Card
             title={t('Assist')}
+            actions={<span className="assist-card-inline-hint">{t('Full wall in frame')}</span>}
             className="tone-blue assist-hero-card assist-scan-hero-card assist-mobile-panel"
             bodyClassName="stack-md"
             data-mobile-active={mobileStep === 'capture' ? 'true' : 'false'}
           >
-            <div className="assist-scan-intro">
-              <p className="assist-scan-note">
-                {t('Frame the whole wall like a sticker photo and keep the phone steady for a cleaner route match.')}
-              </p>
-            </div>
             <ScanPermissionNotice supported={supported} hasSecureContext={hasSecureContext} />
             <CameraPreview
               stream={stream}
               videoRef={videoRef}
               className="assist-camera-stage assist-camera-stage-natural"
               label={t('Camera preview for wall recognition')}
-              syncAspectRatio
               showMask={false}
             >
               {scanBusy ? (

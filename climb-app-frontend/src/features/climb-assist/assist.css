@@ -96,6 +96,15 @@
   font-weight: 700;
 }
 
+.assist-card-inline-hint {
+  align-self: center;
+  color: var(--text-soft);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-align: right;
+  white-space: nowrap;
+}
+
 .assist-camera-stage {
   display: grid;
   gap: 0.65rem;
@@ -181,6 +190,7 @@
   border-radius: 22px;
   background: transparent;
   box-shadow: none;
+  aspect-ratio: 4 / 3 !important;
 }
 
 .assist-camera-stage-natural .camera-preview-shell::before {
@@ -188,10 +198,13 @@
 }
 
 .assist-camera-stage-natural .camera-preview {
+  width: 100%;
   min-height: 0;
-  height: auto;
+  height: 100%;
   border-radius: 22px;
   background: #0f172a;
+  aspect-ratio: auto !important;
+  object-fit: cover;
 }
 
 .camera-placeholder-assist {
@@ -1842,6 +1855,12 @@
 }
 
 @media (max-width: 720px) {
+  .assist-card-inline-hint {
+    max-width: 10rem;
+    white-space: normal;
+    line-height: 1.25;
+  }
+
   .assist-shell,
   .assist-route-page,
   .assist-route-review-page,
@@ -2225,6 +2244,10 @@
 }
 
 @media (max-width: 640px) {
+  .assist-camera-stage-natural .camera-preview-shell {
+    aspect-ratio: 3 / 4 !important;
+  }
+
   .assist-camera-stage .camera-preview-shell {
     padding: 0.45rem;
     border-width: 0;

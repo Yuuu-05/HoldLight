@@ -785,6 +785,7 @@ export const translations = {
     'Finish the path first, then move on to assist and volunteer features.':
       'Finish the path first, then move on to assist and volunteer features.',
     'Allow camera': 'Allow camera',
+    'Full wall in frame': 'Full wall in frame',
     'Camera preview for wall recognition': 'Camera preview for wall recognition',
     'Checking wall map': 'Checking wall map',
     'Pick a route to continue.': 'Pick a route to continue.',
@@ -1776,6 +1777,7 @@ export const translations = {
     'Focused climbing flow': '聚焦攀爬流程',
     'Frame the whole wall like a sticker photo and keep the phone steady for a cleaner route match.':
       '像拍贴纸照一样把整面墙框进画面，并尽量拿稳手机，路线匹配会更清楚。',
+    'Full wall in frame': '整面墙入镜',
     'Go back home': '返回首页',
     'Go to scan': '去扫描',
     'Guidance level': '引导级别',
