@@ -420,8 +420,8 @@ export default function RouteCanvas({
           const boxMinSidePct = hasBox ? Math.min(boxWidthPct, boxHeightPct) : 0;
           const baseBorderWidth = useSubtleHoldOverlay
             ? hasBox
-              ? Math.min(2.2, Math.max(1.2, boxMinSidePct * 0.24))
-              : 1.35
+              ? Math.min(2.45, Math.max(1.45, boxMinSidePct * 0.26))
+              : 1.6
             : hasBox || isHighlighted || isSelected
               ? 3
               : 1.5;

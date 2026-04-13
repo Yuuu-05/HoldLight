@@ -730,6 +730,7 @@ export default function ScanWallPage() {
               videoRef={videoRef}
               className="assist-camera-stage"
               label={t('Camera preview for wall recognition')}
+              syncAspectRatio
             >
               {scanBusy ? (
                 <div className="assist-camera-loader" role="status" aria-hidden="true">

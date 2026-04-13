@@ -75,6 +75,7 @@ export default function CameraPreview({
   const [aspectRatio, setAspectRatio] = useState<string | null>(null);
 
   const showPreviewMask = showMask ?? !plainLiveView;
+  const effectiveAspectRatio = syncAspectRatio ? aspectRatio ?? '4 / 3' : undefined;
 
   useEffect(() => {
     const video = activeVideoRef.current;
@@ -220,19 +221,25 @@ export default function CameraPreview({
         boxShadow: 'none',
         isolation: 'isolate',
         contain: 'paint',
-        aspectRatio: syncAspectRatio ? aspectRatio ?? undefined : undefined,
+        aspectRatio: effectiveAspectRatio,
       }
     : undefined;
 
-  const plainVideoStyle: CSSProperties | undefined = plainLiveView
+  const previewStyle: CSSProperties | undefined = plainLiveView
     ? {
         background: '#111827',
         filter: 'none',
         opacity: hasFrames ? 1 : 0.001,
         transition: 'opacity 140ms linear',
-        aspectRatio: syncAspectRatio ? aspectRatio ?? undefined : undefined,
+        aspectRatio: effectiveAspectRatio,
       }
-    : undefined;
+    : syncAspectRatio
+      ? {
+          aspectRatio: effectiveAspectRatio,
+          height: 'auto',
+          minHeight: 0,
+        }
+      : undefined;
 
   return (
     <figure className={`stack-sm ${className}`.trim()}>
@@ -252,7 +259,7 @@ export default function CameraPreview({
           muted
           aria-label={previewLabel}
           aria-describedby={showCaption ? captionId : undefined}
-          style={plainVideoStyle}
+          style={previewStyle}
         />
 
         {plainLiveView && !hasFrames ? (
