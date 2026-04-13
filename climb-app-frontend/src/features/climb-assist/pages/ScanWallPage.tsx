@@ -251,7 +251,7 @@ export default function ScanWallPage() {
   const { supported, stream, requestAccess } = useCamera();
   const navigate = useNavigate();
   const { language, t } = useLanguage();
-  const { scanProgress, latestScan, startScan } = useScanSession();
+  const { scanProgress, latestScan, startScan, resetScanSession } = useScanSession();
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaInputRef = useRef<HTMLInputElement>(null);
   const uploadImageRef = useRef<HTMLImageElement>(null);
@@ -276,7 +276,6 @@ export default function ScanWallPage() {
   usePageTitle('Assist');
 
   useEffect(() => {
-    if (!latestScan) return;
     setActiveScan(latestScan);
   }, [latestScan]);
 
@@ -420,6 +419,20 @@ export default function ScanWallPage() {
       setMobileStep('review');
     } else {
       setMobileStep('status');
+    }
+  }
+
+  async function handleRetakeScan() {
+    setActiveScan(null);
+    setCorrectedWallMap(null);
+    setReviewMode('select');
+    setSelectedCorrectionHoldId(null);
+    setColorReviewError(null);
+    setMobileStep('capture');
+    resetScanSession();
+
+    if (supported && hasSecureContext && !stream) {
+      await requestAccess();
     }
   }
 
@@ -728,9 +741,10 @@ export default function ScanWallPage() {
             <CameraPreview
               stream={stream}
               videoRef={videoRef}
-              className="assist-camera-stage"
+              className="assist-camera-stage assist-camera-stage-natural"
               label={t('Camera preview for wall recognition')}
               syncAspectRatio
+              showMask={false}
             >
               {scanBusy ? (
                 <div className="assist-camera-loader" role="status" aria-hidden="true">
@@ -843,7 +857,7 @@ export default function ScanWallPage() {
                   <strong>{t('That wall is a little dim right now')}</strong>
                   <p>{fallbackDescription}</p>
                   <div className="inline-actions wrap">
-                    <Button onClick={() => navigate(routes.scanWall)}>{t('Retake scan')}</Button>
+                    <Button onClick={() => void handleRetakeScan()}>{t('Retake scan')}</Button>
                   </div>
                 </div>
               </div>
@@ -975,7 +989,7 @@ export default function ScanWallPage() {
               >
                 {t('Reset edits')}
               </Button>
-              <Button type="button" variant="secondary" onClick={() => navigate(routes.scanWall)} disabled={colorReviewSaving}>
+              <Button type="button" variant="secondary" onClick={() => void handleRetakeScan()} disabled={colorReviewSaving}>
                 {t('Retake scan')}
               </Button>
             </div>

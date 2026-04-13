@@ -49,9 +49,21 @@ function hasRenderableFrame(video: HTMLVideoElement, stream: MediaStream | null)
   );
 }
 
-function readAspectRatio(video: HTMLVideoElement) {
-  if (video.videoWidth <= 0 || video.videoHeight <= 0) return null;
-  return `${video.videoWidth} / ${video.videoHeight}`;
+function readAspectRatio(video: HTMLVideoElement, stream: MediaStream | null) {
+  if (video.videoWidth > 0 && video.videoHeight > 0) {
+    return `${video.videoWidth} / ${video.videoHeight}`;
+  }
+
+  const settings = stream?.getVideoTracks()[0]?.getSettings();
+  if (settings?.width && settings?.height) {
+    return `${settings.width} / ${settings.height}`;
+  }
+
+  if (settings?.aspectRatio && Number.isFinite(settings.aspectRatio) && settings.aspectRatio > 0) {
+    return String(settings.aspectRatio);
+  }
+
+  return null;
 }
 
 export default function CameraPreview({
@@ -98,7 +110,7 @@ export default function CameraPreview({
 
     const syncVideoAspectRatio = () => {
       if (!syncAspectRatio) return;
-      const nextAspectRatio = readAspectRatio(video);
+      const nextAspectRatio = readAspectRatio(video, stream);
       if (nextAspectRatio) {
         setAspectRatio(nextAspectRatio);
       }
@@ -212,7 +224,7 @@ export default function CameraPreview({
     );
   }
 
-  const plainShellStyle: CSSProperties | undefined = plainLiveView
+  const shellStyle: CSSProperties | undefined = plainLiveView
     ? {
         position: 'relative',
         overflow: 'hidden',
@@ -223,7 +235,12 @@ export default function CameraPreview({
         contain: 'paint',
         aspectRatio: effectiveAspectRatio,
       }
-    : undefined;
+    : syncAspectRatio
+      ? {
+          width: '100%',
+          aspectRatio: effectiveAspectRatio,
+        }
+      : undefined;
 
   const previewStyle: CSSProperties | undefined = plainLiveView
     ? {
@@ -235,9 +252,10 @@ export default function CameraPreview({
       }
     : syncAspectRatio
       ? {
-          aspectRatio: effectiveAspectRatio,
-          height: 'auto',
+          width: '100%',
+          height: '100%',
           minHeight: 0,
+          aspectRatio: effectiveAspectRatio,
         }
       : undefined;
 
@@ -249,7 +267,7 @@ export default function CameraPreview({
             ? 'camera-preview-shell camera-container assist-live-plain-shell'
             : 'camera-preview-shell camera-container'
         }
-        style={plainShellStyle}
+        style={shellStyle}
       >
         <video
           className="camera-preview"
