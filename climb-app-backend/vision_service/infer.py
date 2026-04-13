@@ -73,6 +73,33 @@ def module_available(name: str) -> bool:
     return importlib.util.find_spec(name) is not None
 
 
+def ensure_pillow_compatibility() -> None:
+    try:
+        from PIL import Image
+    except Exception:
+        return
+
+    # Older detectron2 code paths still expect pre-Pillow-10 aliases.
+    resampling = getattr(Image, "Resampling", None)
+    bilinear = getattr(Image, "BILINEAR", None)
+    bicubic = getattr(Image, "BICUBIC", None)
+    antialias = getattr(Image, "ANTIALIAS", None)
+
+    if bilinear is None and resampling is not None:
+        bilinear = resampling.BILINEAR
+    if bicubic is None and resampling is not None:
+        bicubic = resampling.BICUBIC
+    if antialias is None and resampling is not None:
+        antialias = resampling.LANCZOS
+
+    if not hasattr(Image, "LINEAR") and bilinear is not None:
+        Image.LINEAR = bilinear
+    if not hasattr(Image, "CUBIC") and bicubic is not None:
+        Image.CUBIC = bicubic
+    if not hasattr(Image, "ANTIALIAS") and antialias is not None:
+        Image.ANTIALIAS = antialias
+
+
 def build_triplet_preprocess(torchvision_module):
     weights_enum = getattr(torchvision_module.models, "ResNet50_Weights", None)
     if weights_enum is not None:
@@ -736,6 +763,8 @@ def get_xiaoxiae_predictor():
     global _XIAOXIAE_PREDICTOR
     if _XIAOXIAE_PREDICTOR is not None:
         return _XIAOXIAE_PREDICTOR
+
+    ensure_pillow_compatibility()
 
     import torch
     from detectron2.config import get_cfg
