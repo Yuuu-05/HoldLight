@@ -73,6 +73,33 @@ def module_available(name: str) -> bool:
     return importlib.util.find_spec(name) is not None
 
 
+def build_triplet_preprocess(torchvision_module):
+    weights_enum = getattr(torchvision_module.models, "ResNet50_Weights", None)
+    if weights_enum is not None:
+        return weights_enum.DEFAULT.transforms()
+
+    from torchvision import transforms
+
+    resize = transforms.Resize(256)
+    center_crop = transforms.CenterCrop(224)
+    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+
+    def preprocess(image_tensor):
+        image = image_tensor.float().div(255.0)
+        image = resize(image)
+        image = center_crop(image)
+        return normalize(image)
+
+    return preprocess
+
+
+def build_triplet_backbone(torchvision_module):
+    try:
+        return torchvision_module.models.resnet50(weights=None)
+    except TypeError:
+        return torchvision_module.models.resnet50(pretrained=False)
+
+
 def parse_payload() -> Dict:
     try:
         return json.load(sys.stdin)
@@ -734,8 +761,8 @@ def get_triplet_components():
     class TripletNet(nn.Module):
         def __init__(self):
             super().__init__()
-            self.preprocess = torchvision.models.ResNet50_Weights.DEFAULT.transforms()
-            backbone = torchvision.models.resnet50(weights=None)
+            self.preprocess = build_triplet_preprocess(torchvision)
+            backbone = build_triplet_backbone(torchvision)
             self.fc_in_features = backbone.fc.in_features
             self.resnet = nn.Sequential(*(list(backbone.children())[:-1]))
             self.fc = nn.Sequential(
