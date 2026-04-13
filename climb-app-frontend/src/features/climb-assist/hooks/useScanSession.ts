@@ -94,11 +94,14 @@ function buildCompletionMessage(scan: ClimbScan) {
 }
 
 export function useScanSession() {
-  const [scanProgress, setScanProgress] = useState<ScanProgress>({
+  const initialScanProgress: ScanProgress = {
     status: 'idle',
     progress: 0,
     message: 'Ready to scan the wall.',
     error: null,
+  };
+  const [scanProgress, setScanProgress] = useState<ScanProgress>({
+    ...initialScanProgress,
   });
   const [latestScan, setLatestScan] = useState<ClimbScan | null>(null);
 
@@ -236,9 +239,15 @@ export function useScanSession() {
     }
   }, []);
 
+  const resetScanSession = useCallback(() => {
+    setLatestScan(null);
+    setScanProgress(initialScanProgress);
+  }, []);
+
   return {
     scanProgress,
     latestScan,
     startScan,
+    resetScanSession,
   };
 }

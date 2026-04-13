@@ -175,6 +175,25 @@
   font-size: 0.88rem;
 }
 
+.assist-camera-stage-natural .camera-preview-shell {
+  padding: 0;
+  border: 0;
+  border-radius: 22px;
+  background: transparent;
+  box-shadow: none;
+}
+
+.assist-camera-stage-natural .camera-preview-shell::before {
+  content: none;
+}
+
+.assist-camera-stage-natural .camera-preview {
+  min-height: 0;
+  height: auto;
+  border-radius: 22px;
+  background: #0f172a;
+}
+
 .camera-placeholder-assist {
   min-height: 16rem;
   display: grid;
@@ -2221,6 +2240,11 @@
   .assist-camera-stage .camera-preview-mask-frame {
     inset: 8% 6% 12%;
     border-radius: 28px;
+  }
+
+  .assist-camera-stage-natural .camera-preview-shell,
+  .assist-camera-stage-natural .camera-preview {
+    border-radius: 18px;
   }
 
   .assist-route-preview-card,

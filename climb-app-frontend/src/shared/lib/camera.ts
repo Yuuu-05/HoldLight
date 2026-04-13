@@ -50,8 +50,7 @@ export async function requestCameraStream() {
     {
       video: {
         facingMode: { exact: 'environment' },
-        width: { ideal: 1280 },
-        height: { ideal: 960 },
+        width: { ideal: 1920 },
       },
       audio: false,
     },
@@ -64,8 +63,7 @@ export async function requestCameraStream() {
     {
       video: {
         facingMode: { ideal: 'environment' },
-        width: { ideal: 1280 },
-        height: { ideal: 960 },
+        width: { ideal: 1920 },
       },
       audio: false,
     },
@@ -74,8 +72,7 @@ export async function requestCameraStream() {
   const genericAttempts: MediaStreamConstraints[] = [
     {
       video: {
-        width: { ideal: 1280 },
-        height: { ideal: 960 },
+        width: { ideal: 1920 },
       },
       audio: false,
     },
@@ -117,8 +114,7 @@ export async function requestCameraStream() {
       {
         video: {
           deviceId: { exact: rearCameraDeviceId },
-          width: { ideal: 1280 },
-          height: { ideal: 960 },
+          width: { ideal: 1920 },
         },
         audio: false,
       },
