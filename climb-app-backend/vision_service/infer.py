@@ -2,13 +2,16 @@ import base64
 import importlib.util
 import json
 import os
+import re
 import sys
+import tempfile
 from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Dict, List, Optional, Tuple
 
 import cv2
 import numpy as np
+import yaml
 
 from color_classifier import (
     extract_mask_color_features,
@@ -98,6 +101,61 @@ def ensure_pillow_compatibility() -> None:
         Image.CUBIC = bicubic
     if not hasattr(Image, "ANTIALIAS") and antialias is not None:
         Image.ANTIALIAS = antialias
+
+
+def remove_nested_config_key(payload: Dict, path_parts: List[str]) -> bool:
+    current = payload
+    for key in path_parts[:-1]:
+        if not isinstance(current, dict) or key not in current:
+            return False
+        current = current[key]
+
+    if not isinstance(current, dict) or path_parts[-1] not in current:
+        return False
+
+    current.pop(path_parts[-1], None)
+    return True
+
+
+def merge_detectron_config_with_compat(cfg, config_path: str) -> None:
+    active_path = config_path
+    sanitized_config = None
+    temp_path = None
+    removed_keys: List[str] = []
+
+    try:
+        while True:
+            try:
+                cfg.merge_from_file(active_path)
+                if removed_keys:
+                    print(
+                        "Detectron2 config compatibility: ignored unsupported keys "
+                        + ", ".join(removed_keys),
+                        file=sys.stderr,
+                    )
+                return
+            except KeyError as exc:
+                match = re.search(r"Non-existent config key: ([A-Z0-9_.]+)", str(exc))
+                if not match:
+                    raise
+
+                key_path = match.group(1)
+                if sanitized_config is None:
+                    with open(config_path, "r", encoding="utf-8") as handle:
+                        sanitized_config = yaml.safe_load(handle)
+
+                removed = remove_nested_config_key(sanitized_config, key_path.split("."))
+                if not removed or key_path in removed_keys:
+                    raise
+
+                removed_keys.append(key_path)
+                with tempfile.NamedTemporaryFile("w", suffix=".yml", delete=False, encoding="utf-8") as handle:
+                    yaml.safe_dump(sanitized_config, handle, sort_keys=False)
+                    temp_path = handle.name
+                active_path = temp_path
+    finally:
+        if temp_path and os.path.exists(temp_path):
+            os.unlink(temp_path)
 
 
 def build_triplet_preprocess(torchvision_module):
@@ -771,7 +829,7 @@ def get_xiaoxiae_predictor():
     from detectron2.engine import DefaultPredictor
 
     cfg = get_cfg()
-    cfg.merge_from_file(XIAOXIAE_CONFIG_PATH)
+    merge_detectron_config_with_compat(cfg, XIAOXIAE_CONFIG_PATH)
     cfg.MODEL.WEIGHTS = XIAOXIAE_HOLD_WEIGHTS_PATH
     cfg.MODEL.DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
     _XIAOXIAE_PREDICTOR = DefaultPredictor(cfg)
