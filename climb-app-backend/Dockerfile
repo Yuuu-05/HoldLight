@@ -10,6 +10,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
       build-essential \
+      cmake \
       ffmpeg \
       git \
       libglib2.0-0 \
@@ -19,6 +20,7 @@ RUN apt-get update \
       ninja-build \
       python-is-python3 \
       python3 \
+      python3-dev \
       python3-pip \
       python3-venv \
     && rm -rf /var/lib/apt/lists/*
@@ -34,7 +36,7 @@ RUN python -m venv "$VIRTUAL_ENV" \
 COPY requirements-vision-base.txt ./
 RUN pip install -r requirements-vision-base.txt \
     && pip install torch==2.4.1 torchvision==0.19.1 \
-    && pip install --no-build-isolation "git+https://github.com/facebookresearch/detectron2.git"
+    && MAX_JOBS=1 FORCE_CUDA=0 pip install --no-build-isolation "git+https://github.com/facebookresearch/detectron2.git"
 
 COPY . .
 
