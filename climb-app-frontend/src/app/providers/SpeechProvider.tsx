@@ -53,12 +53,13 @@ export default function SpeechProvider({ children }: PropsWithChildren) {
       supported: canUseSpeechOutput(),
       lastSpoken: lastAnnouncement,
       speak: (text: string, options?: SpeechOptions) => {
-        if (!speechEnabled || !text) return;
+        if (!text) return;
 
         const targetLanguage = options?.language ?? speechLanguage;
         lastSpokenLanguageRef.current = targetLanguage;
         setLastAnnouncement(text);
         announce(text);
+        if (!speechEnabled) return;
         void speakText(text, { language: targetLanguage, rate: speechRate, volume: speechVolume }).then(
           (result) => {
             if (!result.played && !result.aborted) {
@@ -68,8 +69,9 @@ export default function SpeechProvider({ children }: PropsWithChildren) {
         );
       },
       repeat: () => {
-        if (!speechEnabled || !lastAnnouncement) return;
+        if (!lastAnnouncement) return;
         announce(lastAnnouncement);
+        if (!speechEnabled) return;
         void speakText(lastAnnouncement, {
           language: lastSpokenLanguageRef.current ?? speechLanguage,
           rate: speechRate,
@@ -77,8 +79,9 @@ export default function SpeechProvider({ children }: PropsWithChildren) {
         });
       },
       repeatWithOptions: (options?: SpeechOptions) => {
-        if (!speechEnabled || !lastAnnouncement) return;
+        if (!lastAnnouncement) return;
         announce(lastAnnouncement);
+        if (!speechEnabled) return;
         void speakText(lastAnnouncement, {
           language: options?.language ?? lastSpokenLanguageRef.current ?? speechLanguage,
           rate: speechRate,

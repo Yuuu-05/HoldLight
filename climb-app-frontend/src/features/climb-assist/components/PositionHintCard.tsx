@@ -9,6 +9,7 @@ interface PositionHintCardProps {
   className?: string;
   isSpeaking?: boolean;
   progressLabel?: string;
+  liveMode?: 'off' | 'polite' | 'assertive';
 }
 
 export default function PositionHintCard({
@@ -20,6 +21,7 @@ export default function PositionHintCard({
   className = '',
   isSpeaking = false,
   progressLabel,
+  liveMode = 'polite',
 }: PositionHintCardProps) {
   const { t } = useLanguage();
   const heading = t(title ?? 'Current movement hint');
@@ -28,8 +30,9 @@ export default function PositionHintCard({
     <section
       className={`assist-position-card cue-panel ${isSpeaking ? 'is-speaking' : ''} ${className}`.trim()}
       data-speaking={isSpeaking ? 'true' : 'false'}
-      aria-live="assertive"
-      aria-atomic="true"
+      role={liveMode === 'off' ? undefined : 'status'}
+      aria-live={liveMode}
+      aria-atomic={liveMode === 'off' ? undefined : 'true'}
     >
       <div className="assist-position-card-inner">
         <p className="assist-position-kicker">{heading}</p>

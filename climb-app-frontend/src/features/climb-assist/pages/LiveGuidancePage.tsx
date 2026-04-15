@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAccessibility } from '../../../app/providers/AccessibilityProvider';
 import { useSpeech } from '../../../app/providers/SpeechProvider';
 import { useCamera } from '../../../app/providers/CameraProvider';
 import { useLanguage } from '../../../app/providers/LanguageProvider';
@@ -11,12 +12,14 @@ import {
 } from '../../../shared/api/climbing.api';
 import MascotStatusLoader from '../../../shared/components/illustration/MascotStatusLoader';
 import Card from '../../../shared/components/ui/Card';
+import Button from '../../../shared/components/ui/Button';
 import { routes } from '../../../shared/constants/routes';
 import { usePageTitle } from '../../../shared/hooks/usePageTitle';
 import { playProximityBeep } from '../../../shared/lib/audioCue';
 import type { ClimbScan, ClimbSession, GuidanceLimb, Hold } from '../../../shared/types/climb';
 import CameraPreview from '../components/CameraPreview';
 import LiveGuidanceOverlay from '../components/LiveGuidanceOverlay';
+import PositionHintCard from '../components/PositionHintCard';
 import VoiceCuePanel from '../components/VoiceCuePanel';
 import { useGuidanceEngine } from '../hooks/useGuidanceEngine';
 import { useLivePoseTracker } from '../hooks/useLivePoseTracker';
@@ -86,6 +89,7 @@ function getTargetThreshold(hold: Hold | null, limb?: GuidanceLimb) {
 export default function LiveGuidancePage() {
   const { speak, repeatWithOptions, warm } = useSpeech();
   const { stream, supported: cameraSupported, requestAccess } = useCamera();
+  const { announce } = useAccessibility();
   const { language, t } = useLanguage();
   const [session, setSession] = useState<ClimbSession | null>(null);
   const [scan, setScan] = useState<ClimbScan | null>(null);
@@ -111,6 +115,9 @@ export default function LiveGuidancePage() {
   const lastBeepRef = useRef(0);
   const lastSafetyStateRef = useRef('');
   const lastSafetyAnnouncementRef = useRef('');
+  const lastScreenReaderSummaryRef = useRef('');
+  const liveSummaryRef = useRef<HTMLDivElement | null>(null);
+  const speechLanguage = language === 'zh' ? 'ZH' : 'EN';
 
   usePageTitle('Live guidance');
 
@@ -309,6 +316,15 @@ export default function LiveGuidancePage() {
     : liveSafetyDecision.status === 'ready'
       ? [displayPrimaryCue, displayTrackerHint].filter(Boolean).join(' ')
       : localizedSafetyDetail;
+  const blindPrioritySummary = [
+    `${t('Current cue')}: ${displayPanelCue}`,
+    `${t('Target')}: ${formatHoldTarget(liveCurrentHold, language)}`,
+    `${t('Safety')}: ${localizedSafetyHeadline}. ${localizedSafetyDetail}`,
+    `${t('Tracker')}: ${controlError ? localizeAssistText(controlError, language) : `${trackerStatusZh.headline}. ${trackerStatusZh.detail}`}`,
+    typeof alignmentPct === 'number' ? `${t('Alignment')}: ${alignmentPct}%` : null,
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   const completedHoldIds = useMemo(
     () => session?.plannedRoute?.holds.slice(0, guidance.cueIndex).map((hold) => hold.id) ?? [],
@@ -394,6 +410,26 @@ export default function LiveGuidancePage() {
     lastSafetyAnnouncementRef.current = announcementKey;
     speak(safetyPauseSpeechZh, { language: 'ZH' });
   }, [liveSafetyDecision.detail, liveSafetyDecision.status, safetyPauseSpeechZh, session?.plannedRoute, speak]);
+
+  useEffect(() => {
+    if (!session?.plannedRoute) return;
+
+    const focusTimer = window.setTimeout(() => {
+      liveSummaryRef.current?.focus();
+    }, 80);
+
+    return () => window.clearTimeout(focusTimer);
+  }, [session?.id]);
+
+  useEffect(() => {
+    if (!session?.plannedRoute) return;
+
+    const summaryKey = `${guidance.cueIndex}:${liveSafetyDecision.status}:${controlError ?? ''}:${displayPrimaryCue}:${liveCurrentHold?.id ?? ''}`;
+    if (lastScreenReaderSummaryRef.current === summaryKey) return;
+
+    lastScreenReaderSummaryRef.current = summaryKey;
+    announce(blindPrioritySummary);
+  }, [announce, blindPrioritySummary, controlError, displayPrimaryCue, guidance.cueIndex, liveCurrentHold?.id, liveSafetyDecision.status, session?.plannedRoute]);
 
   const handleAdvance = useCallback(
     async (reason: 'manual' | 'auto' = 'manual') => {
@@ -687,6 +723,50 @@ export default function LiveGuidancePage() {
   return (
     <div className="stack-lg assist-guidance-shell assist-live-page">
       <Card
+        title={t('Blind-first live summary')}
+        className="assist-live-summary-card"
+        bodyClassName="stack-md"
+      >
+        <div
+          ref={liveSummaryRef}
+          className="assist-screen-summary"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+          tabIndex={-1}
+        >
+          <strong>{t('Current cue')} {guidance.currentCue?.progressLabel ?? ''}</strong>
+          <p>{displayPanelCue}</p>
+          <div className="assist-screen-summary-list">
+            <p className="subtle-text">{t('Target')}: {formatHoldTarget(liveCurrentHold, language)}</p>
+            <p className="subtle-text">{t('Safety')}: {localizedSafetyHeadline}. {localizedSafetyDetail}</p>
+            <p className="subtle-text">
+              {t('Tracker')}: {controlError ? localizeAssistText(controlError, language) : `${trackerStatusZh.headline}. ${trackerStatusZh.detail}`}
+            </p>
+            {typeof alignmentPct === 'number' ? <p className="subtle-text">{t('Alignment')}: {alignmentPct}%</p> : null}
+          </div>
+        </div>
+        <p className="assist-screen-reader-note">
+          <strong>{t('Blind-first controls')}</strong>
+          <span>{t('This page speaks the next cue automatically. Use Reached hold after touching the target hold, and Need recalibration if the tracker drifts.')}</span>
+        </p>
+        <div className="inline-actions wrap assist-screen-summary-actions">
+          <Button variant="secondary" onClick={() => speak(blindPrioritySummary, { language: speechLanguage })}>
+            {t('Repeat live summary')}
+          </Button>
+        </div>
+      </Card>
+
+      <PositionHintCard
+        cue={displayPrimaryCue}
+        targetLabel={formatHoldTarget(liveCurrentHold, language)}
+        progressLabel={guidance.currentCue?.progressLabel}
+        isSpeaking={isSpeaking}
+        poseStatus={liveSafetyDecision.status === 'ready' ? displayTrackerHint : localizedSafetyDetail}
+        alignmentPct={alignmentPct}
+      />
+
+      <Card
         title={t('Live guidance camera')}
         className="assist-live-camera-card"
         bodyClassName="stack-md"
@@ -714,7 +794,7 @@ export default function LiveGuidancePage() {
           <div>
             <span className="badge">{t('Tracker')}</span>
             <p className="subtle-text">
-              {controlError ? localizeAssistText(controlError, language) : `${trackerStatusZh.headline}。${trackerStatusZh.detail}`}
+              {controlError ? localizeAssistText(controlError, language) : `${trackerStatusZh.headline}. ${trackerStatusZh.detail}`}
             </p>
           </div>
           <div>

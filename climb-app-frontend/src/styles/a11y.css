@@ -64,3 +64,36 @@
 #main-content:focus {
   scroll-margin-top: 1rem;
 }
+
+.assist-screen-summary,
+.assist-screen-reader-note {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.9rem 1rem;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 0 0 1px rgba(17, 17, 17, 0.06);
+}
+
+.assist-screen-summary-list {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.assist-screen-summary-actions {
+  align-items: stretch;
+}
+
+.assist-screen-reader-note {
+  color: var(--text);
+}
+
+.assist-screen-reader-note strong,
+.assist-screen-summary strong {
+  font-size: 0.95rem;
+}
+
+.assist-screen-reader-note span,
+.assist-screen-summary p {
+  margin: 0;
+}

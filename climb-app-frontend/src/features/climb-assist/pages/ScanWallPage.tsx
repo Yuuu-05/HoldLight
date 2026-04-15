@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAccessibility } from '../../../app/providers/AccessibilityProvider';
 import { useCamera } from '../../../app/providers/CameraProvider';
 import { useLanguage } from '../../../app/providers/LanguageProvider';
+import { useSpeech } from '../../../app/providers/SpeechProvider';
 import Button from '../../../shared/components/ui/Button';
 import Card from '../../../shared/components/ui/Card';
 import { updateClimbScanApi } from '../../../shared/api/climbing.api';
@@ -250,7 +252,9 @@ function createObjectUrlFromDataUrl(dataUrl: string) {
 export default function ScanWallPage() {
   const { supported, stream, requestAccess } = useCamera();
   const navigate = useNavigate();
+  const { announce } = useAccessibility();
   const { language, t } = useLanguage();
+  const { speak } = useSpeech();
   const { scanProgress, latestScan, startScan, resetScanSession } = useScanSession();
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaInputRef = useRef<HTMLInputElement>(null);
@@ -271,7 +275,12 @@ export default function ScanWallPage() {
   const hasSecureContext = typeof window === 'undefined' ? true : window.isSecureContext;
   const scanBusy = scanProgress.status === 'scanning' || scanProgress.status === 'saving';
   const previousScanStatusRef = useRef(scanProgress.status);
+  const previousAnnouncedScanStateRef = useRef('');
+  const previousReviewModeAnnouncementRef = useRef('');
+  const previousSelectedHoldAnnouncementRef = useRef('');
+  const reviewSummaryRef = useRef<HTMLDivElement | null>(null);
   const displayScan = activeScan ?? latestScan;
+  const speechLanguage = language === 'zh' ? 'ZH' : 'EN';
 
   usePageTitle('Assist');
 
@@ -652,6 +661,23 @@ export default function ScanWallPage() {
     : reviewMode === 'delete'
       ? t('Pick a detected hold, then remove it if the scan marked a false hold.')
       : t('Select a hold, then adjust its color if needed.');
+  const scanCaptureSummary = scanProgress.status === 'error'
+    ? scanAnnouncement
+    : scanBusy
+      ? localizedScanProgressMessage
+      : uploadType && uploadName
+        ? `${t('Selected file:')} ${uploadName}. ${t('Scan uploaded media')}.`
+        : t('Start with Scan with camera. If camera access is unavailable, upload a wall photo or video instead.');
+  const reviewSummary = reviewScan
+    ? [
+        `${t('Detected holds')}: ${reviewScan.wallMap.holds.length}.`,
+        `${t('Detected route colors')}: ${reviewScan.availableColors.length}.`,
+        `${t('Safety')}: ${localizeAssistText(scanSafetyDecision.headline, language)}. ${localizeAssistText(scanSafetyDecision.detail, language)}`,
+      ].join(' ')
+    : '';
+  const selectedHoldSummary = selectedCorrectionHold
+    ? `${selectedCorrectionHold.label}. ${formatHoldColor(selectedCorrectionHold.color, language, true)}.`
+    : '';
 
   useEffect(() => {
     setCorrectedWallMap(null);
@@ -705,6 +731,51 @@ export default function ScanWallPage() {
     };
   }, [reviewScan]);
 
+  useEffect(() => {
+    const announcementKey = `${scanProgress.status}:${scanProgress.message}:${scanProgress.error ?? ''}`;
+    if (previousAnnouncedScanStateRef.current === announcementKey) return;
+
+    if (scanProgress.status === 'scanning' || scanProgress.status === 'saving' || scanProgress.status === 'done' || scanProgress.status === 'error') {
+      previousAnnouncedScanStateRef.current = announcementKey;
+      announce(scanAnnouncement);
+    }
+  }, [announce, scanAnnouncement, scanProgress.error, scanProgress.message, scanProgress.status]);
+
+  useEffect(() => {
+    if (!reviewScan) return;
+
+    const focusTimer = window.setTimeout(() => {
+      reviewSummaryRef.current?.focus();
+    }, 80);
+
+    announce(reviewSummary || t('Wall scan complete. Review the scan summary, then confirm the route or retake the scan.'));
+
+    return () => window.clearTimeout(focusTimer);
+  }, [announce, reviewScan?.id, reviewSummary, t]);
+
+  useEffect(() => {
+    if (!reviewScan) return;
+
+    const announcementKey = `${reviewMode}:${reviewModeTitle}:${reviewModeDescription}`;
+    if (previousReviewModeAnnouncementRef.current === announcementKey) return;
+    previousReviewModeAnnouncementRef.current = announcementKey;
+    announce(`${reviewModeTitle}. ${reviewModeDescription}`);
+  }, [announce, reviewMode, reviewModeDescription, reviewModeTitle, reviewScan]);
+
+  useEffect(() => {
+    if (!selectedCorrectionHold || reviewMode === 'add') return;
+
+    const announcementKey = `${reviewMode}:${selectedCorrectionHold.id}:${selectedCorrectionHold.color}`;
+    if (previousSelectedHoldAnnouncementRef.current === announcementKey) return;
+    previousSelectedHoldAnnouncementRef.current = announcementKey;
+    announce(selectedHoldSummary);
+  }, [announce, reviewMode, selectedCorrectionHold, selectedHoldSummary]);
+
+  useEffect(() => {
+    if (!colorReviewError) return;
+    announce(localizeAssistText(colorReviewError, language));
+  }, [announce, colorReviewError, language]);
+
   return (
     <section className={`stack-lg assist-shell ${reviewScan ? 'assist-shell-review-mode' : ''}`.trim()}>
       {!reviewScan ? (
@@ -716,7 +787,26 @@ export default function ScanWallPage() {
             bodyClassName="stack-md"
             data-mobile-active={mobileStep === 'capture' ? 'true' : 'false'}
           >
+            <div id="scan-capture-summary" className="assist-screen-summary" role="status" aria-live="polite" aria-atomic="true">
+              <strong>{t('Blind-first scan summary')}</strong>
+              <p>{scanCaptureSummary}</p>
+            </div>
+            <div className="inline-actions wrap assist-screen-summary-actions">
+              <Button variant="secondary" onClick={() => speak(scanCaptureSummary, { language: speechLanguage })}>
+                {t('Repeat scan summary')}
+              </Button>
+            </div>
             <ScanPermissionNotice supported={supported} hasSecureContext={hasSecureContext} />
+            <div className="inline-actions wrap assist-action-row">
+              <Button
+                className="assist-scan-confirm-button"
+                onClick={() => void handleScan('camera')}
+                disabled={!supported || !hasSecureContext || scanBusy}
+                aria-describedby="scan-capture-summary"
+              >
+                {t('Scan with camera')}
+              </Button>
+            </div>
             <CameraPreview
               stream={stream}
               videoRef={videoRef}
@@ -751,15 +841,6 @@ export default function ScanWallPage() {
             </CameraPreview>
             <div className="sr-only" aria-live="polite" aria-atomic="true">
               {scanAnnouncement}
-            </div>
-            <div className="inline-actions wrap assist-action-row">
-              <Button
-                className="assist-scan-confirm-button"
-                onClick={() => void handleScan('camera')}
-                disabled={!supported || !hasSecureContext || scanBusy}
-              >
-                {t('Scan with camera')}
-              </Button>
             </div>
             {shouldShowRetryNotice ? (
               <div className="assist-soft-warning-card assist-inline-scan-warning" role="note" aria-live="polite">
@@ -823,135 +904,162 @@ export default function ScanWallPage() {
       ) : (
         <Card
           className="assist-scan-review-card assist-stable-card"
-          bodyClassName="assist-color-review-layout"
+          bodyClassName="stack-md"
         >
-          <div className={`assist-color-review-canvas is-${reviewMode}-mode`.trim()}>
-            <div className="assist-review-phone-stage">
-              <RouteCanvas
-                wallMap={reviewScan.wallMap}
-                backgroundImageUrl={overlayPreviewUrl ?? reviewScan.coverImageUrl}
-                plainImagePreview
-                fitContainer
-                holdOverlayStyle="subtle"
-                selectedHoldId={selectedCorrectionHoldId ?? undefined}
-                selectedHoldColor={reviewMode === 'delete' ? 'red' : activeReviewColor ?? undefined}
-                onHoldSelect={reviewMode === 'add' ? undefined : handleCorrectionHoldSelect}
-                onCanvasSelect={reviewMode === 'add' ? handleAddHoldAtPosition : undefined}
-                helperText={reviewCanvasHelperText}
-              />
+          <div
+            ref={reviewSummaryRef}
+            className="assist-screen-summary"
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+            tabIndex={-1}
+          >
+            <strong>{t('Blind-first scan summary')}</strong>
+            <p>{reviewSummary}</p>
+            <div className="assist-screen-summary-list">
+              <p className="subtle-text">{t('Current step')}: {reviewModeTitle}</p>
+              {selectedHoldSummary ? <p className="subtle-text">{selectedHoldSummary}</p> : null}
             </div>
           </div>
-          <div className="assist-color-review-panel">
-            <div className="assist-color-review-head">
-              <div className="assist-review-title-row">
-                <span className="assist-review-kicker">{t('Hold correction')}</span>
-                <strong>{t('Correct missing or mistaken holds')}</strong>
+          <div className="assist-screen-reader-note">
+            <strong>{t('Companion-assisted review')}</strong>
+            <p>{t('This correction step is mainly for a sighted companion. If the wall map already sounds correct, you can confirm the route now.')}</p>
+          </div>
+          <div className="inline-actions wrap assist-screen-summary-actions">
+            <Button variant="secondary" onClick={() => speak(reviewSummary, { language: speechLanguage })}>
+              {t('Repeat scan summary')}
+            </Button>
+          </div>
+          <div className="assist-color-review-layout">
+            <div className={`assist-color-review-canvas is-${reviewMode}-mode`.trim()}>
+              <div className="assist-review-phone-stage">
+                <RouteCanvas
+                  wallMap={reviewScan.wallMap}
+                  backgroundImageUrl={overlayPreviewUrl ?? reviewScan.coverImageUrl}
+                  plainImagePreview
+                  fitContainer
+                  holdOverlayStyle="subtle"
+                  selectedHoldId={selectedCorrectionHoldId ?? undefined}
+                  selectedHoldColor={reviewMode === 'delete' ? 'red' : activeReviewColor ?? undefined}
+                  onHoldSelect={reviewMode === 'add' ? undefined : handleCorrectionHoldSelect}
+                  onCanvasSelect={reviewMode === 'add' ? handleAddHoldAtPosition : undefined}
+                  helperText={reviewCanvasHelperText}
+                />
               </div>
             </div>
-
-            <div className="assist-review-tool-shell">
-              <div className="assist-review-tool-toggle" role="group" aria-label={t('Correction tools')}>
-                {[
-                  { id: 'select' as const, label: t('Edit colors') },
-                  { id: 'add' as const, label: t('Add hold') },
-                  { id: 'delete' as const, label: t('Delete hold') },
-                ].map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    className={`assist-review-tool-button ${reviewMode === item.id ? 'is-active' : ''}`.trim()}
-                    aria-pressed={reviewMode === item.id}
-                    onClick={() => handleReviewModeChange(item.id)}
-                  >
-                    {item.label}
-                  </button>
-                ))}
+            <div className="assist-color-review-panel">
+              <div className="assist-color-review-head">
+                <div className="assist-review-title-row">
+                  <span className="assist-review-kicker">{t('Hold correction')}</span>
+                  <strong>{t('Correct missing or mistaken holds')}</strong>
+                </div>
               </div>
-              <div className="assist-review-tool-copy">
-                <strong>{reviewModeTitle}</strong>
-                <p className="subtle-text">{reviewModeDescription}</p>
-              </div>
-            </div>
 
-            <div className="assist-color-picker-shell">
-              {reviewMode === 'delete' ? (
-                selectedCorrectionHold ? (
-                  <div className="assist-review-selection-card">
-                    <div className="assist-review-selection-row">
-                      <strong>{selectedCorrectionHold.label}</strong>
-                      <span className={`assist-review-color-pill is-${selectedCorrectionHold.color}`.trim()}>
-                        {formatHoldColor(selectedCorrectionHold.color, language, true)}
-                      </span>
-                    </div>
-                    <p className="subtle-text">
-                      {t('Delete this hold if it was detected by mistake.')}
-                    </p>
-                    <Button
+              <div className="assist-review-tool-shell">
+                <div className="assist-review-tool-toggle" role="group" aria-label={t('Correction tools')}>
+                  {[
+                    { id: 'select' as const, label: t('Edit colors') },
+                    { id: 'add' as const, label: t('Add hold') },
+                    { id: 'delete' as const, label: t('Delete hold') },
+                  ].map((item) => (
+                    <button
+                      key={item.id}
                       type="button"
-                      variant="danger"
-                      onClick={handleDeleteSelectedHold}
-                      disabled={colorReviewSaving}
+                      className={`assist-review-tool-button ${reviewMode === item.id ? 'is-active' : ''}`.trim()}
+                      aria-pressed={reviewMode === item.id}
+                      onClick={() => handleReviewModeChange(item.id)}
                     >
-                      {t('Delete selected hold')}
-                    </Button>
-                  </div>
-                ) : (
-                  <p className="subtle-text">{t('Tap a detected hold to choose which one to remove.')}</p>
-                )
-              ) : (
-                <>
-                  <div className="assist-color-selection-summary">
-                    <strong>{reviewMode === 'add' ? t('Color for new holds') : t('Selected hold color')}</strong>
-                  </div>
-                  <div className="assist-color-swatch-grid" role="group" aria-label={t('Choose corrected hold color')}>
-                    {HOLD_COLOR_OPTIONS.map((color) => (
-                      <button
-                        key={color}
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+                <div className="assist-review-tool-copy">
+                  <strong>{reviewModeTitle}</strong>
+                  <p className="subtle-text">{reviewModeDescription}</p>
+                </div>
+              </div>
+
+              <div className="assist-color-picker-shell">
+                {reviewMode === 'delete' ? (
+                  selectedCorrectionHold ? (
+                    <div className="assist-review-selection-card">
+                      <div className="assist-review-selection-row">
+                        <strong>{selectedCorrectionHold.label}</strong>
+                        <span className={`assist-review-color-pill is-${selectedCorrectionHold.color}`.trim()}>
+                          {formatHoldColor(selectedCorrectionHold.color, language, true)}
+                        </span>
+                      </div>
+                      <p className="subtle-text">
+                        {t('Delete this hold if it was detected by mistake.')}
+                      </p>
+                      <Button
                         type="button"
-                        className={`assist-color-swatch assist-color-swatch-${color} ${activeReviewColor === color ? 'is-active' : ''}`.trim()}
-                        aria-pressed={activeReviewColor === color}
-                        onClick={() => handleReviewColorPick(color)}
+                        variant="danger"
+                        onClick={handleDeleteSelectedHold}
+                        disabled={colorReviewSaving}
                       >
-                        {formatHoldColor(color, language, true)}
-                      </button>
-                    ))}
-                  </div>
-                  {reviewMode === 'select' && !selectedCorrectionHold ? (
-                    <p className="subtle-text">{t('Tap any detected hold circle to edit its color.')}</p>
-                  ) : null}
-                </>
-              )}
-            </div>
+                        {t('Delete selected hold')}
+                      </Button>
+                    </div>
+                  ) : (
+                    <p className="subtle-text">{t('Tap a detected hold to choose which one to remove.')}</p>
+                  )
+                ) : (
+                  <>
+                    <div className="assist-color-selection-summary">
+                      <strong>{reviewMode === 'add' ? t('Color for new holds') : t('Selected hold color')}</strong>
+                    </div>
+                    <div className="assist-color-swatch-grid" role="group" aria-label={t('Choose corrected hold color')}>
+                      {HOLD_COLOR_OPTIONS.map((color) => (
+                        <button
+                          key={color}
+                          type="button"
+                          className={`assist-color-swatch assist-color-swatch-${color} ${activeReviewColor === color ? 'is-active' : ''}`.trim()}
+                          aria-pressed={activeReviewColor === color}
+                          aria-label={formatHoldColor(color, language, true)}
+                          onClick={() => handleReviewColorPick(color)}
+                        >
+                          {formatHoldColor(color, language, true)}
+                        </button>
+                      ))}
+                    </div>
+                    {reviewMode === 'select' && !selectedCorrectionHold ? (
+                      <p className="subtle-text">{t('Tap any detected hold circle to edit its color.')}</p>
+                    ) : null}
+                  </>
+                )}
+              </div>
 
-            <div className="assist-color-action-row">
-              <Button
-                type="button"
-                className="assist-review-confirm-button"
-                onClick={() => void handleSaveColorReview()}
-                disabled={colorReviewSaving}
-              >
-                {colorReviewSaving
-                  ? t('Saving...')
-                  : t('Confirm and set route')}
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={handleResetColorReview}
-                disabled={!hasPendingManualCorrections || colorReviewSaving}
-              >
-                {t('Reset edits')}
-              </Button>
-              <Button type="button" variant="secondary" onClick={() => void handleRetakeScan()} disabled={colorReviewSaving}>
-                {t('Retake scan')}
-              </Button>
-            </div>
+              <div className="assist-color-action-row">
+                <Button
+                  type="button"
+                  className="assist-review-confirm-button"
+                  onClick={() => void handleSaveColorReview()}
+                  disabled={colorReviewSaving}
+                >
+                  {colorReviewSaving
+                    ? t('Saving...')
+                    : t('Confirm and set route')}
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={handleResetColorReview}
+                  disabled={!hasPendingManualCorrections || colorReviewSaving}
+                >
+                  {t('Reset edits')}
+                </Button>
+                <Button type="button" variant="secondary" onClick={() => void handleRetakeScan()} disabled={colorReviewSaving}>
+                  {t('Retake scan')}
+                </Button>
+              </div>
 
-            {colorReviewError ? (
-              <p className="subtle-text" role="alert">
-                {localizeAssistText(colorReviewError, language)}
-              </p>
-            ) : null}
+              {colorReviewError ? (
+                <p className="subtle-text" role="alert">
+                  {localizeAssistText(colorReviewError, language)}
+                </p>
+              ) : null}
+            </div>
           </div>
         </Card>
       )}
