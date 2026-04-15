@@ -21,7 +21,7 @@ import {
   localizeAssistText,
 } from '../utils/localizedAssistText';
 
-type ScanMobileStep = 'capture' | 'status' | 'review';
+type ScanMobileStep = 'capture' | 'review';
 type ReviewToolMode = 'select' | 'add' | 'delete';
 
 interface CanvasPosition {
@@ -400,7 +400,7 @@ export default function ScanWallPage() {
       setActiveScan(scan);
       setMobileStep('review');
     } else {
-      setMobileStep('status');
+      setMobileStep('capture');
     }
   }
 
@@ -418,7 +418,7 @@ export default function ScanWallPage() {
       setActiveScan(scan);
       setMobileStep('review');
     } else {
-      setMobileStep('status');
+      setMobileStep('capture');
     }
   }
 
@@ -709,23 +709,6 @@ export default function ScanWallPage() {
     <section className={`stack-lg assist-shell ${reviewScan ? 'assist-shell-review-mode' : ''}`.trim()}>
       {!reviewScan ? (
         <>
-          <nav className="assist-mobile-flow-tabs" aria-label={t('Assist flow steps')}>
-            {[
-              { id: 'capture' as const, label: t('Scan') },
-              { id: 'status' as const, label: t('Status') },
-            ].map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                className={`assist-mobile-flow-tab ${mobileStep === item.id ? 'is-active' : ''}`.trim()}
-                aria-current={mobileStep === item.id ? 'step' : undefined}
-                onClick={() => setMobileStep(item.id)}
-              >
-                {item.label}
-              </button>
-            ))}
-          </nav>
-
           <Card
             title={t('Assist')}
             actions={<span className="assist-card-inline-hint">{t('Full wall in frame')}</span>}
@@ -739,6 +722,8 @@ export default function ScanWallPage() {
               videoRef={videoRef}
               className="assist-camera-stage assist-camera-stage-natural"
               label={t('Camera preview for wall recognition')}
+              syncAspectRatio
+              fallbackAspectRatio="3 / 4"
               showMask={false}
             >
               {scanBusy ? (
@@ -768,15 +753,26 @@ export default function ScanWallPage() {
               {scanAnnouncement}
             </div>
             <div className="inline-actions wrap assist-action-row">
-              <Button onClick={() => void handleScan('camera')} disabled={!supported || !hasSecureContext || scanBusy}>
+              <Button
+                className="assist-scan-confirm-button"
+                onClick={() => void handleScan('camera')}
+                disabled={!supported || !hasSecureContext || scanBusy}
+              >
                 {t('Scan with camera')}
               </Button>
             </div>
-            <div className="assist-mobile-step-actions">
-              <Button variant="secondary" onClick={() => setMobileStep('status')}>
-                {t('View progress')}
-              </Button>
-            </div>
+            {shouldShowRetryNotice ? (
+              <div className="assist-soft-warning-card assist-inline-scan-warning" role="note" aria-live="polite">
+                <AssistMascotSticker variant="flashlight" className="assist-warning-mascot" />
+                <div className="stack-sm">
+                  <strong>{t('That wall is a little dim right now')}</strong>
+                  <p>{fallbackDescription}</p>
+                  <div className="inline-actions wrap">
+                    <Button onClick={() => void handleRetakeScan()}>{t('Retake scan')}</Button>
+                  </div>
+                </div>
+              </div>
+            ) : null}
           </Card>
 
           <Card
@@ -823,44 +819,6 @@ export default function ScanWallPage() {
             )}
           </Card>
 
-          <Card
-            title={t('Scan pulse')}
-            className="assist-bottom-sheet assist-status-sheet assist-mobile-panel"
-            bodyClassName="stack-md"
-            data-mobile-active={mobileStep === 'status' ? 'true' : 'false'}
-          >
-            <div className="assist-status-head">
-              <p className="assist-status-copy">
-                <strong>{localizedScanProgressMessage}</strong>
-              </p>
-              <span className="assist-status-progress">{scanProgress.progress}%</span>
-            </div>
-            <div
-              className="assist-progress-track"
-              role="progressbar"
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={scanProgress.progress}
-              aria-valuetext={localizedScanProgressMessage}
-            >
-              <span className="assist-progress-bar" style={{ width: `${scanProgress.progress}%` }} />
-            </div>
-            {shouldShowRetryNotice ? (
-              <div className="assist-soft-warning-card" role="note" aria-live="polite">
-                <AssistMascotSticker variant="flashlight" className="assist-warning-mascot" />
-                <div className="stack-sm">
-                  <strong>{t('That wall is a little dim right now')}</strong>
-                  <p>{fallbackDescription}</p>
-                  <div className="inline-actions wrap">
-                    <Button onClick={() => void handleRetakeScan()}>{t('Retake scan')}</Button>
-                  </div>
-                </div>
-              </div>
-            ) : null}
-            <div className="assist-mobile-step-actions">
-              <Button variant="secondary" onClick={() => setMobileStep('capture')}>{t('Back to scan')}</Button>
-            </div>
-          </Card>
         </>
       ) : (
         <Card

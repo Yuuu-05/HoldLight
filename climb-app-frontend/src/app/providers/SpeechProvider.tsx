@@ -58,6 +58,7 @@ export default function SpeechProvider({ children }: PropsWithChildren) {
         const targetLanguage = options?.language ?? speechLanguage;
         lastSpokenLanguageRef.current = targetLanguage;
         setLastAnnouncement(text);
+        announce(text);
         void speakText(text, { language: targetLanguage, rate: speechRate, volume: speechVolume }).then(
           (result) => {
             if (!result.played && !result.aborted) {
@@ -68,6 +69,7 @@ export default function SpeechProvider({ children }: PropsWithChildren) {
       },
       repeat: () => {
         if (!speechEnabled || !lastAnnouncement) return;
+        announce(lastAnnouncement);
         void speakText(lastAnnouncement, {
           language: lastSpokenLanguageRef.current ?? speechLanguage,
           rate: speechRate,
@@ -76,6 +78,7 @@ export default function SpeechProvider({ children }: PropsWithChildren) {
       },
       repeatWithOptions: (options?: SpeechOptions) => {
         if (!speechEnabled || !lastAnnouncement) return;
+        announce(lastAnnouncement);
         void speakText(lastAnnouncement, {
           language: options?.language ?? lastSpokenLanguageRef.current ?? speechLanguage,
           rate: speechRate,

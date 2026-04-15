@@ -8,18 +8,14 @@ import DifficultySelector from '../components/DifficultySelector';
 import RouteCanvas from '../components/RouteCanvas';
 import { routes } from '../../../shared/constants/routes';
 import { usePageTitle } from '../../../shared/hooks/usePageTitle';
-import { createClimbSessionApi, getLatestClimbScanApi } from '../../../shared/api/climbing.api';
+import { createClimbSessionApi, getLatestClimbScanApi, saveGuidanceLogsApi } from '../../../shared/api/climbing.api';
 import { triggerHaptic } from '../../../shared/lib/haptics';
 import { getActiveStoredScan } from '../store/climbAssist.store';
 import { buildEditableRoutePlan, buildRoutePlan, getAvailableRouteCandidates } from '../services/routePlanner.service';
 import { buildScanSafetyDecision } from '../services/safetyState.service';
 import type { ClimbScan, Hold } from '../../../shared/types/climb';
 import {
-  describeRoutePlan,
   formatHoldColor,
-  formatRouteFinishType,
-  formatRouteStartType,
-  formatReviewState,
   localizeAssistText,
 } from '../utils/localizedAssistText';
 
@@ -37,7 +33,7 @@ export default function SelectDifficultyPage() {
   const navigate = useNavigate();
   const hasBuzzedRef = useRef(false);
 
-  usePageTitle('Select route');
+  usePageTitle('Route check');
 
   useEffect(() => {
     let active = true;
@@ -115,11 +111,6 @@ export default function SelectDifficultyPage() {
     return previewRoutes.find((entry) => entry.candidate.id === selectedCandidate.id)?.route ?? null;
   }, [previewRoutes, selectedCandidate]);
 
-  const sameColorHoldCount = useMemo(
-    () => scan?.wallMap.holds.filter((hold) => hold.color === selectedCandidate?.color).length ?? 0,
-    [scan, selectedCandidate?.color],
-  );
-
   useEffect(() => {
     if (!previewRoute) {
       setCustomHoldIds([]);
@@ -152,7 +143,6 @@ export default function SelectDifficultyPage() {
 
   const displayRoute = (editMode || hasCustomEdits) && editedRoute ? editedRoute : previewRoute;
   const routeIsReady = Boolean(displayRoute && displayRoute.holds.length >= 2);
-  const selectedSemantics = displayRoute?.semantics ?? selectedCandidate?.semantics ?? null;
 
   const routeOverlays = useMemo(
     () =>
@@ -227,7 +217,7 @@ export default function SelectDifficultyPage() {
 
     try {
       setActionError(null);
-      await createClimbSessionApi({
+      const nextSession = await createClimbSessionApi({
         scanId: scan.id,
         routeId: displayRoute.id,
         selectedColor: selectedCandidate.color,
@@ -236,7 +226,7 @@ export default function SelectDifficultyPage() {
         cueIndex: 0,
         completed: false,
         currentTargetHoldId: displayRoute.holds[0]?.id || '',
-        status: 'draft',
+        status: 'guiding',
         plannedRoute: displayRoute,
         summaryStats: {
           holdsReached: 0,
@@ -247,7 +237,18 @@ export default function SelectDifficultyPage() {
         },
       });
 
-      navigate(routes.routeRecommendation);
+      void saveGuidanceLogsApi([
+        {
+          id: `log_${Date.now()}`,
+          sessionId: nextSession.id,
+          type: 'scan_saved',
+          message: `Route ${nextSession.selectedColor.toUpperCase()} is ready for live guidance.`,
+          timestamp: new Date().toISOString(),
+          payload: { routeId: nextSession.routeId },
+        },
+      ]).catch(() => undefined);
+
+      navigate(routes.liveGuidance);
     } catch (error) {
       setActionError(error instanceof Error ? error.message : 'Unable to create the climb session.');
     }
@@ -320,8 +321,8 @@ export default function SelectDifficultyPage() {
             <strong>{t('Companion route check')}</strong>
             <p className="subtle-text">
               {editMode
-                ? t('Tap same-colour holds on the photo. The connected route updates immediately.')
-                : t('Tap a route line on the photo, choose the guidance level, then confirm for the climber.')}
+                ? t('Tap same-colour holds directly on the wall photo to adjust the highlighted route.')
+                : t('Check the highlighted route directly on the wall photo. If anything is wrong, correct it before starting guidance.')}
             </p>
           </div>
 
@@ -339,28 +340,6 @@ export default function SelectDifficultyPage() {
               </Button>
             ))}
           </div>
-
-          {selectedCandidate && displayRoute ? (
-            <div className="assist-route-summary assist-route-builder-summary">
-              <strong>{describeRoutePlan(displayRoute, language, selectedCandidate.color)}</strong>
-              {selectedSemantics ? (
-                <div className="assist-route-insight-grid">
-                  <span className="assist-route-insight-pill">{t('Start:')} {formatRouteStartType(selectedSemantics.startType, language)}</span>
-                  <span className="assist-route-insight-pill">{t('Finish:')} {formatRouteFinishType(selectedSemantics.finishType, language)}</span>
-                  <span
-                    className={`assist-route-insight-pill ${selectedSemantics.reviewState === 'review-recommended' ? 'is-review' : 'is-approved'}`}
-                  >
-                    {formatReviewState(selectedSemantics.reviewState, language)}
-                  </span>
-                </div>
-              ) : null}
-              <p className="subtle-text">
-                {editMode
-                  ? `${displayRoute.holds.length} / ${sameColorHoldCount} ${t('same-colour holds in route')}`
-                  : t('The highlighted route is the current choice.')}
-              </p>
-            </div>
-          ) : null}
 
           {actionError ? <p className="subtle-text" role="alert">{localizeAssistText(actionError, language)}</p> : null}
 
@@ -382,7 +361,7 @@ export default function SelectDifficultyPage() {
               {t('Reset route')}
             </Button>
             <Button onClick={() => void handleContinue()} disabled={!selectedCandidate || !routeIsReady}>
-              {t('Confirm route')}
+              {t('Confirm and start guidance')}
             </Button>
           </div>
         </aside>

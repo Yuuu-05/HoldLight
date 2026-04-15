@@ -1,4 +1,6 @@
+import { useEffect } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { useAccessibility } from '../../../app/providers/AccessibilityProvider';
 import Header from './Header';
 import BottomNav from './BottomNav';
 import MobileActionBar from './MobileActionBar';
@@ -9,6 +11,7 @@ import { routes } from '../../constants/routes';
 export default function AppShell() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { announce } = useAccessibility();
   const isAssistImmersive = location.pathname.startsWith('/climb/');
 
   const handleAssistBack = () => {
@@ -19,6 +22,24 @@ export default function AppShell() {
 
     navigate(routes.dashboard);
   };
+
+  useEffect(() => {
+    const focusTimer = window.setTimeout(() => {
+      const main = document.getElementById('main-content');
+
+      if (main instanceof HTMLElement) {
+        main.focus();
+        const heading = main.querySelector('h1, h2');
+        const label = heading?.textContent?.trim() || document.title.split(' - ')[0];
+
+        if (label) {
+          announce(label);
+        }
+      }
+    }, 30);
+
+    return () => window.clearTimeout(focusTimer);
+  }, [announce, location.pathname, location.search]);
 
   return (
     <div className={`app-shell ${isAssistImmersive ? 'app-shell-immersive' : ''}`.trim()}>
@@ -50,7 +71,11 @@ export default function AppShell() {
               <MobileActionBar />
             </>
           )}
-          <main id="main-content" className={`page-shell ${isAssistImmersive ? 'page-shell-immersive' : ''}`.trim()}>
+          <main
+            id="main-content"
+            className={`page-shell ${isAssistImmersive ? 'page-shell-immersive' : ''}`.trim()}
+            tabIndex={-1}
+          >
             <div key={`${location.pathname}${location.search}`} className="page-transition">
               <Outlet />
             </div>

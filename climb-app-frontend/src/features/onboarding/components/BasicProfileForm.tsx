@@ -78,6 +78,7 @@ export default function BasicProfileForm({ profile, setProfile }: BasicProfileFo
       <Select
         label={t('Need accessibility assistance?')}
         value={selectedAccessibilityPreset}
+        description={t('Choose the kind of support you want the app to provide during climbing and navigation.')}
         onChange={(event) => {
           const nextValue = event.target.value;
           if (nextValue === '__custom__') {
@@ -100,6 +101,7 @@ export default function BasicProfileForm({ profile, setProfile }: BasicProfileFo
         value={profile.accessibilityNeeds ?? ''}
         onChange={(e) => setProfile({ ...profile, accessibilityNeeds: e.target.value || undefined })}
         placeholder={t('Screen reader, high contrast, spoken route preview...')}
+        hint={t('Describe any screen reader, speech, contrast, or navigation support you need.')}
         rows={4}
       />
     </div>

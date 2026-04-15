@@ -246,6 +246,10 @@ select {
 
 .app-shell-immersive {
   --assist-immersive-topbar-space: calc(4rem + env(safe-area-inset-top));
+  --assist-immersive-bottom-space: calc(0.35rem + env(safe-area-inset-bottom));
+  --assist-immersive-viewport-height: calc(
+    min(100dvh, 100svh) - var(--assist-immersive-topbar-space) - var(--assist-immersive-bottom-space)
+  );
 }
 
 .app-viewport-immersive {
@@ -5175,6 +5179,21 @@ select {
 
   .app-viewport {
     min-height: 100dvh;
+  }
+
+  .app-shell-immersive {
+    --assist-immersive-topbar-space: calc(3.25rem + env(safe-area-inset-top, 0px));
+    --assist-immersive-bottom-space: calc(0.18rem + env(safe-area-inset-bottom));
+  }
+
+  .assist-immersive-topbar {
+    min-height: calc(2.85rem + env(safe-area-inset-top, 0px));
+    padding: calc(0.28rem + env(safe-area-inset-top, 0px)) 0.55rem 0.18rem;
+  }
+
+  .assist-immersive-back {
+    width: 2.15rem;
+    height: 2.15rem;
   }
 
   .site-header {

@@ -17,7 +17,6 @@ import { playProximityBeep } from '../../../shared/lib/audioCue';
 import type { ClimbScan, ClimbSession, GuidanceLimb, Hold } from '../../../shared/types/climb';
 import CameraPreview from '../components/CameraPreview';
 import LiveGuidanceOverlay from '../components/LiveGuidanceOverlay';
-import PositionHintCard from '../components/PositionHintCard';
 import VoiceCuePanel from '../components/VoiceCuePanel';
 import { useGuidanceEngine } from '../hooks/useGuidanceEngine';
 import { useLivePoseTracker } from '../hooks/useLivePoseTracker';
@@ -305,9 +304,11 @@ export default function LiveGuidancePage() {
   const displayTrackerHint = language === 'zh'
     ? livePositionSpeechZh.speechText ?? localizeAssistText(trackerHint, language)
     : trackerHint;
-  const displayPanelCue = liveSafetyDecision.status === 'ready'
-    ? [displayPrimaryCue, displayTrackerHint].filter(Boolean).join(' ')
-    : localizedSafetyDetail;
+  const displayPanelCue = controlError
+    ? localizeAssistText(controlError, language)
+    : liveSafetyDecision.status === 'ready'
+      ? [displayPrimaryCue, displayTrackerHint].filter(Boolean).join(' ')
+      : localizedSafetyDetail;
 
   const completedHoldIds = useMemo(
     () => session?.plannedRoute?.holds.slice(0, guidance.cueIndex).map((hold) => hold.id) ?? [],
@@ -744,17 +745,6 @@ export default function LiveGuidancePage() {
           </div>
         </div>
       </Card>
-
-      <div className="assist-live-stage">
-        <PositionHintCard
-          cue={displayPrimaryCue}
-          targetLabel={formatHoldTarget(liveCurrentHold, language)}
-          progressLabel={guidance.currentCue?.progressLabel}
-          isSpeaking={isSpeaking}
-          poseStatus={liveSafetyDecision.status === 'ready' ? displayTrackerHint : localizedSafetyDetail}
-          alignmentPct={alignmentPct}
-        />
-      </div>
 
       <VoiceCuePanel
         cue={displayPanelCue}

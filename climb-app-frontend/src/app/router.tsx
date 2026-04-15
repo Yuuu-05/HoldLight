@@ -14,7 +14,6 @@ import EditProfilePage from '../features/profile/pages/EditProfilePage';
 import RoleSettingsPage from '../features/profile/pages/RoleSettingsPage';
 import ScanWallPage from '../features/climb-assist/pages/ScanWallPage';
 import SelectDifficultyPage from '../features/climb-assist/pages/SelectDifficultyPage';
-import RouteRecommendationPage from '../features/climb-assist/pages/RouteRecommendationPage';
 import LiveGuidancePage from '../features/climb-assist/pages/LiveGuidancePage';
 import ClimbSummaryPage from '../features/climb-assist/pages/ClimbSummaryPage';
 import FirstLoginProfilePage from '../features/onboarding/pages/FirstLoginProfilePage';
@@ -57,7 +56,7 @@ export const router = createBrowserRouter([
       { path: 'profile/role', element: withProtected(<RoleSettingsPage />) },
       { path: 'climb/scan', element: withProtected(<ScanWallPage />) },
       { path: 'climb/difficulty', element: withProtected(<SelectDifficultyPage />) },
-      { path: 'climb/route', element: withProtected(<RouteRecommendationPage />) },
+      { path: 'climb/route', element: withProtected(<SelectDifficultyPage />) },
       { path: 'climb/live', element: withProtected(<LiveGuidancePage />) },
       { path: 'climb/summary', element: withProtected(<ClimbSummaryPage />) },
       { path: '*', element: <NotFoundPage /> },

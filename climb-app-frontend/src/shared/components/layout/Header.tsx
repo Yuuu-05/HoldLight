@@ -15,6 +15,8 @@ export default function Header() {
   const { t } = useLanguage();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const navigate = useNavigate();
+  const notificationDrawerId = 'notification-drawer';
+  const notificationHeadingId = 'notification-drawer-heading';
 
   const handleLogout = async () => {
     await logout();
@@ -35,6 +37,7 @@ export default function Header() {
               count={unreadCount}
               open={drawerOpen}
               onClick={() => setDrawerOpen((prev) => !prev)}
+              drawerId={notificationDrawerId}
             />
             <Button variant="ghost" onClick={handleLogout}>{t('Logout')}</Button>
           </>
@@ -49,11 +52,14 @@ export default function Header() {
         <NotificationDrawer
           open={drawerOpen}
           notifications={notifications}
+          drawerId={notificationDrawerId}
+          labelledById={notificationHeadingId}
           onOpenItem={(notificationId) => {
             void markAsRead(notificationId);
             setDrawerOpen(false);
           }}
           onMarkAllRead={() => void markAllAsRead()}
+          onClose={() => setDrawerOpen(false)}
         />
       ) : null}
     </header>

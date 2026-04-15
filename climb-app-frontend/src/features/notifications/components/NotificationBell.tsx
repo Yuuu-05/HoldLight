@@ -5,9 +5,10 @@ interface NotificationBellProps {
   count: number;
   open: boolean;
   onClick: () => void;
+  drawerId?: string;
 }
 
-export default function NotificationBell({ count, open, onClick }: NotificationBellProps) {
+export default function NotificationBell({ count, open, onClick, drawerId }: NotificationBellProps) {
   const { t } = useLanguage();
   const label = `${t('Notifications')}${count ? ` (${count})` : ''}`;
 
@@ -17,6 +18,8 @@ export default function NotificationBell({ count, open, onClick }: NotificationB
       onClick={onClick}
       aria-label={label}
       aria-expanded={open}
+      aria-haspopup="dialog"
+      aria-controls={drawerId}
     >
       {label}
     </Button>

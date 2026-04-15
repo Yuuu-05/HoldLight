@@ -34,10 +34,8 @@ export default function ScanPermissionNotice({ supported, hasSecureContext = tru
   }
 
   return (
-    <div className="assist-permission-notice assist-permission-notice-ok" role="note">
-      <div className="assist-permission-copy">
-        <p className="assist-permission-kicker">{t('Camera ready')}</p>
-      </div>
+    <div className="assist-permission-ready" role="status" aria-live="polite">
+      <p className="assist-permission-kicker">{t('Camera ready')}</p>
     </div>
   );
 }

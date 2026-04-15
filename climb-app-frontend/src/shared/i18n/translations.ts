@@ -785,6 +785,7 @@ export const translations = {
     'Finish the path first, then move on to assist and volunteer features.':
       'Finish the path first, then move on to assist and volunteer features.',
     'Allow camera': 'Allow camera',
+    'Scan with camera': 'Confirm scan',
     'Full wall in frame': 'Full wall in frame',
     'Camera preview for wall recognition': 'Camera preview for wall recognition',
     'Checking wall map': 'Checking wall map',
@@ -1836,7 +1837,7 @@ export const translations = {
     'Scan source': '扫描来源',
     'Scan the wall and select a route first.': '请先扫描岩墙并选择路线。',
     'Scan uploaded media': '扫描上传内容',
-    'Scan with camera': '用相机扫描',
+    'Scan with camera': '确认扫描',
     'See what the scan found': '查看扫描结果',
     'Select route and guidance level': '选择路线与引导级别',
     'Selected file:': '已选文件：',

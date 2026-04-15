@@ -1,7 +1,12 @@
 interface ErrorStateProps {
   message: string;
+  id?: string;
 }
 
-export default function ErrorState({ message }: ErrorStateProps) {
-  return <p className="error-banner">{message}</p>;
+export default function ErrorState({ message, id }: ErrorStateProps) {
+  return (
+    <p id={id} className="error-banner" role="alert" aria-live="assertive">
+      {message}
+    </p>
+  );
 }

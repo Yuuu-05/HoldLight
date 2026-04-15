@@ -18,6 +18,7 @@ interface CameraPreviewProps {
   className?: string;
   plainLiveView?: boolean;
   syncAspectRatio?: boolean;
+  fallbackAspectRatio?: string;
   showMask?: boolean;
   showCaption?: boolean;
 }
@@ -75,6 +76,7 @@ export default function CameraPreview({
   className = '',
   plainLiveView = false,
   syncAspectRatio = false,
+  fallbackAspectRatio = '4 / 3',
   showMask,
   showCaption = false,
 }: CameraPreviewProps) {
@@ -87,7 +89,7 @@ export default function CameraPreview({
   const [aspectRatio, setAspectRatio] = useState<string | null>(null);
 
   const showPreviewMask = showMask ?? !plainLiveView;
-  const effectiveAspectRatio = syncAspectRatio ? aspectRatio ?? '4 / 3' : undefined;
+  const effectiveAspectRatio = syncAspectRatio ? aspectRatio ?? fallbackAspectRatio : undefined;
 
   useEffect(() => {
     const video = activeVideoRef.current;
