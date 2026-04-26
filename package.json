@@ -1,0 +1,12 @@
+{
+  "name": "CPT208-ClimbApp-main",
+  "private": true,
+  "scripts": {
+    "install:frontend": "npm install --prefix climb-app-frontend",
+    "install:backend": "npm install --prefix climb-app-backend",
+    "install:all": "npm run install:frontend && npm run install:backend",
+    "dev:frontend": "npm run dev --prefix climb-app-frontend",
+    "dev:backend": "npm run dev --prefix climb-app-backend",
+    "build:frontend": "npm run build --prefix climb-app-frontend"
+  }
+}

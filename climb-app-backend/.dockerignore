@@ -1,0 +1,11 @@
+node_modules
+npm-debug.log
+.env
+.venv
+.venv-*
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+vision_service/models/xiaoxiae/hold_detector/model_final.pth
+vision_service/models/xiaoxiae/route_triplet/triplet_network_final.pt

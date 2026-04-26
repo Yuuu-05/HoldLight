@@ -1,0 +1,17 @@
+export const routes = {
+  home: '/',
+  login: '/login',
+  register: '/register',
+  logout: '/logout',
+  onboarding: '/onboarding',
+  dashboard: '/dashboard',
+  profile: '/profile',
+  profileSettings: '/profile/settings',
+  roleSettings: '/profile/role',
+  scanWall: '/climb/scan',
+  selectDifficulty: '/climb/difficulty',
+  routeRecommendation: '/climb/route',
+  liveGuidance: '/climb/live',
+  climbSummary: '/climb/summary',
+  forbidden: '/403',
+};

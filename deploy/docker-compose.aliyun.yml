@@ -1,0 +1,83 @@
+services:
+  caddy:
+    image: caddy:2.8-alpine
+    restart: unless-stopped
+    depends_on:
+      - frontend
+      - backend
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+  frontend:
+    build:
+      context: ../climb-app-frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${FRONTEND_API_BASE_URL:-/api}
+        VITE_ENABLE_DEV_AUTH_BYPASS: "false"
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ../climb-app-backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    shm_size: "1gb"
+    depends_on:
+      - mongo
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      BODY_LIMIT: ${BODY_LIMIT:-12mb}
+      TRUST_PROXY: 1
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
+      MONGO_URI: ${MONGO_URI:-mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/${MONGO_DB_NAME}?authSource=admin}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      VISION_PROVIDER: ${VISION_PROVIDER:-xiaoxiae}
+      VISION_PYTHON_COMMAND: /opt/venv/bin/python
+      VISION_REQUEST_TIMEOUT_MS: ${VISION_REQUEST_TIMEOUT_MS:-120000}
+      VISION_WARM_ON_START: ${VISION_WARM_ON_START:-true}
+      VISION_INFER_WORKERS: ${VISION_INFER_WORKERS:-1}
+      VISION_CALIBRATION_WORKERS: ${VISION_CALIBRATION_WORKERS:-2}
+      VISION_WARM_INFER_WORKERS: ${VISION_WARM_INFER_WORKERS:-1}
+      VISION_BOOT_CALIBRATION_WORKERS: ${VISION_BOOT_CALIBRATION_WORKERS:-1}
+      VISION_RATE_LIMIT_WINDOW_MS: ${VISION_RATE_LIMIT_WINDOW_MS:-60000}
+      VISION_RATE_LIMIT_MAX: ${VISION_RATE_LIMIT_MAX:-10}
+      CALIBRATION_RATE_LIMIT_WINDOW_MS: ${CALIBRATION_RATE_LIMIT_WINDOW_MS:-60000}
+      CALIBRATION_RATE_LIMIT_MAX: ${CALIBRATION_RATE_LIMIT_MAX:-45}
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:5000/api/health').then((res)=>process.exit(res.ok?0:1)).catch(()=>process.exit(1))"
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+      MONGO_INITDB_DATABASE: ${MONGO_DB_NAME}
+    volumes:
+      - mongo_data:/data/db
+
+volumes:
+  caddy_data:
+  caddy_config:
+  mongo_data:

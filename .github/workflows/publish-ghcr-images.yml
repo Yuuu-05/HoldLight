@@ -1,0 +1,147 @@
+name: Publish GHCR Images
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish_frontend:
+        description: Publish the frontend image
+        type: boolean
+        required: true
+        default: true
+      publish_backend:
+        description: Publish the backend image (requires Git LFS assets)
+        type: boolean
+        required: true
+        default: false
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/publish-ghcr-images.yml"
+      - "climb-app-backend/**"
+      - "climb-app-frontend/**"
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      RENDER_FRONTEND_DEPLOY_HOOK_URL: ${{ secrets.RENDER_FRONTEND_DEPLOY_HOOK_URL }}
+      RENDER_BACKEND_DEPLOY_HOOK_URL: ${{ secrets.RENDER_BACKEND_DEPLOY_HOOK_URL }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          lfs: false
+
+      - name: Detect image targets
+        id: changes
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            frontend:
+              - 'climb-app-frontend/**'
+            backend:
+              - 'climb-app-backend/**'
+
+      - name: Resolve publish targets
+        id: targets
+        shell: bash
+        run: |
+          frontend=false
+          backend=false
+
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            frontend="${{ inputs.publish_frontend }}"
+            backend="${{ inputs.publish_backend }}"
+          else
+            frontend="${{ steps.changes.outputs.frontend }}"
+            backend="${{ steps.changes.outputs.backend }}"
+          fi
+
+          echo "frontend=$frontend" >> "$GITHUB_OUTPUT"
+          echo "backend=$backend" >> "$GITHUB_OUTPUT"
+          echo "frontend=$frontend"
+          echo "backend=$backend"
+
+      - name: Fetch required Git LFS assets for backend
+        if: steps.targets.outputs.backend == 'true'
+        run: |
+          git lfs pull --include="climb-app-backend/vision_service/models/xiaoxiae/color_classifier/neutral_hold_classifier.pt,climb-app-backend/vision_service/models/xiaoxiae/hold_detector/model_final.pth,climb-app-backend/vision_service/models/xiaoxiae/route_triplet/triplet_network_final.pt"
+          ls -lh climb-app-backend/vision_service/models/xiaoxiae/hold_detector/model_final.pth
+          ls -lh climb-app-backend/vision_service/models/xiaoxiae/route_triplet/triplet_network_final.pt
+          ls -lh climb-app-backend/vision_service/models/xiaoxiae/color_classifier/neutral_hold_classifier.pt
+
+      - name: Normalize GHCR owner name
+        id: prep
+        shell: bash
+        run: echo "owner=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Prepare frontend image metadata
+        id: frontend_meta
+        if: steps.targets.outputs.frontend == 'true'
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ steps.prep.outputs.owner }}/climb-app-frontend
+          tags: |
+            type=raw,value=latest
+            type=sha
+            type=ref,event=branch
+
+      - name: Build and push frontend image
+        if: steps.targets.outputs.frontend == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: ./climb-app-frontend
+          file: ./climb-app-frontend/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.frontend_meta.outputs.tags }}
+          labels: ${{ steps.frontend_meta.outputs.labels }}
+          build-args: |
+            VITE_API_BASE_URL=/api
+            VITE_ENABLE_DEV_AUTH_BYPASS=false
+
+      - name: Prepare backend image metadata
+        id: backend_meta
+        if: steps.targets.outputs.backend == 'true'
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ steps.prep.outputs.owner }}/climb-app-backend
+          tags: |
+            type=raw,value=latest
+            type=sha
+            type=ref,event=branch
+
+      - name: Build and push backend image
+        if: steps.targets.outputs.backend == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: ./climb-app-backend
+          file: ./climb-app-backend/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.backend_meta.outputs.tags }}
+          labels: ${{ steps.backend_meta.outputs.labels }}
+
+      - name: Trigger frontend Render deploy hook
+        if: steps.targets.outputs.frontend == 'true' && github.ref == 'refs/heads/main' && env.RENDER_FRONTEND_DEPLOY_HOOK_URL != ''
+        run: curl -fsS -X POST "$RENDER_FRONTEND_DEPLOY_HOOK_URL"
+
+      - name: Trigger backend Render deploy hook
+        if: steps.targets.outputs.backend == 'true' && github.ref == 'refs/heads/main' && env.RENDER_BACKEND_DEPLOY_HOOK_URL != ''
+        run: curl -fsS -X POST "$RENDER_BACKEND_DEPLOY_HOOK_URL"

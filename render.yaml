@@ -1,0 +1,57 @@
+services:
+  - type: web
+    name: climb-app-frontend
+    runtime: docker
+    rootDir: climb-app-frontend
+    region: singapore
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: PORT
+        value: "10000"
+      - key: VITE_API_BASE_URL
+        value: /api
+      - key: VITE_ENABLE_DEV_AUTH_BYPASS
+        value: "false"
+      - key: API_UPSTREAM
+        fromService:
+          type: pserv
+          name: climb-app-backend
+          property: hostport
+
+  - type: pserv
+    name: climb-app-backend
+    runtime: docker
+    rootDir: climb-app-backend
+    region: singapore
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "10000"
+      - key: MONGO_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: BODY_LIMIT
+        value: 12mb
+      - key: TRUST_PROXY
+        value: "1"
+      - key: VISION_PROVIDER
+        value: xiaoxiae
+      - key: VISION_PYTHON_COMMAND
+        value: python
+      - key: VISION_WARM_ON_START
+        value: "true"
+      - key: VISION_REQUEST_TIMEOUT_MS
+        value: "120000"
+      - key: VISION_INFER_WORKERS
+        value: "1"
+      - key: VISION_CALIBRATION_WORKERS
+        value: "2"
+      - key: VISION_WARM_INFER_WORKERS
+        value: "1"
+      - key: VISION_BOOT_CALIBRATION_WORKERS
+        value: "1"

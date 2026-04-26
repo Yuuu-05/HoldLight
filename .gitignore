@@ -1,0 +1,46 @@
+# dependencies
+node_modules/
+
+# build outputs
+dist/
+build/
+.vite/
+*.tsbuildinfo
+
+# env files
+.env
+.env.*
+!.env.example
+!deploy/.env.aliyun.example
+
+# python environments
+.venv/
+
+# local python caches
+climb-app-backend/vision_service/__pycache__/
+__pycache__/
+
+# logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+.tmp-*/
+*.url
+*.pyc
+*.zip
+_incoming_zip/
+
+# test
+coverage/
+tmp_frontend_ci/
+
+# generated frontend vendor assets
+climb-app-frontend/public/vendor/

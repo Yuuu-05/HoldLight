@@ -1,0 +1,28 @@
+{
+  email {$ACME_EMAIL}
+}
+
+{$APP_DOMAIN} {
+  encode zstd gzip
+
+  request_body {
+    max_size 16MB
+  }
+
+  header {
+    X-Content-Type-Options "nosniff"
+    Referrer-Policy "strict-origin-when-cross-origin"
+    Permissions-Policy "camera=(self), microphone=(self)"
+  }
+
+  @api path /api/*
+  reverse_proxy @api backend:5000 {
+    transport http {
+      response_header_timeout 180s
+      read_timeout 180s
+      write_timeout 180s
+    }
+  }
+
+  reverse_proxy frontend:80
+}
