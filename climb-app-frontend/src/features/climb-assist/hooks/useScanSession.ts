@@ -18,6 +18,40 @@ interface CaptureOptions {
   maxDimension?: number;
   quality?: number;
   maxDataUrlLength?: number;
+  targetAspectRatio?: number;
+}
+
+const IPHONE_REAR_CAMERA_ASPECT_RATIO = 3 / 4;
+
+function getCenteredSourceCrop(sourceWidth: number, sourceHeight: number, targetAspectRatio?: number) {
+  if (!targetAspectRatio || !Number.isFinite(targetAspectRatio) || targetAspectRatio <= 0) {
+    return {
+      sx: 0,
+      sy: 0,
+      sw: sourceWidth,
+      sh: sourceHeight,
+    };
+  }
+
+  const sourceAspectRatio = sourceWidth / sourceHeight;
+
+  if (sourceAspectRatio > targetAspectRatio) {
+    const cropWidth = sourceHeight * targetAspectRatio;
+    return {
+      sx: (sourceWidth - cropWidth) / 2,
+      sy: 0,
+      sw: cropWidth,
+      sh: sourceHeight,
+    };
+  }
+
+  const cropHeight = sourceWidth / targetAspectRatio;
+  return {
+    sx: 0,
+    sy: (sourceHeight - cropHeight) / 2,
+    sw: sourceWidth,
+    sh: cropHeight,
+  };
 }
 
 function captureElementPreview(element: HTMLVideoElement | HTMLImageElement | null, options: CaptureOptions = {}) {
@@ -28,10 +62,11 @@ function captureElementPreview(element: HTMLVideoElement | HTMLImageElement | nu
 
   if (!sourceWidth || !sourceHeight) return undefined;
 
-  const maxDimension = options.maxDimension ?? Math.max(sourceWidth, sourceHeight);
-  const scale = Math.min(1, maxDimension / Math.max(sourceWidth, sourceHeight));
-  const width = Math.max(1, Math.round(sourceWidth * scale));
-  const height = Math.max(1, Math.round(sourceHeight * scale));
+  const crop = getCenteredSourceCrop(sourceWidth, sourceHeight, options.targetAspectRatio);
+  const maxDimension = options.maxDimension ?? Math.max(crop.sw, crop.sh);
+  const scale = Math.min(1, maxDimension / Math.max(crop.sw, crop.sh));
+  const width = Math.max(1, Math.round(crop.sw * scale));
+  const height = Math.max(1, Math.round(crop.sh * scale));
 
   const canvas = document.createElement('canvas');
   canvas.width = width;
@@ -39,7 +74,7 @@ function captureElementPreview(element: HTMLVideoElement | HTMLImageElement | nu
   const context = canvas.getContext('2d');
   if (!context) return undefined;
 
-  context.drawImage(element, 0, 0, sourceWidth, sourceHeight, 0, 0, width, height);
+  context.drawImage(element, crop.sx, crop.sy, crop.sw, crop.sh, 0, 0, width, height);
 
   const initialQuality = options.quality ?? 0.88;
   const maxDataUrlLength = options.maxDataUrlLength;
@@ -83,14 +118,14 @@ function buildCompletionMessage(scan: ClimbScan) {
   }
 
   if (analysis.shouldAllowAutonomousGuidance) {
-    return `The wall looks clear enough for route setup. ${analysis.detectionSummary.holdCount} holds and ${analysis.detectionSummary.routeCount} route candidates passed the accessibility gate.`;
+    return `The wall looks ready. ${analysis.detectionSummary.holdCount} holds and ${analysis.detectionSummary.routeCount} route options were found.`;
   }
 
   if (analysis.suggestedAction === 'companion') {
     return 'Recognition is partly stable, but companion mode will keep the next step safer.';
   }
 
-  return 'Recognition confidence is still low for autonomous guidance. Please retake the photo or try a clearer angle.';
+  return 'Recognition is not clear enough yet. Retake the photo or try a clearer angle.';
 }
 
 export function useScanSession() {
@@ -150,11 +185,16 @@ export function useScanSession() {
         }
 
         setScanProgress({ status: 'scanning', progress: 8, message: 'Preparing the uploaded wall photo.', error: null });
-        const inferenceImage = captureElementPreview(imageElement, { maxDimension: 1280, quality: 0.84 });
+        const inferenceImage = captureElementPreview(imageElement, {
+          maxDimension: 1280,
+          quality: 0.84,
+          targetAspectRatio: IPHONE_REAR_CAMERA_ASPECT_RATIO,
+        });
         const previewImage = captureElementPreview(imageElement, {
           maxDimension: 640,
           quality: 0.56,
           maxDataUrlLength: 190_000,
+          targetAspectRatio: IPHONE_REAR_CAMERA_ASPECT_RATIO,
         });
         if (!inferenceImage || !previewImage) {
           throw new Error('The uploaded image preview is not ready yet.');
@@ -175,11 +215,16 @@ export function useScanSession() {
         }
 
         setScanProgress({ status: 'scanning', progress: 8, message: 'Capturing a clear frame from the uploaded video.', error: null });
-        const inferenceImage = captureElementPreview(uploadedVideoElement, { maxDimension: 1280, quality: 0.84 });
+        const inferenceImage = captureElementPreview(uploadedVideoElement, {
+          maxDimension: 1280,
+          quality: 0.84,
+          targetAspectRatio: IPHONE_REAR_CAMERA_ASPECT_RATIO,
+        });
         const previewImage = captureElementPreview(uploadedVideoElement, {
           maxDimension: 640,
           quality: 0.58,
           maxDataUrlLength: 190_000,
+          targetAspectRatio: IPHONE_REAR_CAMERA_ASPECT_RATIO,
         });
         if (!inferenceImage || !previewImage) {
           throw new Error('Pause the uploaded video on a clear wall frame before scanning.');
@@ -200,11 +245,16 @@ export function useScanSession() {
         }
 
         setScanProgress({ status: 'scanning', progress: 8, message: 'Capturing a calm wall frame from the live camera.', error: null });
-        const inferenceImage = captureElementPreview(videoElement, { maxDimension: 1280, quality: 0.84 });
+        const inferenceImage = captureElementPreview(videoElement, {
+          maxDimension: 1280,
+          quality: 0.84,
+          targetAspectRatio: IPHONE_REAR_CAMERA_ASPECT_RATIO,
+        });
         const previewImage = captureElementPreview(videoElement, {
           maxDimension: 640,
           quality: 0.58,
           maxDataUrlLength: 190_000,
+          targetAspectRatio: IPHONE_REAR_CAMERA_ASPECT_RATIO,
         });
         if (!inferenceImage || !previewImage) {
           throw new Error('The live camera frame could not be captured yet.');

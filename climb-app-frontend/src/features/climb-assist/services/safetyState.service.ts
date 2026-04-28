@@ -43,7 +43,7 @@ function formatManualCorrectionReason(count: number, singular: string, plural = 
 
 function normalizeAlignmentPauseDetail(detail: string | null | undefined) {
   if (!detail) {
-    return 'Wall alignment is not stable enough yet, so live cueing is paused.';
+    return 'Wall alignment is not stable yet, so live guidance is paused.';
   }
 
   const normalizedDetail = detail.trim();
@@ -53,7 +53,7 @@ function normalizeAlignmentPauseDetail(detail: string | null | undefined) {
     lowerDetail.includes('same wall framing') ||
     (lowerDetail.includes('wall alignment') && lowerDetail.includes('reliable'))
   ) {
-    return 'Wall alignment is not stable enough yet, so live cueing is paused.';
+    return 'Wall alignment is not stable yet, so live guidance is paused.';
   }
 
   if (
@@ -116,8 +116,8 @@ export function buildScanSafetyDecision(scan: ClimbScan | null): AssistSafetyDec
   if (analysis.shouldAllowAutonomousGuidance && analysis.routeCandidates.length > 0) {
     return buildDecision(
       'ready',
-      'Scan gate cleared',
-      'Scan recognition passed the accessibility gate for autonomous guidance.',
+      'Scan ready',
+      'Recognition is clear enough for route guidance.',
       analysis.captureGuidance.slice(0, 2),
     );
   }
@@ -126,7 +126,7 @@ export function buildScanSafetyDecision(scan: ClimbScan | null): AssistSafetyDec
     return buildDecision(
       'companion',
       'Companion recommended',
-      'The wall is only partly stable for recognition, so autonomous guidance should stay paused.',
+      'Recognition is only partly stable. Use companion support before continuing.',
       analysis.captureGuidance.slice(0, 2),
     );
   }
@@ -134,7 +134,7 @@ export function buildScanSafetyDecision(scan: ClimbScan | null): AssistSafetyDec
   return buildDecision(
     'retake',
     'Retake required',
-    'Recognition quality is too weak for autonomous guidance.',
+    'Recognition is not clear enough yet.',
     analysis.captureGuidance.slice(0, 2),
   );
 }
@@ -167,8 +167,8 @@ export function buildLiveGuidanceSafetyDecision({
       'Pause live guidance',
       normalizeAlignmentPauseDetail(alignmentState.error),
       [
-        'The scan-to-camera alignment is missing or unreliable.',
-        'Keep the camera aligned with the scanned wall and try recalibrating.',
+        'The scan and live camera are not aligned.',
+        'Keep the camera on the scanned wall and recalibrate.',
       ],
     );
   }
@@ -177,10 +177,10 @@ export function buildLiveGuidanceSafetyDecision({
     return buildDecision(
       'pause-live-guidance',
       'Pause live guidance',
-      'Wall alignment is still stabilising, so live cueing is paused for safety.',
+      'Wall alignment is still stabilizing, so live guidance is paused.',
       [
         `Alignment quality is only ${alignmentState.qualityPct}%.`,
-        'Hold position and keep the wall fully in frame.',
+        'Hold still and keep the full wall in frame.',
       ],
     );
   }
@@ -190,7 +190,7 @@ export function buildLiveGuidanceSafetyDecision({
       'pause-live-guidance',
       'Pause live guidance',
       poseState.error,
-      ['Pose tracking reported an error.', 'Bring the climber back into frame before continuing.'],
+      ['Pose tracking had an error.', 'Bring the climber back into frame before continuing.'],
     );
   }
 
@@ -198,10 +198,10 @@ export function buildLiveGuidanceSafetyDecision({
     return buildDecision(
       'pause-live-guidance',
       'Pause live guidance',
-      'The locked climber is not clear enough in frame for precise live cueing.',
+      'The climber is not clear enough in frame for live guidance.',
       [
         `Pose quality is ${poseState.poseQualityPct}%.`,
-        'A clear full-body view is required before new cues can be trusted.',
+        'Show the full body clearly before following new cues.',
       ],
     );
   }
@@ -210,9 +210,9 @@ export function buildLiveGuidanceSafetyDecision({
     return buildDecision(
       'pause-live-guidance',
       'Pause live guidance',
-      'The system is still searching for the primary climber.',
+      'The system is still finding the climber.',
       [
-        'A stable climber lock has not been established yet.',
+        'Keep the climber in frame until tracking is stable.',
       ],
     );
   }
@@ -223,8 +223,8 @@ export function buildLiveGuidanceSafetyDecision({
       'Pause live guidance',
       poseState.subjectLockReason,
       [
-        'The tracker is preventing a switch to a nearby person.',
-        'Wait for the climber lock to settle again before trusting new cues.',
+        'Tracking is avoiding a nearby person.',
+        'Wait until the climber is tracked again.',
       ],
     );
   }
@@ -233,7 +233,7 @@ export function buildLiveGuidanceSafetyDecision({
     return buildDecision(
       'pause-live-guidance',
       'Pause live guidance',
-      'Nearby movement is interfering with pose tracking, so new live cues are paused.',
+      'Nearby movement is affecting tracking, so live guidance is paused.',
       [
         `Interference risk is ${poseState.interferenceRiskPct}%.`,
         'Keep other people out of the camera view if possible.',
@@ -244,7 +244,7 @@ export function buildLiveGuidanceSafetyDecision({
   return buildDecision(
       'ready',
       'Live guidance ready',
-      'Pose tracking, wall alignment, and scan safety all look stable enough for live cueing.',
+      'Pose tracking, wall alignment, and scan quality are ready for live guidance.',
       [
         `Pose quality ${poseState.poseQualityPct}%.`,
         `Wall alignment ${alignmentState.qualityPct}%.`,

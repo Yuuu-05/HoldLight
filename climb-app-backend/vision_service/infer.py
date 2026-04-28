@@ -1080,7 +1080,7 @@ def build_capture_guidance(summary: Dict) -> List[str]:
         guidance.append("Try a straighter front-on angle so route colors separate more clearly.")
 
     if not guidance:
-        guidance.append("Recognition is stable. You can continue with automatic route selection.")
+        guidance.append("Recognition is stable. You can continue with route selection.")
 
     return guidance
 
@@ -1088,7 +1088,7 @@ def build_capture_guidance(summary: Dict) -> List[str]:
 def build_model_notes(runtime_status: Dict) -> List[str]:
     notes = [
         "This scan used the xiaoxiae Detectron2 hold detector with TripletNet route grouping.",
-        "Autonomous guidance is only enabled when recognition confidence and image quality both clear the accessibility gate.",
+        "Route guidance starts only when recognition and image quality are clear enough.",
         "The local weights came from the Kaggle models bundle and are stored inside the backend vision service.",
     ]
 
@@ -1180,8 +1180,8 @@ def build_wall_map(payload: Dict, image_bgr: np.ndarray) -> Dict:
             "scannedAt": scanned_at,
             "scanNotes": [
                 f"Detected {len(holds)} hold candidates using the {provider_name} provider.",
-                "Autonomous guidance is gated by recognition confidence instead of manual correction.",
-                "If confidence is low, the system should ask for a retake or switch to companion mode.",
+                "Route guidance starts only when recognition is clear enough.",
+                "Retake the photo if recognition is unclear, or continue with companion support.",
             ],
             "holds": holds,
             "analysis": analysis,

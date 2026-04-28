@@ -1427,24 +1427,24 @@ function buildRouteSemantics(
   const reviewHints: string[] = [];
 
   if (startType === 'single-start') {
-    reviewHints.push('Review the start manually if the wall shows a clearer two-hand launch stance.');
+    reviewHints.push('Check the start if the wall has a clearer two-hand start.');
   }
   if (finishType === 'single-finish') {
-    reviewHints.push('Review the finish if the top zone would be safer as a controlled or match finish.');
+    reviewHints.push('Check the finish if a controlled two-hand finish would be safer.');
   }
   if (metrics.reachabilityScore < 68) {
-    reviewHints.push('Reachability is still tight in at least one transition, so manual setter review is recommended.');
+    reviewHints.push('One move may be a stretch, so check the route before guiding.');
   }
   if (metrics.stabilityScore < 70) {
-    reviewHints.push('Stability is lower than ideal, usually because support options are sparse near a big move.');
+    reviewHints.push('Some large moves have limited foothold support.');
   }
 
   const reviewState: RouteReviewState =
     reviewHints.length > 0 ? 'review-recommended' : 'auto-approved';
   const reviewSummary =
     reviewState === 'review-recommended'
-      ? `Setter review recommended. ${startTypeLabels[startType]} and ${finishTypeLabels[finishType]} were inferred automatically with ${metrics.reachabilityScore}% reachability and ${metrics.stabilityScore}% stability.`
-      : `Auto-reviewed route. ${startTypeLabels[startType]} and ${finishTypeLabels[finishType]} cleared the semantic checks with ${metrics.reachabilityScore}% reachability and ${metrics.stabilityScore}% stability.`;
+      ? `Route review recommended. ${startTypeLabels[startType]}, ${finishTypeLabels[finishType]}, ${metrics.reachabilityScore}% reach, ${metrics.stabilityScore}% stability.`
+      : `Route checked. ${startTypeLabels[startType]}, ${finishTypeLabels[finishType]}, ${metrics.reachabilityScore}% reach, ${metrics.stabilityScore}% stability.`;
 
   return {
     plannerVersion: ROUTE_PLANNER_VERSION,
@@ -1617,12 +1617,12 @@ export function buildEditableRoutePlan(
       difficultyPreference,
       holdIds: [],
       holds: [],
-      summary: 'Custom route draft is empty. Select at least two same-colour holds to continue.',
+      summary: 'No route selected yet. Select at least two same-colour holds to continue.',
       estimatedMoves: 0,
       semantics: {
         ...semantics,
-        reviewSummary: 'Custom route edit active. No holds are currently selected, so guidance cannot start yet.',
-        setterNotes: ['User edit mode is active, but the custom route does not contain any selected holds yet.'],
+        reviewSummary: 'No holds selected yet. Guidance cannot start until the route has at least two holds.',
+        setterNotes: ['Route correction is active, but no holds are selected yet.'],
       },
     };
   }
@@ -1635,7 +1635,7 @@ export function buildEditableRoutePlan(
   const reviewHints =
     semantics.reviewHints.length > 0
       ? semantics.reviewHints
-      : ['Tap any same-colour hold again to remove it, or add another same-colour hold to reshape the sequence.'];
+      : ['Tap a same-colour hold to add or remove it from the route.'];
 
   return {
     id: `route_${wallMap.id}_${color}_${difficultyPreference.toLowerCase()}_custom_${selectionHash}`,
@@ -1645,16 +1645,16 @@ export function buildEditableRoutePlan(
     holdIds: editedRoute.map((hold) => hold.id),
     holds: editedRoute,
     summary:
-      `Custom ${color.toUpperCase()} route edit active. ${editedRoute.length} selected holds are now sequenced for guidance. ` +
-      `Start semantics: ${semantics.startLabel}. Finish semantics: ${semantics.finishLabel}.`,
+      `Custom ${color.toUpperCase()} route. ${editedRoute.length} selected holds are ready for guidance. ` +
+      `Start: ${semantics.startLabel}. Finish: ${semantics.finishLabel}.`,
     estimatedMoves: Math.max(0, editedRoute.length - 1),
     semantics: {
       ...semantics,
       reviewState: 'review-recommended',
       reviewSummary:
-        `Custom route edit active. ${semantics.reviewSummary} The route will be guided exactly from the edited selection.`,
+        `Custom route active. ${semantics.reviewSummary} Guidance will follow your selected holds.`,
       setterNotes: [
-        `User selected ${selectedColorHolds.length} same-colour hold${selectedColorHolds.length === 1 ? '' : 's'} for this custom route.`,
+        `Selected ${selectedColorHolds.length} same-colour hold${selectedColorHolds.length === 1 ? '' : 's'} for this route.`,
         ...semantics.setterNotes,
       ],
       reviewHints,
@@ -1672,10 +1672,10 @@ function buildCandidateSummary(color: HoldColor, route: Hold[], semantics: Route
     startRegion,
     verticalSpan,
     summary:
-      `${color.toUpperCase()} semantic same-colour line. ${semantics.startLabel}, ${semantics.finishLabel}, ` +
+      `${color.toUpperCase()} route. ${semantics.startLabel}, ${semantics.finishLabel}, ` +
       `${route.length} sequenced holds, ${verticalSpan}% vertical span, ${startRegion} start lane, ` +
       `${semantics.reachabilityScore}% reachability, ${semantics.stabilityScore}% stability` +
-      `${semantics.reviewState === 'review-recommended' ? ', setter review recommended.' : '.'}`,
+      `${semantics.reviewState === 'review-recommended' ? ', review recommended.' : '.'}`,
   };
 }
 
@@ -1747,7 +1747,7 @@ export function buildRoutePlan(
   const verticalSpan = Math.round(Math.max(0, bottomY - topY));
   const summary =
     routeCandidate?.summary ??
-    `${color.toUpperCase()} semantic same-colour route with ${orderedRoute.length} linked holds.`;
+    `${color.toUpperCase()} route with ${orderedRoute.length} linked holds.`;
 
   return {
     id: `route_${wallMap.id}_${color}_${difficultyPreference.toLowerCase()}`,
@@ -1758,9 +1758,8 @@ export function buildRoutePlan(
     holds: orderedRoute,
     summary:
       `${summary} Confidence ${Math.round(confidence * 100)}%. ` +
-      `Start semantics: ${semantics.startLabel}. Finish semantics: ${semantics.finishLabel}. ` +
-      `The planner now combines same-colour reachability, support-hold insertion, and semantic start-to-finish checks ` +
-      `across ${verticalSpan}% of the wall. ${semantics.reviewSummary} ` +
+      `Start: ${semantics.startLabel}. Finish: ${semantics.finishLabel}. ` +
+      `Route spans ${verticalSpan}% of the wall. ${semantics.reviewSummary} ` +
       `${difficultyLabels[difficultyPreference] || difficultyLabels.Intermediate}`.trim(),
     estimatedMoves: Math.max(0, orderedRoute.length - 1),
     semantics,

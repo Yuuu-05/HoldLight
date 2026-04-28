@@ -29,14 +29,14 @@ export const translations = {
     'Scan the current wall, then move into route check and voice cues.':
       'Scan the current wall, then move into route check and voice cues.',
     'Welcome guide': 'Welcome guide',
-    'CPT208 human-centered climbing app': 'CPT208 human-centered climbing app',
+    'CPT208 human-centered climbing app': 'Climbing guidance for every step',
     'Accessible climbing, beginner education, and volunteer coordination in one place.':
       'Accessible climbing, beginner education, and volunteer coordination in one place.',
     'This frontend combines user onboarding, accessible interaction, tutorial content, real-time route guidance prototype, and lightweight community tools so the final Render deployment feels like a coherent product instead of separate coursework pages.':
-      'This frontend combines user onboarding, accessible interaction, tutorial content, real-time route guidance prototype, and lightweight community tools so the final Render deployment feels like a coherent product instead of separate coursework pages.',
+      'Set up your profile, learn the basics, scan a wall, and follow clear route guidance in one place.',
     'Voice-first guidance': 'Voice-first guidance',
     'Use read-aloud controls, high-contrast mode, large touch targets, and optional voice commands for a lower-stress experience.':
-      'Use read-aloud controls, high-contrast mode, large touch targets, and optional voice commands for a lower-stress experience.',
+      'Turn on read-aloud, high contrast, large touch targets, and voice commands when you need them.',
     'Beginner tutorial hub': 'Beginner tutorial hub',
     'Teach rules, gear, terms, and safety tips with simple language and progress tracking.':
       'Teach rules, gear, terms, and safety tips with simple language and progress tracking.',
@@ -79,7 +79,7 @@ export const translations = {
     'Beginner-friendly climbing learning path': 'Beginner-friendly climbing learning path',
     'New climber tutorial hub': 'New climber tutorial hub',
     'Start with the basics before using climbing assistance features. This version keeps the path simple: begin with safety, continue in order, and resume from your latest progress.':
-      'Start with the basics before using climbing assistance features. This version keeps the path simple: begin with safety, continue in order, and resume from your latest progress.',
+      'Learn the basics first. Start with safety, continue step by step, and resume anytime.',
     'Your progress': 'Your progress',
     'You have completed the full beginner tutorial path.':
       'You have completed the full beginner tutorial path.',
@@ -147,7 +147,7 @@ export const translations = {
     'Stop and ask for help if you feel unsure.':
       'Stop and ask for help if you feel unsure.',
     'The goal of your first sessions is not speed or height. Focus on understanding the wall, following the route, and moving safely.':
-      'The goal of your first sessions is not speed or height. Focus on understanding the wall, following the route, and moving safely.',
+      'In your first sessions, focus on the wall, the route, and safe movement.',
     'Important beginner equipment': 'Important beginner equipment',
     'Simple preparation tips': 'Simple preparation tips',
     'Climbing shoes help your feet stay stable on small holds.':
@@ -231,7 +231,7 @@ export const translations = {
     'Complete onboarding': 'Complete onboarding',
     'Complete now': 'Complete now',
     'Your profile is not complete yet. Fill in key personal and climbing information so the app can personalize guidance.':
-      'Your profile is not complete yet. Fill in key personal and climbing information so the app can personalize guidance.',
+      'Complete your profile so guidance can match your needs.',
     'Build confidence with a simple learning path before trying harder routes.':
       'Build confidence with a simple learning path before trying harder routes.',
     'Start with safety': 'Start with safety',
@@ -259,37 +259,37 @@ export const translations = {
     'Create post': 'Create post',
     'See who needs guidance and review available support sessions.':
       'See who needs guidance and review available support sessions.',
-    'Route demo': 'Route demo',
+    'Route demo': 'Route preview',
     'Try the route scan and route recommendation prototype flow.':
-      'Try the route scan and route recommendation prototype flow.',
-    'Open route demo': 'Open route demo',
+      'Scan a wall, choose a route, and preview guidance.',
+    'Open route demo': 'Open route preview',
     'Use voice-first and lower-stress navigation paths before starting a session.':
-      'Use voice-first and lower-stress navigation paths before starting a session.',
+      'Set up voice and simple navigation before you climb.',
     'Turn on spoken feedback, large text, contrast support, and voice commands.':
       'Turn on spoken feedback, large text, contrast support, and voice commands.',
-    'Voice mode demo': 'Voice mode demo',
+    'Voice mode demo': 'Voice commands',
     'Practice commands like start scan, repeat hint, and return home.':
       'Practice commands like start scan, repeat hint, and return home.',
     'Open voice mode': 'Open voice mode',
     'Focus preview': 'Focus preview',
     'Preview the VoiceOver-style focus flow with current element announcements.':
-      'Preview the VoiceOver-style focus flow with current element announcements.',
+      'Preview keyboard focus and spoken element updates.',
     'Open focus preview': 'Open focus preview',
     'Find support': 'Find support',
     'Browse volunteer support requests and lightweight contact intent options.':
-      'Browse volunteer support requests and lightweight contact intent options.',
+      'Browse support requests and send a simple offer to help.',
     'Prepare for support sessions with clear request details, contact intents, and accessibility context.':
-      'Prepare for support sessions with clear request details, contact intents, and accessibility context.',
+      'Review the request, access needs, and contact details before helping.',
     'Open requests': 'Open requests',
     'Browse current support requests from climbers who need guidance.':
       'Browse current support requests from climbers who need guidance.',
     'My sessions': 'My sessions',
     'Review sessions you created or already expressed interest in.':
       'Review sessions you created or already expressed interest in.',
-    'Contact intents': 'Contact intents',
+    'Contact intents': 'Help offers',
     'Read structured interest messages instead of managing full chat.':
       'Read structured interest messages instead of managing full chat.',
-    'View contact intents': 'View contact intents',
+    'View contact intents': 'View help offers',
     'Preview accessibility tools': 'Preview accessibility tools',
     'Check spoken guidance and focus flow before helping a climber.':
       'Check spoken guidance and focus flow before helping a climber.',
@@ -316,7 +316,7 @@ export const translations = {
       'Your profile is still missing some basic information used for personalization.',
     'Development account': 'Development account',
     'You are currently using the development auth shortcut. Role and profile changes are stored locally for preview purposes.':
-      'You are currently using the development auth shortcut. Role and profile changes are stored locally for preview purposes.',
+      'You are using a test login. Role and profile changes stay on this device.',
     'Account details': 'Account details',
     'Only your username is kept in profile settings.': 'Only your username is kept in profile settings.',
     'Username saved.': 'Username saved.',
@@ -337,13 +337,13 @@ export const translations = {
     'Your account is currently set to': 'Your account is currently set to',
     'Role guide': 'Role guide',
     'focuses on tutorial content and lower-stress guidance.':
-      'focuses on tutorial content and lower-stress guidance.',
+      'starts with tutorials and calm guidance.',
     'focuses more on community participation and advanced demos.':
-      'focuses more on community participation and advanced demos.',
+      'highlights community tools and advanced features.',
     'prioritises voice-first and accessibility support.':
       'prioritises voice-first and accessibility support.',
     'prioritises support requests and structured contact intent.':
-      'prioritises support requests and structured contact intent.',
+      'highlights support requests and help offers.',
     'Development role switch': 'Development role switch',
     'View as': 'View as',
     'Back to dashboard': 'Back to dashboard',
@@ -444,7 +444,7 @@ export const translations = {
     'Friends and climbing partners': 'Friends and climbing partners',
     'Friend network': 'Friend network',
     'Build your climbing circle, manage friend requests, and use friends as the base for room invites and practice groups.':
-      'Build your climbing circle, manage friend requests, and use friends as the base for room invites and practice groups.',
+      'Add friends, manage requests, and invite partners to rooms.',
     'Open climbing rooms': 'Open climbing rooms',
     'Friend request sent to': 'Friend request sent to',
     'Unable to send request.': 'Unable to send request.',
@@ -487,14 +487,14 @@ export const translations = {
     'Add friend': 'Add friend',
     'No suggestions': 'No suggestions',
     'Everyone in the current frontend demo is already connected or has a request in progress.':
-      'Everyone in the current frontend demo is already connected or has a request in progress.',
+      'Everyone is already connected or has a pending request.',
     'Request history': 'Request history',
     'No request history': 'No request history',
     'Friend request decisions will appear here.':
       'Friend request decisions will appear here.',
     'Climbing rooms by gym and region': 'Climbing rooms by gym and region',
     'Create a room for a climbing gym, invite friends, search rooms by location, and use the room as a social space for chat, help, and practice planning.':
-      'Create a room for a climbing gym, invite friends, search rooms by location, and use the room as a social space for chat, help, and practice planning.',
+      'Create a gym room, invite friends, and plan practice together.',
     'Open friends': 'Open friends',
     'Create a climbing room': 'Create a climbing room',
     'Room title': 'Room title',
@@ -582,12 +582,12 @@ export const translations = {
     'You need to join the room before sending messages or asking for help.':
       'You need to join the room before sending messages or asking for help.',
     'Request help, browse upcoming support sessions, and express contact intent with low friction.':
-      'Request help, browse upcoming support sessions, and express contact intent with low friction.',
+      'Request help, browse sessions, and send a simple offer.',
     'Create request': 'Create request',
     'Volunteer request': 'Volunteer request',
     'Request not found.': 'Request not found.',
     'Interested volunteers:': 'Interested volunteers:',
-    'View all contact intents': 'View all contact intents',
+    'View all contact intents': 'View all help offers',
     'My volunteer sessions': 'My volunteer sessions',
     'Review requests you created and support sessions where you already expressed interest.':
       'Review requests you created and support sessions where you already expressed interest.',
@@ -595,19 +595,19 @@ export const translations = {
     'Your created requests or volunteer interests will appear here.':
       'Your created requests or volunteer interests will appear here.',
     'This page shows the lightweight contact mechanism used in the volunteer module. Instead of full chat, users send structured messages attached to support requests.':
-      'This page shows the lightweight contact mechanism used in the volunteer module. Instead of full chat, users send structured messages attached to support requests.',
+      'Send short help offers tied to each support request.',
     'Back to volunteer board': 'Back to volunteer board',
     'Requests I created': 'Requests I created',
     'Interested volunteers': 'Interested volunteers',
     'View request details': 'View request details',
     'No created requests yet': 'No created requests yet',
     'Volunteer requests you create will appear here together with incoming contact intents.':
-      'Volunteer requests you create will appear here together with incoming contact intents.',
+      'Your support requests and incoming help offers appear here.',
     'Requests I expressed interest in': 'Requests I expressed interest in',
     'Your message:': 'Your message:',
     'Sent on': 'Sent on',
     'Open request': 'Open request',
-    'No contact intents yet': 'No contact intents yet',
+    'No contact intents yet': 'No help offers yet',
     'When you click \'Express interest\' on a volunteer request, the message will appear here.':
       'When you click \'Express interest\' on a volunteer request, the message will appear here.',
     'Create volunteer request': 'Create volunteer request',
@@ -618,14 +618,14 @@ export const translations = {
     'Publish request': 'Publish request',
     Time: 'Time',
     'View request': 'View request',
-    'Contact intent': 'Contact intent',
+    'Contact intent': 'Help offer',
     Send: 'Send',
     'Express interest': 'Express interest',
     'interested volunteer': 'interested volunteer',
     'interested volunteers': 'interested volunteers',
     'Accessibility system': 'Accessibility system',
     'Manage the main accessibility options for reading, focus guidance, and voice interaction. This page is designed to show that accessibility is part of the system, not an extra decoration.':
-      'Manage the main accessibility options for reading, focus guidance, and voice interaction. This page is designed to show that accessibility is part of the system, not an extra decoration.',
+      'Manage reading, focus, and voice settings in one place.',
     'Reading and visibility': 'Reading and visibility',
     'Turn on stronger visual support and simpler reading settings.':
       'Turn on stronger visual support and simpler reading settings.',
@@ -651,19 +651,19 @@ export const translations = {
     'Turn on simplified mode': 'Turn on simplified mode',
     'Preview voice interaction': 'Preview voice interaction',
     'Open the demo page to test fixed voice-style commands such as start scan, repeat hint, and go home.':
-      'Open the demo page to test fixed voice-style commands such as start scan, repeat hint, and go home.',
+      'Try voice commands like start scan, repeat hint, and go home.',
     'Voice commands': 'Voice commands',
     'Turn off voice commands': 'Turn off voice commands',
     'Turn on voice commands': 'Turn on voice commands',
-    'Open voice mode demo': 'Open voice mode demo',
+    'Open voice mode demo': 'Open voice commands',
     'Preview focus guidance': 'Preview focus guidance',
     'Open a simple focus flow page to simulate VoiceOver-style navigation and focus announcements.':
-      'Open a simple focus flow page to simulate VoiceOver-style navigation and focus announcements.',
+      'Try a simple focus flow with spoken updates.',
     'Voice mode is ready. Choose a command button to preview spoken feedback.':
       'Voice mode is ready. Choose a command button to preview spoken feedback.',
-    'Accessibility demo': 'Accessibility demo',
+    'Accessibility demo': 'Accessibility tools',
     'This page demonstrates simple voice-style interaction with fixed commands. The goal is not complex AI, but clear and reliable interaction for beginners and visually impaired users.':
-      'This page demonstrates simple voice-style interaction with fixed commands. The goal is not complex AI, but clear and reliable interaction for beginners and visually impaired users.',
+      'Use fixed voice commands for clear, reliable control.',
     'Available commands': 'Available commands',
     'Voice commands are currently disabled. Turn them on in accessibility settings first.':
       'Voice commands are currently disabled. Turn them on in accessibility settings first.',
@@ -690,7 +690,7 @@ export const translations = {
     'Returning to the home page.': 'Returning to the home page.',
     'Read this page': 'Read this page',
     'You are on the voice mode demo page. This page shows simple fixed voice commands for accessibility support.':
-      'You are on the voice mode demo page. This page shows simple fixed voice commands for accessibility support.',
+      'This page shows fixed voice commands for accessibility support.',
     'Stop reading': 'Stop reading',
     'Reading stopped.': 'Reading stopped.',
     'Latest feedback': 'Latest feedback',
@@ -708,7 +708,7 @@ export const translations = {
     'Read the previous hint again for the user.':
       'Read the previous hint again for the user.',
     'This page simulates a VoiceOver-style focus flow. Each focused item announces its purpose so the user always knows where they are and what the current element does.':
-      'This page simulates a VoiceOver-style focus flow. Each focused item announces its purpose so the user always knows where they are and what the current element does.',
+      'Each focused item explains what it does, so you always know where you are.',
     'Current focus': 'Current focus',
     Item: 'Item',
     'Previous item': 'Previous item',
@@ -762,10 +762,10 @@ export const translations = {
       'climbing room invites are waiting for you.',
     'Complete profile': 'Complete profile',
     'This information powers role-based experiences, accessible settings, and volunteer matching.':
-      'This information powers role-based experiences, accessible settings, and volunteer matching.',
+      'This helps us tailor guidance, settings, and support matches.',
     'Display name': 'Display name',
     'The accessibility assistance field is optional, but recommended if you want voice support, higher contrast, or volunteer guidance.':
-      'The accessibility assistance field is optional, but recommended if you want voice support, higher contrast, or volunteer guidance.',
+      'This is optional. Add notes if you need voice, contrast, or volunteer support.',
     'Saving...': 'Saving...',
     'Save profile': 'Save profile',
     'Skip for now': 'Skip for now',
@@ -848,17 +848,11 @@ export const translations = {
     'Companion route check': 'Companion route check',
     'Review the highlighted route and start guidance when ready.':
       'Review the highlighted route and start guidance when ready.',
-    'Tap a same-colour hold to add or remove it from the current route.':
-      'Tap a same-colour hold to add or remove it from the current route.',
     'Companion final route check': 'Companion final route check',
     'Tap a route line on the photo, choose the guidance level, then confirm for the climber.':
       'Tap a route line on the photo, choose the guidance level, then confirm for the climber.',
     'Check the highlighted route with the climber. Use route correction if any hold is missing, then confirm to start guidance.':
-      'Check the highlighted route with the climber. Use route correction if any hold is missing, then confirm to start guidance.',
-    'Tap same-colour holds on the photo. The connected route updates immediately.':
-      'Tap same-colour holds on the photo. The connected route updates immediately.',
-    'Tap same-colour holds to add or remove them from the selected route.':
-      'Tap same-colour holds to add or remove them from the selected route.',
+      'Check the highlighted route. Correct missing holds, then start guidance.',
     'Select route': 'Select route',
     'Correct route': 'Correct route',
     'Finish route correction': 'Finish route correction',
@@ -882,28 +876,28 @@ export const translations = {
     'Open room hub': 'Open room hub',
     'Volunteer support inside Social': 'Volunteer support inside Social',
     'This social area now includes public posts, comments, likes, friend relationships, gym-based climbing rooms, and volunteer support requests in one community flow.':
-      'This social area now includes public posts, comments, likes, friend relationships, gym-based climbing rooms, and volunteer support requests in one community flow.',
+      'Use posts, friends, rooms, and support requests from one community page.',
     'Share route notes, ask questions, and keep climbing conversations visible to the wider community.':
       'Share route notes, ask questions, and keep climbing conversations visible to the wider community.',
     post: 'post',
     posts: 'posts',
     'Rooms live inside the same social layer, so partners can plan sessions, gym meetups, and lightweight help requests together.':
-      'Rooms live inside the same social layer, so partners can plan sessions, gym meetups, and lightweight help requests together.',
+      'Use rooms to plan gym meetups, practice, and quick support.',
     room: 'room',
     rooms: 'rooms',
     'Volunteer support is now grouped under Social, so requests, contact intents, and community coordination stay in one place.':
-      'Volunteer support is now grouped under Social, so requests, contact intents, and community coordination stay in one place.',
+      'Volunteer support now lives in Social with requests and help offers.',
     'active request': 'active request',
     'active requests': 'active requests',
     'Request help, browse upcoming support sessions, and express contact intent with low friction from inside the community module.':
-      'Request help, browse upcoming support sessions, and express contact intent with low friction from inside the community module.',
+      'Request help, browse sessions, and send a simple offer from Social.',
     'This page shows the lightweight contact mechanism used in the volunteer module inside Social. Instead of full chat, users send structured messages attached to support requests.':
-      'This page shows the lightweight contact mechanism used in the volunteer module inside Social. Instead of full chat, users send structured messages attached to support requests.',
+      'Send short help offers tied to each support request.',
     'Hold correction': 'Hold correction',
     Undo: 'Undo',
     'Correct missing or mistaken holds': 'Correct missing or mistaken holds',
     'Add missing holds, remove mistakes, and adjust colors before continuing.':
-      'Add missing holds, remove mistakes, and adjust colors before continuing.',
+      'Add missing holds, remove mistakes, and fix colors before continuing.',
     'Manual correction summary': 'Manual correction summary',
     Holds: 'Holds',
     'Color edits': 'Color edits',
@@ -921,11 +915,11 @@ export const translations = {
     'Pick a detected hold, then remove it if the scan marked a false hold.':
       'Pick a detected hold, then remove it if the scan marked a false hold.',
     'Select one or more detected holds, then remove them if the scan marked false holds.':
-      'Select one or more detected holds, then remove them if the scan marked false holds.',
+      'Select holds, then delete any that are wrong.',
     'Select a hold, then adjust its color if needed.':
       'Select a hold, then adjust its color if needed.',
     'Select one or more holds, choose a target color, then apply it to the selection.':
-      'Select one or more holds, choose a target color, then apply it to the selection.',
+      'Select holds, choose the right color, then apply it.',
     'Color for new holds': 'Color for new holds',
     'Selected hold color': 'Selected hold color',
     'Target hold color': 'Target hold color',
@@ -963,9 +957,9 @@ export const translations = {
     Alignment: 'Alignment',
     'Alignment confidence:': 'Alignment confidence:',
     'Camera access in mobile browsers needs HTTPS or localhost. Publish the site over HTTPS or upload a wall photo or video instead.':
-      'Camera access in mobile browsers needs HTTPS or localhost. Publish the site over HTTPS or upload a wall photo or video instead.',
+      'Camera access needs HTTPS or localhost. You can upload a wall photo or video instead.',
     'Camera access is not available in this browser. Use a supported mobile browser or upload a wall photo or video instead.':
-      'Camera access is not available in this browser. Use a supported mobile browser or upload a wall photo or video instead.',
+      'This browser cannot use the camera. Upload a wall photo or video instead.',
     'Camera preview will appear here when permission is granted.':
       'Camera preview will appear here when permission is granted.',
     'Rear camera active': 'Rear camera active',
@@ -973,7 +967,7 @@ export const translations = {
     'Camera ready': 'Camera ready',
     'Camera unavailable': 'Camera unavailable',
     'Capture the wall with the camera or upload a wall photo or video, then continue once recognition finishes.':
-      'Capture the wall with the camera or upload a wall photo or video, then continue once recognition finishes.',
+      'Scan with the camera or upload media. Continue after recognition finishes.',
     'Choose guidance difficulty': 'Choose guidance difficulty',
     'Climb review': 'Climb review',
     'Climb summary': 'Climb summary',
@@ -1091,11 +1085,11 @@ export const translations = {
     'These preferences help shape read-aloud support and focus guidance.':
       'These preferences help shape read-aloud support and focus guidance.',
     'This closing page delivers completion state, approximate time, and a short encouragement summary.':
-      'This closing page delivers completion state, approximate time, and a short encouragement summary.',
+      'Review your climb time, progress, and next action.',
     'This frontend focuses on voice-first interaction, wall scanning, route guidance, and climb review for visually impaired climbers.':
-      'This frontend focuses on voice-first interaction, wall scanning, route guidance, and climb review for visually impaired climbers.',
+      'Use voice, wall scanning, route guidance, and climb review in one flow.',
     'This route only appears because the scan cleared the confidence gate.':
-      'This route only appears because the scan cleared the confidence gate.',
+      'This route appears after the scan is clear enough.',
     Tracker: 'Tracker',
     'Tracker:': 'Tracker:',
     'Try refreshing the page or returning to the dashboard.':
@@ -1113,14 +1107,14 @@ export const translations = {
     'Upload a wall photo or video to test recognition without the live camera.':
       'Upload a wall photo or video to test recognition without the live camera.',
     'Upload a wall photo, or pause a short video on a clear frame, and run the same recognition pipeline without using the live camera.':
-      'Upload a wall photo, or pause a short video on a clear frame, and run the same recognition pipeline without using the live camera.',
+      'Upload a wall photo, or pause a video on a clear frame, then scan it.',
     'Uploaded wall preview': 'Uploaded wall preview',
     'Use read-aloud controls, clear prompts, and route hints for a lower-stress experience.':
-      'Use read-aloud controls, clear prompts, and route hints for a lower-stress experience.',
+      'Use read-aloud controls, clear prompts, and route hints.',
     'Use route guidance and climb summaries to keep each session organized.':
       'Use route guidance and climb summaries to keep each session organized.',
     'Use the rear camera, keep the wall centered, and scan slowly from lower holds to higher holds for better hold recognition.':
-      'Use the rear camera, keep the wall centered, and scan slowly from lower holds to higher holds for better hold recognition.',
+      'Use the rear camera, center the wall, and scan slowly from bottom to top.',
     'Verify that the highlighted line matches the intended route.':
       'Verify that the highlighted line matches the intended route.',
     'View guide again': 'View guide again',
@@ -1135,7 +1129,7 @@ export const translations = {
     'We could not finish this scan.': 'We could not finish this scan.',
     'You are still viewing the system route.': 'You are still viewing the system route.',
     'You can open the scan details if you want to inspect what was detected before deciding on the next step.':
-      'You can open the scan details if you want to inspect what was detected before deciding on the next step.',
+      'Open scan details to review detected holds before continuing.',
     'Your current role does not have access to this page.':
       'Your current role does not have access to this page.',
     'Your edited route preview is active.': 'Your edited route preview is active.',
@@ -1189,26 +1183,26 @@ export const translations = {
     'Apply recommended setup': 'Apply recommended setup',
     'Reset to default settings': 'Reset to default settings',
     'Turn off high contrast, large text, and simplified mode while restoring the default guidance settings.':
-      'Turn off high contrast, large text, and simplified mode while restoring the default guidance settings.',
+      'Turn off high contrast, large text, and simplified mode.',
     'Turns on spoken guidance, voice commands, high contrast, large text, and simplified mode in one step.':
-      'Turns on spoken guidance, voice commands, high contrast, large text, and simplified mode in one step.',
+      'Turn on voice, high contrast, large text, and simplified mode.',
     'Turn off high contrast and font adjustments while restoring the default guidance settings.':
-      'Turn off high contrast and font adjustments while restoring the default guidance settings.',
+      'Turn off high contrast and font adjustments.',
     'Turns on spoken guidance, voice commands, high contrast, and larger font settings in one step.':
-      'Turns on spoken guidance, voice commands, high contrast, and larger font settings in one step.',
+      'Turn on voice, high contrast, and larger text.',
     'Active settings': 'Active settings',
     'Standard mode': 'Standard mode',
     'Voice and feedback': 'Voice and feedback',
     'Control spoken guidance, command listening, and action feedback.':
-      'Control spoken guidance, command listening, and action feedback.',
+      'Control voice guidance, commands, and feedback.',
     'Read out route hints, scan status, and key actions.':
       'Read out route hints, scan status, and key actions.',
     'Use fixed commands such as start scan and repeat hint when supported.':
       'Use fixed commands such as start scan and repeat hint when supported.',
     'Send polite status updates after controls change.':
-      'Send polite status updates after controls change.',
+      'Speak status updates after controls change.',
     'Send status updates and tune visual feedback after controls change.':
-      'Send status updates and tune visual feedback after controls change.',
+      'Speak updates and adjust visual feedback after controls change.',
     'Highlight strength': 'Highlight strength',
     'Controls how visible selection and focus highlights feel.':
       'Controls how visible selection and focus highlights feel.',
@@ -1224,7 +1218,7 @@ export const translations = {
     'Hear a sample using the current speech settings.':
       'Hear a sample using the current speech settings.',
     'Tune text, contrast, and page density for low-vision use.':
-      'Tune text, contrast, and page density for low-vision use.',
+      'Adjust text, contrast, and page density.',
     'Increase contrast for text, buttons, and navigation surfaces.':
       'Increase contrast for text, buttons, and navigation surfaces.',
     Font: 'Font',
@@ -1241,7 +1235,7 @@ export const translations = {
     Heavy: 'Heavy',
     Spacing: 'Spacing',
     'Adjust line height and paragraph spacing for reading-heavy content.':
-      'Adjust line height and paragraph spacing for reading-heavy content.',
+      'Adjust line height and paragraph spacing.',
     'Reading spacing': 'Reading spacing',
     'Controls line height and content spacing for readability.':
       'Controls line height and content spacing for readability.',
@@ -1257,7 +1251,7 @@ export const translations = {
       'Choose a text scale that stays readable without breaking the layout.',
     'Bold text': 'Bold text',
     'Increase weight for headings, buttons, labels, and current status text.':
-      'Increase weight for headings, buttons, labels, and current status text.',
+      'Make headings, buttons, labels, and status text bolder.',
     'Readability spacing': 'Readability spacing',
     'Add a little more line height and spacing around reading-heavy content.':
       'Add a little more line height and spacing around reading-heavy content.',
@@ -1317,14 +1311,14 @@ export const translations = {
     'Scan the current wall, then move into route check and voice cues.':
       '扫描当前岩墙，然后进入路线确认和语音提示。',
     'Welcome guide': '新手引导',
-    'CPT208 human-centered climbing app': 'CPT208 以人为中心的攀岩应用',
+    'CPT208 human-centered climbing app': '每一步都有清晰引导',
     'Accessible climbing, beginner education, and volunteer coordination in one place.':
       '把无障碍攀岩、新手教学与志愿者协作整合到一个平台里。',
     'This frontend combines user onboarding, accessible interaction, tutorial content, real-time route guidance prototype, and lightweight community tools so the final Render deployment feels like a coherent product instead of separate coursework pages.':
-      '这个前端整合了用户注册引导、无障碍交互、教程内容、实时路线引导原型和轻量社交工具，让最终部署出来的产品更像一个完整应用，而不是分散的课程页面。',
+      '在这里完成资料设置、学习基础知识、扫描岩墙，并跟随清晰的路线引导。',
     'Voice-first guidance': '语音优先引导',
     'Use read-aloud controls, high-contrast mode, large touch targets, and optional voice commands for a lower-stress experience.':
-      '提供朗读、高对比度、大触控区域和可选语音命令，降低使用压力。',
+      '按需开启朗读、高对比度、大按钮和语音命令。',
     'Beginner tutorial hub': '新手教程中心',
     'Teach rules, gear, terms, and safety tips with simple language and progress tracking.':
       '用简单语言和进度追踪讲解规则、装备、术语和安全提示。',
@@ -1367,7 +1361,7 @@ export const translations = {
     'Beginner-friendly climbing learning path': '面向初学者的学习路径',
     'New climber tutorial hub': '新手教程中心',
     'Start with the basics before using climbing assistance features. This version keeps the path simple: begin with safety, continue in order, and resume from your latest progress.':
-      '在使用攀岩辅助功能前，先掌握基础内容。这一版学习路径保持简单：先学安全，再按顺序继续，并可从上次进度恢复。',
+      '先学习基础内容。从安全开始，按顺序继续，也可以随时接着上次进度学。',
     'Your progress': '你的学习进度',
     'You have completed the full beginner tutorial path.':
       '你已经完成了完整的新手教程路径。',
@@ -1435,7 +1429,7 @@ export const translations = {
     'Stop and ask for help if you feel unsure.':
       '如果不确定，就停下来寻求帮助。',
     'The goal of your first sessions is not speed or height. Focus on understanding the wall, following the route, and moving safely.':
-      '前几次练习的重点不是速度或高度，而是看懂岩墙、理解线路，并安全移动。',
+      '前几次练习先关注岩墙、路线和安全移动。',
     'Important beginner equipment': '新手重要装备',
     'Simple preparation tips': '简单准备建议',
     'Climbing shoes help your feet stay stable on small holds.':
@@ -1518,7 +1512,7 @@ export const translations = {
     'Complete onboarding': '完成首次资料填写',
     'Complete now': '立即完成',
     'Your profile is not complete yet. Fill in key personal and climbing information so the app can personalize guidance.':
-      '你的个人资料还未完整填写。补充基础个人信息和攀岩信息后，系统才能提供更贴合的引导。',
+      '完善资料后，系统才能给出更合适的引导。',
     'Build confidence with a simple learning path before trying harder routes.':
       '先通过简单清晰的学习路径建立信心，再尝试更难的线路。',
     'Start with safety': '先学安全',
@@ -1546,37 +1540,37 @@ export const translations = {
     'Create post': '发帖',
     'See who needs guidance and review available support sessions.':
       '查看谁需要引导帮助，并浏览可参与的支持活动。',
-    'Route demo': '线路演示',
+    'Route demo': '路线预览',
     'Try the route scan and route recommendation prototype flow.':
-      '体验扫描岩墙与线路推荐的原型流程。',
-    'Open route demo': '打开线路演示',
+      '扫描岩墙、选择路线，并预览引导。',
+    'Open route demo': '打开路线预览',
     'Use voice-first and lower-stress navigation paths before starting a session.':
-      '开始活动前，先使用语音优先、低压力的导航流程。',
+      '攀爬前先设置语音和简化导航。',
     'Turn on spoken feedback, large text, contrast support, and voice commands.':
       '开启语音反馈、大字体、高对比度和语音命令。',
-    'Voice mode demo': '语音模式演示',
+    'Voice mode demo': '语音命令',
     'Practice commands like start scan, repeat hint, and return home.':
       '练习“开始扫描”“重复提示”“返回主页”等命令。',
     'Open voice mode': '打开语音模式',
     'Focus preview': '焦点预览',
     'Preview the VoiceOver-style focus flow with current element announcements.':
-      '预览类似 VoiceOver 的焦点流转和当前元素播报。',
+      '预览焦点切换和当前元素播报。',
     'Open focus preview': '打开焦点预览',
     'Find support': '寻找支持',
     'Browse volunteer support requests and lightweight contact intent options.':
-      '浏览志愿支持需求和轻量联系意向。',
+      '查看支持请求，并发送简单的帮助意向。',
     'Prepare for support sessions with clear request details, contact intents, and accessibility context.':
-      '通过明确的需求信息、联系意向和无障碍背景，为支持活动做准备。',
+      '帮助前先查看请求、无障碍需求和联系方式。',
     'Open requests': '查看需求',
     'Browse current support requests from climbers who need guidance.':
       '浏览当前需要引导支持的攀岩者请求。',
     'My sessions': '我的活动',
     'Review sessions you created or already expressed interest in.':
       '查看你创建的活动，或你已经表达过兴趣的活动。',
-    'Contact intents': '联系意向',
+    'Contact intents': '帮助意向',
     'Read structured interest messages instead of managing full chat.':
       '通过结构化兴趣信息沟通，而不是直接进入完整聊天。',
-    'View contact intents': '查看联系意向',
+    'View contact intents': '查看帮助意向',
     'Preview accessibility tools': '预览无障碍工具',
     'Check spoken guidance and focus flow before helping a climber.':
       '在帮助攀岩者之前，先检查语音引导和焦点流程。',
@@ -1603,7 +1597,7 @@ export const translations = {
       '你的资料仍缺少部分基础信息，可能会影响个性化引导。',
     'Development account': '开发账号',
     'You are currently using the development auth shortcut. Role and profile changes are stored locally for preview purposes.':
-      '你当前使用的是开发环境快捷登录。角色和资料修改只会保存在本地，用于演示预览。',
+      '你正在使用测试登录。角色和资料修改只会保存在本设备。',
     'Account details': '账号详情',
     'Only your username is kept in profile settings.': '个人资料设置中仅保留用户名。',
     'Username saved.': '用户名已保存。',
@@ -1625,13 +1619,13 @@ export const translations = {
     'Your account is currently set to': '你的账号当前角色为',
     'Role guide': '角色说明',
     'focuses on tutorial content and lower-stress guidance.':
-      '更偏向教程内容和低压力引导。',
+      '优先展示教程和轻松引导。',
     'focuses more on community participation and advanced demos.':
-      '更偏向社区参与和高级功能演示。',
+      '优先展示社区工具和进阶功能。',
     'prioritises voice-first and accessibility support.':
       '优先提供语音优先和无障碍支持。',
     'prioritises support requests and structured contact intent.':
-      '优先展示支持请求和结构化联系意向。',
+      '优先展示支持请求和帮助意向。',
     'Development role switch': '开发环境角色切换',
     'View as': '切换为',
     'Back to dashboard': '返回仪表板',
@@ -1731,7 +1725,7 @@ export const translations = {
     'Friends and climbing partners': '好友与攀岩搭子',
     'Friend network': '好友网络',
     'Build your climbing circle, manage friend requests, and use friends as the base for room invites and practice groups.':
-      '建立你的攀岩社交圈，管理好友申请，并以好友关系为基础发起房间邀请和练习组队。',
+      '添加好友、管理申请，并邀请伙伴加入房间。',
     'Open climbing rooms': '打开攀岩房间',
     'Friend request sent to': '已向以下用户发送好友申请：',
     'Unable to send request.': '无法发送好友申请。',
@@ -1762,14 +1756,14 @@ export const translations = {
     'Add friend': '添加好友',
     'No suggestions': '暂无推荐',
     'Everyone in the current frontend demo is already connected or has a request in progress.':
-      '当前前端演示中的用户已经互相关联，或已有申请在处理中。',
+      '所有人都已是好友，或已有申请在处理中。',
     'Request history': '申请记录',
     'No request history': '暂无申请记录',
     'Friend request decisions will appear here.':
       '好友申请的处理结果会显示在这里。',
     'Climbing rooms by gym and region': '按攀岩馆与地区划分的房间',
     'Create a room for a climbing gym, invite friends, search rooms by location, and use the room as a social space for chat, help, and practice planning.':
-      '你可以为某个攀岩馆创建房间、邀请好友、按地点搜索房间，并把房间作为聊天、求助和约练的社交空间。',
+      '创建岩馆房间，邀请好友，一起约练。',
     'Open friends': '打开好友页',
     'Create a climbing room': '创建攀岩房间',
     'Room title': '房间标题',
@@ -1849,12 +1843,12 @@ export const translations = {
     'You need to join the room before sending messages or asking for help.':
       '你需要先加入房间，才能发送消息或发起求助。',
     'Request help, browse upcoming support sessions, and express contact intent with low friction.':
-      '你可以发布协助需求、浏览即将开始的支持活动，并用轻量方式表达联系意向。',
+      '发布求助、查看支持活动，并发送帮助意向。',
     'Create request': '发布需求',
     'Volunteer request': '志愿协助请求',
     'Request not found.': '未找到该请求。',
     'Interested volunteers:': '感兴趣的志愿者：',
-    'View all contact intents': '查看所有联系意向',
+    'View all contact intents': '查看所有帮助意向',
     'My volunteer sessions': '我的志愿活动',
     'Review requests you created and support sessions where you already expressed interest.':
       '查看你创建的请求，以及你已经表达过兴趣的支持活动。',
@@ -1862,19 +1856,19 @@ export const translations = {
     'Your created requests or volunteer interests will appear here.':
       '你创建的请求或表达过兴趣的活动会显示在这里。',
     'This page shows the lightweight contact mechanism used in the volunteer module. Instead of full chat, users send structured messages attached to support requests.':
-      '这个页面展示了志愿模块中的轻量联系机制。用户不会直接进入完整聊天，而是先发送附着在请求上的结构化消息。',
+      '围绕每个支持请求发送简短帮助意向。',
     'Back to volunteer board': '返回志愿者公告板',
     'Requests I created': '我创建的请求',
     'Interested volunteers': '感兴趣的志愿者',
     'View request details': '查看请求详情',
     'No created requests yet': '还没有创建请求',
     'Volunteer requests you create will appear here together with incoming contact intents.':
-      '你创建的志愿请求会显示在这里，同时也会看到收到的联系意向。',
+      '你创建的请求和收到的帮助意向会显示在这里。',
     'Requests I expressed interest in': '我表达过兴趣的请求',
     'Your message:': '你的留言：',
     'Sent on': '发送时间：',
     'Open request': '打开请求',
-    'No contact intents yet': '还没有联系意向',
+    'No contact intents yet': '还没有帮助意向',
     'When you click \'Express interest\' on a volunteer request, the message will appear here.':
       '当你在志愿请求上点击“表达兴趣”后，留言会显示在这里。',
     'Create volunteer request': '创建志愿协助请求',
@@ -1885,14 +1879,14 @@ export const translations = {
     'Publish request': '发布请求',
     Time: '时间',
     'View request': '查看请求',
-    'Contact intent': '联系意向',
+    'Contact intent': '帮助意向',
     Send: '发送',
     'Express interest': '表达兴趣',
     'interested volunteer': '位感兴趣的志愿者',
     'interested volunteers': '位感兴趣的志愿者',
     'Accessibility system': '无障碍系统',
     'Manage the main accessibility options for reading, focus guidance, and voice interaction. This page is designed to show that accessibility is part of the system, not an extra decoration.':
-      '在这里管理阅读支持、焦点引导和语音交互等主要无障碍选项。这个页面强调无障碍是系统的一部分，而不是额外装饰。',
+      '在这里管理阅读、焦点和语音设置。',
     'Reading and visibility': '阅读与可视性',
     'Turn on stronger visual support and simpler reading settings.':
       '开启更强的视觉支持和更简洁的阅读设置。',
@@ -1918,19 +1912,19 @@ export const translations = {
     'Turn on simplified mode': '开启简化模式',
     'Preview voice interaction': '预览语音交互',
     'Open the demo page to test fixed voice-style commands such as start scan, repeat hint, and go home.':
-      '打开演示页，测试“开始扫描”“重复提示”“返回主页”等固定语音式命令。',
+      '试用“开始扫描”“重复提示”“返回主页”等语音命令。',
     'Voice commands': '语音命令',
     'Turn off voice commands': '关闭语音命令',
     'Turn on voice commands': '开启语音命令',
-    'Open voice mode demo': '打开语音模式演示',
+    'Open voice mode demo': '打开语音命令',
     'Preview focus guidance': '预览焦点引导',
     'Open a simple focus flow page to simulate VoiceOver-style navigation and focus announcements.':
-      '打开一个简化的焦点流页面，模拟类似 VoiceOver 的导航和焦点播报。',
+      '试用焦点切换和语音播报。',
     'Voice mode is ready. Choose a command button to preview spoken feedback.':
       '语音模式已就绪。请选择一个命令按钮来预览语音反馈。',
-    'Accessibility demo': '无障碍演示',
+    'Accessibility demo': '无障碍工具',
     'This page demonstrates simple voice-style interaction with fixed commands. The goal is not complex AI, but clear and reliable interaction for beginners and visually impaired users.':
-      '这个页面展示了基于固定命令的简单语音式交互。目标不是复杂 AI，而是为新手和视障用户提供清晰、可靠的操作体验。',
+      '使用固定语音命令，操作更清楚、更稳定。',
     'Available commands': '可用命令',
     'Voice commands are currently disabled. Turn them on in accessibility settings first.':
       '当前语音命令未开启。请先在无障碍设置中打开它。',
@@ -1957,7 +1951,7 @@ export const translations = {
     'Returning to the home page.': '正在返回主页。',
     'Read this page': '朗读当前页面',
     'You are on the voice mode demo page. This page shows simple fixed voice commands for accessibility support.':
-      '你当前位于语音模式演示页。这个页面展示了用于无障碍支持的简单固定语音命令。',
+      '本页展示用于无障碍支持的固定语音命令。',
     'Stop reading': '停止朗读',
     'Reading stopped.': '朗读已停止。',
     'Latest feedback': '最新反馈',
@@ -1975,7 +1969,7 @@ export const translations = {
     'Read the previous hint again for the user.':
       '再次朗读上一条提示给用户。',
     'This page simulates a VoiceOver-style focus flow. Each focused item announces its purpose so the user always knows where they are and what the current element does.':
-      '这个页面模拟类似 VoiceOver 的焦点流转。每个获得焦点的元素都会播报自己的用途，让用户始终知道自己在哪，以及当前元素能做什么。',
+      '每个获得焦点的元素都会说明用途，方便确认当前位置。',
     'Current focus': '当前焦点',
     Item: '项目',
     'Previous item': '上一个项目',
@@ -2257,17 +2251,11 @@ export const translations = {
     'Companion route check': '同伴路线确认',
     'Review the highlighted route and start guidance when ready.':
       '直接看高亮路线，确认无误后开始引导。',
-    'Tap a same-colour hold to add or remove it from the current route.':
-      '直接点同色岩点即可把它加入或移出当前路线。',
     'Companion final route check': '同伴最终确认',
     'Tap a route line on the photo, choose the guidance level, then confirm for the climber.':
       '请同伴在照片上点选目标路线，选择引导级别，然后为攀爬者确认。',
     'Check the highlighted route with the climber. Use route correction if any hold is missing, then confirm to start guidance.':
       '请和视障者确认高亮路线。若缺少岩点，先点“纠正路线”，确认无误后开始引导。',
-    'Tap same-colour holds on the photo. The connected route updates immediately.':
-      '请在照片上点击同色岩点进行增删，连线会立即更新。',
-    'Tap same-colour holds to add or remove them from the selected route.':
-      '点击同色岩点，可把它加入或移出当前路线。',
     'Select route': '选择路线',
     'Correct route': '纠正路线',
     'Finish route correction': '完成纠正',
