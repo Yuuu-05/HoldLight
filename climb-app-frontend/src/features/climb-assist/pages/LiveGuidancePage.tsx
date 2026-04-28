@@ -28,7 +28,7 @@ import {
   buildGuidanceCueSpeechZh,
   buildLivePositionSpeechZh,
   buildLiveSafetyPauseSpeechZh,
-  buildPoseTrackerStatusZh,
+  buildPoseTrackerStatus,
   buildRecalibrationSpeechZh,
   buildTargetReachedSpeechZh,
 } from '../services/liveGuidanceSpeech.service';
@@ -91,10 +91,15 @@ function buildPrimaryCueKey(cueIndex: number, holdId: string | undefined, speech
   return `${cueIndex}:${holdId || 'unknown'}:${speechText}`;
 }
 
+function buildTargetReachedSpeechEn(nextCue: string) {
+  return nextCue ? `Target reached. ${nextCue}` : 'Target reached. Continue to the next step.';
+}
+
 export default function LiveGuidancePage() {
   const { speak, repeatWithOptions, warm } = useSpeech();
   const { stream, supported: cameraSupported, requestAccess, stopStream } = useCamera();
   const { language, t } = useLanguage();
+  const speechLanguage = language === 'zh' ? 'ZH' : 'EN';
   const [session, setSession] = useState<ClimbSession | null>(null);
   const [scan, setScan] = useState<ClimbScan | null>(null);
   const [loadingLiveData, setLoadingLiveData] = useState(true);
@@ -130,12 +135,12 @@ export default function LiveGuidancePage() {
 
   const speakLocalized = useCallback((text: string, languageOverride?: 'ZH' | 'EN') => {
     const localizedText = language === 'zh' ? localizeAssistText(text, language) : text;
-    speak(localizedText, { language: languageOverride ?? (language === 'zh' ? 'ZH' : 'EN') });
-  }, [language, speak]);
+    speak(localizedText, { language: languageOverride ?? speechLanguage });
+  }, [language, speak, speechLanguage]);
 
   useEffect(() => {
-    warm('ZH');
-  }, [warm]);
+    warm(speechLanguage);
+  }, [speechLanguage, warm]);
 
   useEffect(
     () => () => {
@@ -327,9 +332,17 @@ export default function LiveGuidancePage() {
     [alignmentState, liveSafetyDecision, poseState, scan],
   );
 
-  const trackerStatusZh = useMemo(() => buildPoseTrackerStatusZh(poseState), [poseState]);
+  const trackerStatus = useMemo(() => buildPoseTrackerStatus(poseState, language), [language, poseState]);
   const localizedSafetyHeadline = localizeAssistText(liveSafetyDecision.headline, language);
   const localizedSafetyDetail = localizeAssistText(liveSafetyDecision.detail, language);
+  const trackerStatusText = controlError
+    ? localizeAssistText(controlError, language)
+    : language === 'zh'
+      ? `${trackerStatus.headline}。${trackerStatus.detail}`
+      : `${trackerStatus.headline}. ${trackerStatus.detail}`;
+  const safetyStatusText = language === 'zh'
+    ? `${localizedSafetyHeadline}。${localizedSafetyDetail}`
+    : `${localizedSafetyHeadline}. ${localizedSafetyDetail}`;
   const displayPrimaryCue = language === 'zh'
     ? spokenCueZh || t('No cue available')
     : cue;
@@ -346,6 +359,16 @@ export default function LiveGuidancePage() {
   const localizedPanelCue = language === 'zh'
     ? localizeAssistText(displayPanelCue, language)
     : displayPanelCue;
+  const manualCue = language === 'zh'
+    ? manualCueZh
+    : [displayPrimaryCue, displayTrackerHint].filter(Boolean).join(' ');
+  const safetyPauseSpeech = language === 'zh' ? safetyPauseSpeechZh : localizedSafetyDetail;
+  const livePositionSpeechText = language === 'zh'
+    ? livePositionSpeechZh.speechText
+    : livePositionGuidance.speechText;
+  const livePositionSpeechKey = language === 'zh'
+    ? livePositionSpeechZh.speechKey
+    : livePositionGuidance.speechKey;
 
   const completedHoldIds = useMemo(
     () => session?.plannedRoute?.holds.slice(0, guidance.cueIndex).map((hold) => hold.id) ?? [],
@@ -354,11 +377,12 @@ export default function LiveGuidancePage() {
 
   useEffect(() => {
     if (!guidance.currentCue || liveSafetyDecision.status !== 'ready') return;
-    const cueKey = buildPrimaryCueKey(guidance.cueIndex, guidance.currentCue.holdId, spokenCueZh);
+    const primaryCueSpeech = language === 'zh' ? spokenCueZh : displayPrimaryCue;
+    const cueKey = buildPrimaryCueKey(guidance.cueIndex, guidance.currentCue.holdId, primaryCueSpeech);
     const queuedPrimaryCueSpeech =
       queuedPrimaryCueSpeechRef.current?.cueKey === cueKey
         ? queuedPrimaryCueSpeechRef.current.speech
-        : spokenCueZh;
+        : primaryCueSpeech;
 
     if (!queuedPrimaryCueSpeech) return;
     if (lastCueSpokenRef.current === cueKey || primaryCuePendingRef.current === cueKey) return;
@@ -393,7 +417,7 @@ export default function LiveGuidancePage() {
       });
     }
 
-    void speak(queuedPrimaryCueSpeech, { language: 'ZH' }).then((result) => {
+    void speak(queuedPrimaryCueSpeech, { language: speechLanguage }).then((result) => {
       if (cancelled) return;
 
       if (result.played) {
@@ -443,7 +467,7 @@ export default function LiveGuidancePage() {
         primaryCuePendingRef.current = '';
       }
     };
-  }, [guidance.cueIndex, guidance.currentCue, liveSafetyDecision.status, primaryCueRetryNonce, session, speak, spokenCueZh]);
+  }, [displayPrimaryCue, guidance.cueIndex, guidance.currentCue, language, liveSafetyDecision.status, primaryCueRetryNonce, session, speak, speechLanguage, spokenCueZh]);
 
   useEffect(() => {
     if (!session) return;
@@ -502,8 +526,8 @@ export default function LiveGuidancePage() {
     }
 
     lastSafetyAnnouncementRef.current = announcementKey;
-    speak(safetyPauseSpeechZh, { language: 'ZH' });
-  }, [liveSafetyDecision.detail, liveSafetyDecision.status, safetyPauseSpeechZh, session?.plannedRoute, speak]);
+    speak(safetyPauseSpeech, { language: speechLanguage });
+  }, [liveSafetyDecision.detail, liveSafetyDecision.status, safetyPauseSpeech, session?.plannedRoute, speak, speechLanguage]);
 
   const handleAdvance = useCallback(
     async (reason: 'manual' | 'auto' = 'manual') => {
@@ -511,7 +535,7 @@ export default function LiveGuidancePage() {
       if (!liveSafetyDecision.canAutoAdvance) {
         if (reason === 'manual') {
           setControlError(liveSafetyDecision.detail);
-          speak(safetyPauseSpeechZh, { language: 'ZH' });
+          speak(safetyPauseSpeech, { language: speechLanguage });
         }
         return;
       }
@@ -582,12 +606,14 @@ export default function LiveGuidancePage() {
         if (reason === 'auto' && nextTarget && nextCue && nextCueKey) {
           queuedPrimaryCueSpeechRef.current = {
             cueKey: nextCueKey,
-            speech: buildTargetReachedSpeechZh({
-              nextCueIndex,
-              totalCues: guidance.cues.length,
-              nextCue,
-              nextHold: nextTarget,
-            }),
+            speech: language === 'zh'
+              ? buildTargetReachedSpeechZh({
+                  nextCueIndex,
+                  totalCues: guidance.cues.length,
+                  nextCue,
+                  nextHold: nextTarget,
+                })
+              : buildTargetReachedSpeechEn(nextCue.message),
           };
         }
       } catch (error) {
@@ -600,7 +626,7 @@ export default function LiveGuidancePage() {
         setSyncing(false);
       }
     },
-    [guidance.cueIndex, guidance.cues, liveCurrentHold, liveSafetyDecision.canAutoAdvance, liveSafetyDecision.detail, safetyPauseSpeechZh, session, speakLocalized, syncing],
+    [guidance.cueIndex, guidance.cues, language, liveCurrentHold, liveSafetyDecision.canAutoAdvance, liveSafetyDecision.detail, safetyPauseSpeech, session, speakLocalized, speechLanguage, syncing],
   );
 
   const handleFinish = useCallback(async () => {
@@ -652,7 +678,12 @@ export default function LiveGuidancePage() {
 
     try {
       setControlError(null);
-      speak(buildRecalibrationSpeechZh(), { language: 'ZH' });
+      speak(
+        language === 'zh'
+          ? buildRecalibrationSpeechZh()
+          : 'Recalibrating. Point the camera at the wall and keep three points of contact if possible.',
+        { language: speechLanguage },
+      );
 
       await recalibrate();
 
@@ -671,7 +702,7 @@ export default function LiveGuidancePage() {
       setControlError(message);
       speakLocalized(message);
     }
-  }, [guidance.cueIndex, recalibrate, session, speak, speakLocalized]);
+  }, [guidance.cueIndex, language, recalibrate, session, speak, speechLanguage, speakLocalized]);
 
   useEffect(() => {
     if (
@@ -743,14 +774,14 @@ export default function LiveGuidancePage() {
 
   useEffect(() => {
     if (!liveSafetyDecision.canSpeakLiveCue) return;
-    if (!guidance.currentCue || !liveCurrentHold || !livePositionSpeechZh.speechText) return;
+    if (!guidance.currentCue || !liveCurrentHold || !livePositionSpeechText) return;
     if (!poseState.active && distancePct === null) return;
     if (poseState.poseQualityPct <= 0 && distancePct === null) return;
     if (primaryCuePendingRef.current) return;
 
     const now = Date.now();
     const minSpacing = distancePct !== null && distancePct <= targetThreshold * 1.3 ? 1100 : 1700;
-    const isNewSpeechKey = lastLiveSpeechKeyRef.current !== livePositionSpeechZh.speechKey;
+    const isNewSpeechKey = lastLiveSpeechKeyRef.current !== livePositionSpeechKey;
 
     if (!isNewSpeechKey && now - lastLiveSpeechAtRef.current < minSpacing) {
       return;
@@ -764,19 +795,20 @@ export default function LiveGuidancePage() {
       return;
     }
 
-    lastLiveSpeechKeyRef.current = livePositionSpeechZh.speechKey;
+    lastLiveSpeechKeyRef.current = livePositionSpeechKey;
     lastLiveSpeechAtRef.current = now;
-    speak(livePositionSpeechZh.speechText, { language: 'ZH' });
+    speak(livePositionSpeechText, { language: speechLanguage });
   }, [
     distancePct,
     guidance.currentCue,
     guidance.isLastCue,
     liveCurrentHold,
-    livePositionSpeechZh.speechKey,
-    livePositionSpeechZh.speechText,
+    livePositionSpeechKey,
+    livePositionSpeechText,
     poseState.active,
     poseState.poseQualityPct,
     speak,
+    speechLanguage,
     targetThreshold,
     liveSafetyDecision.canSpeakLiveCue,
   ]);
@@ -829,6 +861,7 @@ export default function LiveGuidancePage() {
           className="assist-live-camera-preview"
           plainLiveView
           syncAspectRatio
+          fixedAspectRatio="3 / 4"
           fallbackAspectRatio="3 / 4"
         >
           <LiveGuidanceOverlay
@@ -845,7 +878,7 @@ export default function LiveGuidancePage() {
           <div>
             <span className="badge">{t('Tracker')}</span>
             <p className="subtle-text">
-              {controlError ? localizeAssistText(controlError, language) : `${trackerStatusZh.headline}。${trackerStatusZh.detail}`}
+              {trackerStatusText}
             </p>
           </div>
           <div>
@@ -871,7 +904,7 @@ export default function LiveGuidancePage() {
           <div>
             <span className="badge">{t('Safety')}</span>
             <p className="subtle-text">
-              {localizedSafetyHeadline}. {localizedSafetyDetail}
+              {safetyStatusText}
             </p>
           </div>
         </div>
@@ -882,12 +915,12 @@ export default function LiveGuidancePage() {
         progressLabel={guidance.currentCue?.progressLabel}
         isSpeaking={isSpeaking}
         onSpeak={() =>
-          speak(liveSafetyDecision.status === 'ready' ? manualCueZh : safetyPauseSpeechZh, { language: 'ZH' })
+          speak(liveSafetyDecision.status === 'ready' ? manualCue : safetyPauseSpeech, { language: speechLanguage })
         }
         onRepeat={() =>
           (liveSafetyDecision.status === 'ready'
-            ? repeatWithOptions({ language: 'ZH' })
-            : speak(safetyPauseSpeechZh, { language: 'ZH' }))
+            ? repeatWithOptions({ language: speechLanguage })
+            : speak(safetyPauseSpeech, { language: speechLanguage }))
         }
         onAdvance={() => void handleAdvance('manual')}
         onNext={() => void handleAdvance('manual')}

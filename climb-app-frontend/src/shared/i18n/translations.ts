@@ -846,8 +846,6 @@ export const translations = {
     'No same-colour route is available after color review.':
       'No same-colour route is available after color review.',
     'Companion route check': 'Companion route check',
-    'Review the highlighted route and start guidance when ready.':
-      'Review the highlighted route and start guidance when ready.',
     'Companion final route check': 'Companion final route check',
     'Tap a route line on the photo, choose the guidance level, then confirm for the climber.':
       'Tap a route line on the photo, choose the guidance level, then confirm for the climber.',
@@ -2249,8 +2247,6 @@ export const translations = {
     'No same-colour route is available after color review.':
       '颜色检查后没有可用的同色路线。',
     'Companion route check': '同伴路线确认',
-    'Review the highlighted route and start guidance when ready.':
-      '直接看高亮路线，确认无误后开始引导。',
     'Companion final route check': '同伴最终确认',
     'Tap a route line on the photo, choose the guidance level, then confirm for the climber.':
       '请同伴在照片上点选目标路线，选择引导级别，然后为攀爬者确认。',

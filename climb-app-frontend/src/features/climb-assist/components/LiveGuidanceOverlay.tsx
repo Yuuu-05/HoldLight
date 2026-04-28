@@ -8,7 +8,7 @@ import {
   type PoseFrame,
   type PoseJointName,
 } from '../services/poseTracker.service';
-import { buildPoseTrackerStatusZh } from '../services/liveGuidanceSpeech.service';
+import { buildPoseTrackerStatus } from '../services/liveGuidanceSpeech.service';
 
 type OverlayHold = Hold & {
   projectedQuadPct?: Array<{ xPct: number; yPct: number }>;
@@ -422,7 +422,8 @@ export default function LiveGuidanceOverlay({
   poseState,
   activeLimb,
 }: LiveGuidanceOverlayProps) {
-  const trackerStatus = useMemo(() => buildPoseTrackerStatusZh(poseState), [poseState]);
+  const { language } = useLanguage();
+  const trackerStatus = useMemo(() => buildPoseTrackerStatus(poseState, language), [language, poseState]);
 
   return (
     <div className="assist-live-overlay" aria-hidden="true">

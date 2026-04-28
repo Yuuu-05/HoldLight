@@ -5,6 +5,7 @@ import type {
   Hold,
   HoldColor,
 } from '../../../shared/types/climb';
+import type { Language } from '../../../shared/i18n/translations';
 import type { LivePoseState } from '../hooks/useLivePoseTracker';
 import type { LiveWallAlignmentState } from '../hooks/useLiveWallAlignment';
 import type { AssistSafetyDecision } from './safetyState.service';
@@ -367,5 +368,68 @@ export function buildPoseTrackerStatusZh(poseState: LivePoseState) {
     tone: 'ready' as const,
     headline: '姿态已锁定',
     detail: `质量 ${poseState.poseQualityPct}% · 肢体 ${poseState.visibleLimbCount} · 关节点 ${poseState.visibleJointCount}`,
+  };
+}
+
+export function buildPoseTrackerStatus(poseState: LivePoseState, language: Language) {
+  if (language === 'zh') {
+    return buildPoseTrackerStatusZh(poseState);
+  }
+
+  if (poseState.error) {
+    return {
+      tone: 'error' as const,
+      headline: 'Pose tracking unavailable',
+      detail: 'Check the camera view and pose model.',
+    };
+  }
+
+  if (poseState.loading) {
+    return {
+      tone: 'warning' as const,
+      headline: 'Starting pose tracking',
+      detail: 'Loading live pose detection. Please wait.',
+    };
+  }
+
+  if (!poseState.poseFrame) {
+    return {
+      tone: 'warning' as const,
+      headline: 'Waiting for the climber',
+      detail: 'Place the full body in the center of the camera.',
+    };
+  }
+
+  const detail =
+    `Quality ${poseState.poseQualityPct}% · limbs ${poseState.visibleLimbCount} · joints ${poseState.visibleJointCount}`;
+
+  if (poseState.subjectLockStatus === 'searching') {
+    return {
+      tone: 'warning' as const,
+      headline: 'Finding the climber',
+      detail,
+    };
+  }
+
+  if (poseState.subjectLockStatus === 'holding' || poseState.subjectLockStatus === 'reacquiring') {
+    return {
+      tone: 'warning' as const,
+      headline: 'Re-locking the climber',
+      detail,
+    };
+  }
+
+  if (!poseState.active || poseState.poseQualityPct < 48 || poseState.visibleLimbCount < 1) {
+    return {
+      tone: 'warning' as const,
+      headline: 'Pose detected, not stable yet',
+      detail,
+    };
+  }
+
+  return {
+    tone: 'ready' as const,
+    headline: 'Pose locked',
+    detail,
   };
 }

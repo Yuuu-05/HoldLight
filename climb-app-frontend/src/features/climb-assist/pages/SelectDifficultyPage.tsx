@@ -143,7 +143,6 @@ export default function SelectDifficultyPage() {
 
   const displayRoute = (editMode || hasCustomEdits) && editedRoute ? editedRoute : previewRoute;
   const routeIsReady = Boolean(displayRoute && displayRoute.holds.length >= 2);
-  const companionRouteNote = t('Review the highlighted route and start guidance when ready.');
 
   const routeOverlays = useMemo(
     () =>
@@ -307,6 +306,7 @@ export default function SelectDifficultyPage() {
               backgroundImageUrl={scan.coverImageUrl}
               plainImagePreview
               fitContainer
+              fixedAspectRatio={3 / 4}
               highlightHoldIds={displayRoute?.holdIds ?? []}
               currentHoldId={displayRoute?.holds[0]?.id}
               selectedHoldId={selectedEditableHoldId ?? undefined}
@@ -314,7 +314,6 @@ export default function SelectDifficultyPage() {
               onHoldSelect={editMode ? handleEditableHoldToggle : undefined}
               onRouteSelect={handleRouteSelect}
               routeOverlays={routeOverlays}
-              helperText={editMode ? t('Tap same-colour holds to add or remove them from the selected route.') : undefined}
             />
           </div>
         </div>
@@ -323,13 +322,7 @@ export default function SelectDifficultyPage() {
           <div className="assist-route-builder-head">
             <div className="assist-route-builder-title-row">
               <strong>{t('Companion route check')}</strong>
-              <span className="assist-route-builder-inline-note">{companionRouteNote}</span>
             </div>
-            {editMode ? (
-              <p className="subtle-text">
-                {t('Tap a same-colour hold to add or remove it from the current route.')}
-              </p>
-            ) : null}
           </div>
 
           <DifficultySelector value={difficulty} onChange={setDifficulty} />
