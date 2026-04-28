@@ -25,12 +25,10 @@ import { useLiveWallAlignment } from '../hooks/useLiveWallAlignment';
 import { getActiveStoredScan, getActiveStoredSession } from '../store/climbAssist.store';
 import { buildLivePositionGuidance } from '../services/cueGenerator.service';
 import {
-  buildGuidanceCueSpeechZh,
   buildLivePositionSpeechZh,
   buildLiveSafetyPauseSpeechZh,
   buildPoseTrackerStatus,
   buildRecalibrationSpeechZh,
-  buildTargetReachedSpeechZh,
 } from '../services/liveGuidanceSpeech.service';
 import { limbToPoseJointName } from '../services/poseTracker.service';
 import { buildLiveGuidanceSafetyDecision } from '../services/safetyState.service';
@@ -71,6 +69,55 @@ function getCueAnchor(
   }
 }
 
+function averageVisibleCorePoints(
+  points: Array<{ xPct: number; yPct: number; visibility: number } | undefined>,
+) {
+  const visiblePoints = points.filter(
+    (point): point is { xPct: number; yPct: number; visibility: number } =>
+      Boolean(point && point.visibility >= 0.35),
+  );
+
+  if (visiblePoints.length === 0) return null;
+
+  return {
+    xPct: visiblePoints.reduce((sum, point) => sum + point.xPct, 0) / visiblePoints.length,
+    yPct: visiblePoints.reduce((sum, point) => sum + point.yPct, 0) / visiblePoints.length,
+    visibility: visiblePoints.reduce((sum, point) => sum + point.visibility, 0) / visiblePoints.length,
+  };
+}
+
+function getChestAnchor(poseState: ReturnType<typeof useLivePoseTracker>) {
+  const joints = poseState.poseFrame?.joints;
+  const shoulders = averageVisibleCorePoints([joints?.leftShoulder, joints?.rightShoulder]);
+  const hips = averageVisibleCorePoints([joints?.leftHip, joints?.rightHip]);
+
+  if (shoulders && hips) {
+    return {
+      xPct: Number(((shoulders.xPct * 0.68) + (hips.xPct * 0.32)).toFixed(2)),
+      yPct: Number(((shoulders.yPct * 0.68) + (hips.yPct * 0.32)).toFixed(2)),
+      visibility: Number(Math.min(shoulders.visibility, hips.visibility).toFixed(2)),
+    };
+  }
+
+  if (shoulders) {
+    return {
+      xPct: Number(shoulders.xPct.toFixed(2)),
+      yPct: Number(Math.min(100, shoulders.yPct + 6).toFixed(2)),
+      visibility: Number(shoulders.visibility.toFixed(2)),
+    };
+  }
+
+  if (hips) {
+    return {
+      xPct: Number(hips.xPct.toFixed(2)),
+      yPct: Number(Math.max(0, hips.yPct - 12).toFixed(2)),
+      visibility: Number(hips.visibility.toFixed(2)),
+    };
+  }
+
+  return poseState.anchors.center;
+}
+
 function getDistancePct(anchor: { xPct: number; yPct: number } | undefined, hold: Hold | null) {
   if (!anchor || !hold) return null;
   const dx = anchor.xPct - hold.xPct;
@@ -82,17 +129,6 @@ function getTargetThreshold(hold: Hold | null, limb?: GuidanceLimb) {
   if (!hold) return 7;
   const base = Math.max(2.8, (hold.radiusPct ?? 3.2) * 0.9) + (isFootLimb(limb) ? 4.4 : 3.6);
   return Number(base.toFixed(2));
-}
-
-const PRIMARY_CUE_RETRY_DELAY_MS = 650;
-const PRIMARY_CUE_MAX_RETRIES = 2;
-
-function buildPrimaryCueKey(cueIndex: number, holdId: string | undefined, speechText: string) {
-  return `${cueIndex}:${holdId || 'unknown'}:${speechText}`;
-}
-
-function buildTargetReachedSpeechEn(nextCue: string) {
-  return nextCue ? `Target reached. ${nextCue}` : 'Target reached. Continue to the next step.';
 }
 
 export default function LiveGuidancePage() {
@@ -107,7 +143,6 @@ export default function LiveGuidancePage() {
   const [syncing, setSyncing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [controlError, setControlError] = useState<string | null>(null);
-  const [primaryCueRetryNonce, setPrimaryCueRetryNonce] = useState(0);
 
   const navigate = useNavigate();
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -116,8 +151,6 @@ export default function LiveGuidancePage() {
   const guidance = useGuidanceEngine(session?.plannedRoute, session?.cueIndex ?? 0);
   const poseState = useLivePoseTracker(videoElement, Boolean(stream && session?.plannedRoute));
 
-  const lastCueSpokenRef = useRef('');
-  const lastPrimaryCueAtRef = useRef(0);
   const lastLiveSpeechKeyRef = useRef('');
   const lastLiveSpeechAtRef = useRef(0);
   const reachedSinceRef = useRef<number | null>(null);
@@ -125,11 +158,6 @@ export default function LiveGuidancePage() {
   const lastBeepRef = useRef(0);
   const lastSafetyStateRef = useRef('');
   const lastSafetyAnnouncementRef = useRef('');
-  const primaryCuePendingRef = useRef('');
-  const primaryCueRetryTimerRef = useRef<number | null>(null);
-  const primaryCueRetryKeyRef = useRef('');
-  const primaryCueRetryCountRef = useRef(0);
-  const queuedPrimaryCueSpeechRef = useRef<{ cueKey: string; speech: string } | null>(null);
 
   usePageTitle('Live guidance');
 
@@ -144,9 +172,6 @@ export default function LiveGuidancePage() {
 
   useEffect(
     () => () => {
-      if (primaryCueRetryTimerRef.current !== null) {
-        window.clearTimeout(primaryCueRetryTimerRef.current);
-      }
       stopStream();
     },
     [stopStream],
@@ -246,14 +271,24 @@ export default function LiveGuidancePage() {
   const liveRoutePlan = alignedRoutePlan ?? session?.plannedRoute ?? null;
   const liveCurrentHold = alignedCurrentHold ?? currentHold;
 
-  const activeAnchor = useMemo(
+  const reachAnchor = useMemo(
     () => getCueAnchor(guidance.currentCue?.limb, poseState),
     [guidance.currentCue?.limb, poseState],
   );
 
-  const distancePct = useMemo(
-    () => getDistancePct(activeAnchor, liveCurrentHold),
-    [activeAnchor, liveCurrentHold],
+  const chestAnchor = useMemo(
+    () => getChestAnchor(poseState),
+    [poseState],
+  );
+
+  const reachDistancePct = useMemo(
+    () => getDistancePct(reachAnchor, liveCurrentHold),
+    [reachAnchor, liveCurrentHold],
+  );
+
+  const chestDistancePct = useMemo(
+    () => getDistancePct(chestAnchor, liveCurrentHold),
+    [chestAnchor, liveCurrentHold],
   );
 
   const targetThreshold = useMemo(
@@ -262,64 +297,36 @@ export default function LiveGuidancePage() {
   );
 
   const alignmentPct = useMemo(() => {
-    if (distancePct === null) return undefined;
-    return Math.max(0, Math.min(100, Math.round(100 - distancePct * 6)));
-  }, [distancePct]);
+    if (reachDistancePct === null) return undefined;
+    return Math.max(0, Math.min(100, Math.round(100 - reachDistancePct * 6)));
+  }, [reachDistancePct]);
 
   const liveSafetyDecision = useMemo(
     () => buildLiveGuidanceSafetyDecision({ scan, poseState, alignmentState }),
     [alignmentState, poseState, scan],
   );
 
-  const cue = useMemo(
-    () => guidance.currentCue?.message ?? 'No cue available',
-    [guidance.currentCue],
-  );
-
   const livePositionGuidance = useMemo(
     () =>
       buildLivePositionGuidance({
-        limb: guidance.currentCue?.limb,
         targetHold: liveCurrentHold,
-        activeAnchor,
-        poseFrame: poseState.poseFrame,
-        distancePct,
-        targetThreshold,
+        activeAnchor: chestAnchor,
+        distancePct: chestDistancePct,
       }),
-    [activeAnchor, distancePct, guidance.currentCue?.limb, liveCurrentHold, poseState.poseFrame, targetThreshold],
+    [chestAnchor, chestDistancePct, liveCurrentHold],
   );
 
   const livePositionSpeechZh = useMemo(
     () =>
       buildLivePositionSpeechZh({
-        limb: guidance.currentCue?.limb,
         targetHold: liveCurrentHold,
-        activeAnchor,
-        distancePct,
-        targetThreshold,
+        activeAnchor: chestAnchor,
+        distancePct: chestDistancePct,
       }),
-    [activeAnchor, distancePct, guidance.currentCue?.limb, liveCurrentHold, targetThreshold],
+    [chestAnchor, chestDistancePct, liveCurrentHold],
   );
 
   const trackerHint = useMemo(() => livePositionGuidance.displayText, [livePositionGuidance.displayText]);
-
-  const spokenCueZh = useMemo(
-    () =>
-      guidance.currentCue
-        ? buildGuidanceCueSpeechZh({
-            cueIndex: guidance.cueIndex,
-            totalCues: guidance.cues.length,
-            cue: guidance.currentCue,
-            targetHold: liveCurrentHold,
-          })
-        : '',
-    [guidance.cueIndex, guidance.cues.length, guidance.currentCue, liveCurrentHold],
-  );
-
-  const manualCueZh = useMemo(() => {
-    const combinedCue = [spokenCueZh, livePositionSpeechZh.speechText].filter(Boolean).join(' ');
-    return combinedCue || spokenCueZh;
-  }, [livePositionSpeechZh.speechText, spokenCueZh]);
 
   const safetyPauseSpeechZh = useMemo(
     () =>
@@ -343,25 +350,20 @@ export default function LiveGuidancePage() {
   const safetyStatusText = language === 'zh'
     ? `${localizedSafetyHeadline}。${localizedSafetyDetail}`
     : `${localizedSafetyHeadline}. ${localizedSafetyDetail}`;
-  const displayPrimaryCue = language === 'zh'
-    ? spokenCueZh || t('No cue available')
-    : cue;
   const displayTrackerHint = language === 'zh'
     ? livePositionSpeechZh.speechText ?? localizeAssistText(trackerHint, language)
     : trackerHint;
   const displayPanelCue = controlError
     ? localizeAssistText(controlError, language)
     : liveSafetyDecision.status === 'ready'
-      ? [displayPrimaryCue, displayTrackerHint].filter(Boolean).join(' ')
+      ? displayTrackerHint || t('No cue available')
       : language === 'zh'
         ? safetyPauseSpeechZh
         : localizedSafetyDetail;
   const localizedPanelCue = language === 'zh'
     ? localizeAssistText(displayPanelCue, language)
     : displayPanelCue;
-  const manualCue = language === 'zh'
-    ? manualCueZh
-    : [displayPrimaryCue, displayTrackerHint].filter(Boolean).join(' ');
+  const manualCue = displayTrackerHint || t('No cue available');
   const safetyPauseSpeech = language === 'zh' ? safetyPauseSpeechZh : localizedSafetyDetail;
   const livePositionSpeechText = language === 'zh'
     ? livePositionSpeechZh.speechText
@@ -376,100 +378,6 @@ export default function LiveGuidancePage() {
   );
 
   useEffect(() => {
-    if (!guidance.currentCue || liveSafetyDecision.status !== 'ready') return;
-    const primaryCueSpeech = language === 'zh' ? spokenCueZh : displayPrimaryCue;
-    const cueKey = buildPrimaryCueKey(guidance.cueIndex, guidance.currentCue.holdId, primaryCueSpeech);
-    const queuedPrimaryCueSpeech =
-      queuedPrimaryCueSpeechRef.current?.cueKey === cueKey
-        ? queuedPrimaryCueSpeechRef.current.speech
-        : primaryCueSpeech;
-
-    if (!queuedPrimaryCueSpeech) return;
-    if (lastCueSpokenRef.current === cueKey || primaryCuePendingRef.current === cueKey) return;
-
-    if (primaryCueRetryKeyRef.current !== cueKey) {
-      if (primaryCueRetryTimerRef.current !== null) {
-        window.clearTimeout(primaryCueRetryTimerRef.current);
-        primaryCueRetryTimerRef.current = null;
-      }
-
-      primaryCueRetryKeyRef.current = cueKey;
-      primaryCueRetryCountRef.current = 0;
-    }
-
-    const isRetryAttempt = primaryCueRetryCountRef.current > 0;
-    primaryCuePendingRef.current = cueKey;
-
-    let cancelled = false;
-
-    if (!isRetryAttempt && session) {
-      void saveGuidanceLogsApi([
-        {
-          id: `log_${Date.now()}`,
-          sessionId: session.id,
-          type: 'cue_issued',
-          message: guidance.currentCue.message,
-          timestamp: new Date().toISOString(),
-          payload: { cueIndex: guidance.cueIndex, holdId: guidance.currentCue.holdId },
-        },
-      ]).catch((error) => {
-        setControlError(error instanceof Error ? error.message : 'Failed to save the cue log.');
-      });
-    }
-
-    void speak(queuedPrimaryCueSpeech, { language: speechLanguage }).then((result) => {
-      if (cancelled) return;
-
-      if (result.played) {
-        if (primaryCuePendingRef.current === cueKey) {
-          primaryCuePendingRef.current = '';
-        }
-
-        lastCueSpokenRef.current = cueKey;
-        lastPrimaryCueAtRef.current = Date.now();
-        lastLiveSpeechKeyRef.current = '';
-        lastLiveSpeechAtRef.current = 0;
-        primaryCueRetryCountRef.current = 0;
-
-        if (queuedPrimaryCueSpeechRef.current?.cueKey === cueKey) {
-          queuedPrimaryCueSpeechRef.current = null;
-        }
-
-        return;
-      }
-
-      if (result.aborted || primaryCueRetryCountRef.current >= PRIMARY_CUE_MAX_RETRIES) {
-        if (primaryCuePendingRef.current === cueKey) {
-          primaryCuePendingRef.current = '';
-        }
-
-        return;
-      }
-
-      primaryCueRetryCountRef.current += 1;
-      primaryCueRetryTimerRef.current = window.setTimeout(() => {
-        primaryCueRetryTimerRef.current = null;
-
-        if (primaryCuePendingRef.current === cueKey) {
-          primaryCuePendingRef.current = '';
-        }
-
-        if (primaryCueRetryKeyRef.current === cueKey && lastCueSpokenRef.current !== cueKey) {
-          setPrimaryCueRetryNonce((value) => value + 1);
-        }
-      }, PRIMARY_CUE_RETRY_DELAY_MS);
-    });
-
-    return () => {
-      cancelled = true;
-
-      if (primaryCuePendingRef.current === cueKey) {
-        primaryCuePendingRef.current = '';
-      }
-    };
-  }, [displayPrimaryCue, guidance.cueIndex, guidance.currentCue, language, liveSafetyDecision.status, primaryCueRetryNonce, session, speak, speechLanguage, spokenCueZh]);
-
-  useEffect(() => {
     if (!session) return;
 
     const safetyKey = `${liveSafetyDecision.status}:${liveSafetyDecision.detail}`;
@@ -477,17 +385,8 @@ export default function LiveGuidancePage() {
     lastSafetyStateRef.current = safetyKey;
 
     if (liveSafetyDecision.status !== 'ready') {
-      if (primaryCueRetryTimerRef.current !== null) {
-        window.clearTimeout(primaryCueRetryTimerRef.current);
-        primaryCueRetryTimerRef.current = null;
-      }
-
-      primaryCuePendingRef.current = '';
-      primaryCueRetryKeyRef.current = '';
-      primaryCueRetryCountRef.current = 0;
       reachedSinceRef.current = null;
       lastLiveSpeechKeyRef.current = '';
-      lastCueSpokenRef.current = '';
     }
 
     void saveGuidanceLogsApi([
@@ -517,10 +416,6 @@ export default function LiveGuidancePage() {
     const announcementKey = `${liveSafetyDecision.status}:${liveSafetyDecision.detail}`;
     if (lastSafetyAnnouncementRef.current === announcementKey) return;
 
-    if (Date.now() - lastPrimaryCueAtRef.current < 1000) {
-      return;
-    }
-
     if (isSpeechPlaying()) {
       return;
     }
@@ -549,18 +444,6 @@ export default function LiveGuidancePage() {
           Math.max(0, guidance.cues.length - 1),
         );
         const nextTarget = session.plannedRoute.holds[nextCueIndex] ?? liveCurrentHold;
-        const nextCue = guidance.cues[nextCueIndex];
-        const nextPrimaryCueSpeech = nextCue
-          ? buildGuidanceCueSpeechZh({
-              cueIndex: nextCueIndex,
-              totalCues: guidance.cues.length,
-              cue: nextCue,
-              targetHold: nextTarget,
-            })
-          : '';
-        const nextCueKey = nextCue
-          ? buildPrimaryCueKey(nextCueIndex, nextCue.holdId, nextPrimaryCueSpeech)
-          : '';
 
         const nextSession = await updateClimbSessionApi(session.id, {
           cueIndex: nextCueIndex,
@@ -593,29 +476,8 @@ export default function LiveGuidancePage() {
           },
         ]);
 
-        if (primaryCueRetryTimerRef.current !== null) {
-          window.clearTimeout(primaryCueRetryTimerRef.current);
-          primaryCueRetryTimerRef.current = null;
-        }
-
-        primaryCuePendingRef.current = '';
-        primaryCueRetryKeyRef.current = '';
-        primaryCueRetryCountRef.current = 0;
-        queuedPrimaryCueSpeechRef.current = null;
-
-        if (reason === 'auto' && nextTarget && nextCue && nextCueKey) {
-          queuedPrimaryCueSpeechRef.current = {
-            cueKey: nextCueKey,
-            speech: language === 'zh'
-              ? buildTargetReachedSpeechZh({
-                  nextCueIndex,
-                  totalCues: guidance.cues.length,
-                  nextCue,
-                  nextHold: nextTarget,
-                })
-              : buildTargetReachedSpeechEn(nextCue.message),
-          };
-        }
+        lastLiveSpeechKeyRef.current = '';
+        lastLiveSpeechAtRef.current = 0;
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Unable to advance the live guidance cue.';
         setControlError(message);
@@ -626,7 +488,7 @@ export default function LiveGuidancePage() {
         setSyncing(false);
       }
     },
-    [guidance.cueIndex, guidance.cues, language, liveCurrentHold, liveSafetyDecision.canAutoAdvance, liveSafetyDecision.detail, safetyPauseSpeech, session, speakLocalized, speechLanguage, syncing],
+    [guidance.cueIndex, guidance.cues.length, liveCurrentHold, liveSafetyDecision.canAutoAdvance, liveSafetyDecision.detail, safetyPauseSpeech, session, speakLocalized, speechLanguage, syncing],
   );
 
   const handleFinish = useCallback(async () => {
@@ -707,7 +569,7 @@ export default function LiveGuidancePage() {
   useEffect(() => {
     if (
       !liveSafetyDecision.canAutoAdvance ||
-      distancePct === null ||
+      reachDistancePct === null ||
       !liveCurrentHold ||
       syncing ||
       poseState.poseQualityPct < 45 ||
@@ -717,7 +579,7 @@ export default function LiveGuidancePage() {
       return;
     }
 
-    const withinThreshold = distancePct <= targetThreshold;
+    const withinThreshold = reachDistancePct <= targetThreshold;
     if (!withinThreshold) {
       reachedSinceRef.current = null;
       return;
@@ -740,54 +602,48 @@ export default function LiveGuidancePage() {
       void handleAdvance('auto');
     }
   }, [
-    distancePct,
     guidance.isLastCue,
     handleAdvance,
     liveCurrentHold,
     poseState.poseQualityPct,
     poseState.visibleLimbCount,
     syncing,
+    reachDistancePct,
     targetThreshold,
     liveSafetyDecision.canAutoAdvance,
   ]);
 
   useEffect(() => {
     if (!liveSafetyDecision.canPlayProximityCue) return;
-    if (distancePct === null) return;
-    if (primaryCuePendingRef.current) return;
+    if (reachDistancePct === null) return;
     if (isSpeechPlaying()) return;
 
     const now = Date.now();
     if (now - lastBeepRef.current < 1100) return;
-    if (distancePct > targetThreshold * 2.1) return;
+    if (reachDistancePct > targetThreshold * 2.1) return;
 
     lastBeepRef.current = now;
     const frequency =
-      distancePct <= targetThreshold
+      reachDistancePct <= targetThreshold
         ? 1080
-        : distancePct <= targetThreshold * 1.4
+        : reachDistancePct <= targetThreshold * 1.4
           ? 880
           : 680;
 
     void playProximityBeep(frequency, 80, 0.03);
-  }, [distancePct, liveSafetyDecision.canPlayProximityCue, targetThreshold]);
+  }, [liveSafetyDecision.canPlayProximityCue, reachDistancePct, targetThreshold]);
 
   useEffect(() => {
     if (!liveSafetyDecision.canSpeakLiveCue) return;
     if (!guidance.currentCue || !liveCurrentHold || !livePositionSpeechText) return;
-    if (!poseState.active && distancePct === null) return;
-    if (poseState.poseQualityPct <= 0 && distancePct === null) return;
-    if (primaryCuePendingRef.current) return;
+    if (!poseState.active && chestDistancePct === null) return;
+    if (poseState.poseQualityPct <= 0 && chestDistancePct === null) return;
 
     const now = Date.now();
-    const minSpacing = distancePct !== null && distancePct <= targetThreshold * 1.3 ? 1100 : 1700;
+    const minSpacing = chestDistancePct !== null && chestDistancePct <= 9 ? 1200 : 1800;
     const isNewSpeechKey = lastLiveSpeechKeyRef.current !== livePositionSpeechKey;
 
     if (!isNewSpeechKey && now - lastLiveSpeechAtRef.current < minSpacing) {
-      return;
-    }
-
-    if (now - lastPrimaryCueAtRef.current < 850) {
       return;
     }
 
@@ -799,9 +655,8 @@ export default function LiveGuidancePage() {
     lastLiveSpeechAtRef.current = now;
     speak(livePositionSpeechText, { language: speechLanguage });
   }, [
-    distancePct,
+    chestDistancePct,
     guidance.currentCue,
-    guidance.isLastCue,
     liveCurrentHold,
     livePositionSpeechKey,
     livePositionSpeechText,
@@ -809,7 +664,6 @@ export default function LiveGuidancePage() {
     poseState.poseQualityPct,
     speak,
     speechLanguage,
-    targetThreshold,
     liveSafetyDecision.canSpeakLiveCue,
   ]);
 

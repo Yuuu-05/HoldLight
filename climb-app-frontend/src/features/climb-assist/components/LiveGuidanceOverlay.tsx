@@ -72,13 +72,6 @@ const DISPLAYED_JOINTS: PoseJointName[] = [
   'rightFootContact',
 ];
 
-function findNextHold(routePlan: OverlayRoutePlan | null | undefined, currentHoldId?: string) {
-  if (!routePlan?.holds?.length || !currentHoldId) return null;
-  const currentIndex = routePlan.holds.findIndex((hold) => hold.id === currentHoldId);
-  if (currentIndex < 0) return null;
-  return routePlan.holds[currentIndex + 1] ?? null;
-}
-
 function SmallCompletedDot({ hold }: { hold: OverlayHold }) {
   const color = holdColorMap[hold.color] ?? holdColorMap.unknown;
   const anchor = getOverlayAnchorPoint(hold);
@@ -202,6 +195,57 @@ function getOverlayAnchorPoint(hold: OverlayHold) {
   };
 }
 
+function averageVisibleCorePoints(
+  points: Array<{ xPct: number; yPct: number; visibility: number } | undefined>,
+) {
+  const visiblePoints = points.filter(
+    (point): point is { xPct: number; yPct: number; visibility: number } =>
+      Boolean(point && point.visibility >= 0.35),
+  );
+
+  if (visiblePoints.length === 0) return null;
+
+  return {
+    xPct: visiblePoints.reduce((sum, point) => sum + point.xPct, 0) / visiblePoints.length,
+    yPct: visiblePoints.reduce((sum, point) => sum + point.yPct, 0) / visiblePoints.length,
+    visibility: visiblePoints.reduce((sum, point) => sum + point.visibility, 0) / visiblePoints.length,
+  };
+}
+
+function getChestPoint(poseFrame: PoseFrame | null) {
+  const shoulders = averageVisibleCorePoints([
+    poseFrame?.joints.leftShoulder,
+    poseFrame?.joints.rightShoulder,
+  ]);
+  const hips = averageVisibleCorePoints([
+    poseFrame?.joints.leftHip,
+    poseFrame?.joints.rightHip,
+  ]);
+
+  if (shoulders && hips) {
+    return {
+      xPct: (shoulders.xPct * 0.68) + (hips.xPct * 0.32),
+      yPct: (shoulders.yPct * 0.68) + (hips.yPct * 0.32),
+    };
+  }
+
+  if (shoulders) {
+    return {
+      xPct: shoulders.xPct,
+      yPct: Math.min(100, shoulders.yPct + 6),
+    };
+  }
+
+  if (hips) {
+    return {
+      xPct: hips.xPct,
+      yPct: Math.max(0, hips.yPct - 12),
+    };
+  }
+
+  return null;
+}
+
 function TargetBox({
   hold,
   label,
@@ -302,19 +346,13 @@ const StaticRouteLayer = memo(function StaticRouteLayer({
     [completedSet, routePlan?.holds],
   );
 
-  const nextHold = useMemo(
-    () => findNextHold(routePlan, currentHold?.id),
-    [routePlan, currentHold?.id],
-  );
-
   return (
     <>
       {completedHolds.map((hold) => (
         <SmallCompletedDot key={hold.id} hold={hold} />
       ))}
 
-      {nextHold ? <TargetBox hold={nextHold} label={language === 'zh' ? '下一步' : 'next'} dashed /> : null}
-      {currentHold ? <TargetBox hold={currentHold} label={language === 'zh' ? '当前目标' : currentHold.label} /> : null}
+      {currentHold ? <TargetBox hold={currentHold} label={language === 'zh' ? '目标' : 'target'} /> : null}
     </>
   );
 });
@@ -336,6 +374,8 @@ const DynamicPoseLayer = memo(function DynamicPoseLayer({
     () => (currentHold ? getOverlayAnchorPoint(currentHold) : null),
     [currentHold],
   );
+  const chestPoint = useMemo(() => getChestPoint(poseFrame), [poseFrame]);
+  const guidanceStartPoint = chestPoint ?? activeJointPoint;
   const featureLabels = language === 'zh' ? FEATURE_LABELS_ZH : FEATURE_LABELS_EN;
 
   const visibleConnections = useMemo(
@@ -373,11 +413,11 @@ const DynamicPoseLayer = memo(function DynamicPoseLayer({
             />
           );
         })}
-        {currentHold && activeJointPoint && activeJointPoint.visibility >= 0.35 ? (
+        {currentHold && guidanceStartPoint ? (
           <line
             className="camera-guidance-link"
-            x1={activeJointPoint.xPct}
-            y1={activeJointPoint.yPct}
+            x1={guidanceStartPoint.xPct}
+            y1={guidanceStartPoint.yPct}
             x2={currentTargetPoint?.xPct ?? currentHold.xPct}
             y2={currentTargetPoint?.yPct ?? currentHold.yPct}
           />

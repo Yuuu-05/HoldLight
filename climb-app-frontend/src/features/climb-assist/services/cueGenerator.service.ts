@@ -1,5 +1,4 @@
 import type { GuidanceCue, GuidanceLimb, Hold, RoutePlan } from '../../../shared/types/climb';
-import type { PoseFrame } from './poseTracker.service';
 
 interface DistanceBand {
   key: string;
@@ -224,99 +223,33 @@ function buildMovementCue(previousHold: Hold | null, hold: Hold, limb: GuidanceL
   return `${limbLabel(limb)}. ${clock}. ${distanceBand.label}. ${heightDescriptor}. ${targetDescriptor}. ${technique} Target ${hold.label}.`;
 }
 
-function getBodyHeightDescriptor(targetHold: Hold, poseFrame: PoseFrame | null, limb: GuidanceLimb | undefined) {
-  if (!poseFrame) {
-    return isFootLimb(limb) ? 'foot-height target' : 'hand-height target';
+function formatLiveDistanceLabel(distanceBand: DistanceBand) {
+  switch (distanceBand.key) {
+    case 'very-short':
+      return 'very close';
+    case 'short':
+      return 'close';
+    case 'medium':
+      return 'medium distance';
+    case 'far':
+      return 'far';
+    default:
+      return 'very far';
   }
-
-  const leftShoulder = poseFrame.joints.leftShoulder;
-  const rightShoulder = poseFrame.joints.rightShoulder;
-  const leftHip = poseFrame.joints.leftHip;
-  const rightHip = poseFrame.joints.rightHip;
-  const leftKnee = poseFrame.joints.leftKnee;
-  const rightKnee = poseFrame.joints.rightKnee;
-  const leftAnkle = poseFrame.joints.leftAnkle;
-  const rightAnkle = poseFrame.joints.rightAnkle;
-
-  const shoulderY =
-    leftShoulder && rightShoulder
-      ? (leftShoulder.yPct + rightShoulder.yPct) / 2
-      : null;
-  const hipY =
-    leftHip && rightHip
-      ? (leftHip.yPct + rightHip.yPct) / 2
-      : null;
-  const kneeY =
-    leftKnee && rightKnee
-      ? (leftKnee.yPct + rightKnee.yPct) / 2
-      : null;
-  const ankleY =
-    leftAnkle && rightAnkle
-      ? (leftAnkle.yPct + rightAnkle.yPct) / 2
-      : null;
-
-  if (isFootLimb(limb)) {
-    if (hipY !== null && targetHold.yPct < hipY - 5) return 'high-step height';
-    if (kneeY !== null && targetHold.yPct < kneeY - 3) return 'knee-to-hip height';
-    if (kneeY !== null && targetHold.yPct <= kneeY + 4) return 'knee height';
-    if (ankleY !== null && targetHold.yPct <= ankleY + 4) return 'low foot height';
-    return 'foot-height target';
-  }
-
-  if (shoulderY !== null && targetHold.yPct < shoulderY - 6) return 'above shoulder height';
-  if (shoulderY !== null && targetHold.yPct <= shoulderY + 3) return 'shoulder height';
-  if (hipY !== null && targetHold.yPct <= hipY - 2) return 'chest height';
-  if (hipY !== null && targetHold.yPct <= hipY + 5) return 'hip height';
-  return 'low hand height';
 }
 
-function getMicroCorrection(delta: number, positiveWord: string, negativeWord: string) {
-  const magnitude = Math.abs(delta);
-  if (magnitude < 2.2) return '';
-  if (magnitude < 6) return `${delta > 0 ? positiveWord : negativeWord} a touch`;
-  return delta > 0 ? positiveWord : negativeWord;
-}
-
-function getLiveFootDirection(
-  limb: GuidanceLimb | undefined,
-  targetHold: Hold,
-  activePoint: { xPct: number; yPct: number },
-  poseFrame: PoseFrame | null,
-) {
-  const hipCenter =
-    poseFrame?.joints.leftHip && poseFrame?.joints.rightHip
-      ? (poseFrame.joints.leftHip.xPct + poseFrame.joints.rightHip.xPct) / 2
-      : 50;
-
-  if (Math.abs(targetHold.xPct - activePoint.xPct) < 2.5) {
-    return 'under the hip line';
-  }
-
-  if (limb === 'leftFoot') {
-    return targetHold.xPct >= hipCenter - 1 ? 'inside edge' : 'outside edge';
-  }
-
-  if (limb === 'rightFoot') {
-    return targetHold.xPct <= hipCenter + 1 ? 'inside edge' : 'outside edge';
-  }
-
-  return 'foot line';
+function buildChestCenteredCue(clock: string, distanceBand: DistanceBand) {
+  return `Next hold: ${clock}, ${formatLiveDistanceLabel(distanceBand)}.`;
 }
 
 export function buildLivePositionGuidance({
-  limb,
   targetHold,
   activeAnchor,
-  poseFrame,
   distancePct,
-  targetThreshold,
 }: {
-  limb: GuidanceLimb | undefined;
   targetHold: Hold | null;
   activeAnchor: { xPct: number; yPct: number } | null | undefined;
-  poseFrame: PoseFrame | null;
   distancePct: number | null;
-  targetThreshold: number;
 }): LivePositionGuidance {
   if (!targetHold) {
     return {
@@ -327,68 +260,23 @@ export function buildLivePositionGuidance({
   }
 
   if (!activeAnchor || distancePct === null) {
-    const hiddenLimbText = `${limbLabel(limb)} not clear in frame. Bring it back into view so the caller can give precise position guidance.`;
+    const hiddenLimbText = 'Chest not clear. Center the upper body in the camera.';
     return {
       displayText: hiddenLimbText,
       speechText: hiddenLimbText,
-      speechKey: `${targetHold.id}:limb-hidden:${limb ?? 'match'}`,
+      speechKey: `${targetHold.id}:chest-hidden`,
     };
   }
 
   const dx = targetHold.xPct - activeAnchor.xPct;
   const dy = activeAnchor.yPct - targetHold.yPct;
   const distanceBand = getDistanceBand(distancePct);
-  const heightDescriptor = getBodyHeightDescriptor(targetHold, poseFrame, limb);
-  const targetDescriptor = getHoldDescriptor(targetHold, limb);
-  const horizontalCorrection = getMicroCorrection(dx, 'right', 'left');
-  const verticalCorrection = getMicroCorrection(dy, 'up', 'down');
-  const correctionCall = [horizontalCorrection, verticalCorrection].filter(Boolean).join(', ');
   const clock = getClockDirectionFromDelta(dx, dy);
-
-  const horizontalBucket =
-    Math.abs(dx) < 2.2 ? 'center' : dx > 0 ? (Math.abs(dx) < 6 ? 'right-fine' : 'right') : Math.abs(dx) < 6 ? 'left-fine' : 'left';
-  const verticalBucket =
-    Math.abs(dy) < 2.2 ? 'level' : dy > 0 ? (Math.abs(dy) < 6 ? 'up-fine' : 'up') : Math.abs(dy) < 6 ? 'down-fine' : 'down';
-
-  if (distancePct <= targetThreshold * 0.72) {
-    const lockedText = `${limbLabel(limb)}. That's it. Stay on ${targetHold.label} and stabilise before the next move.`;
-    return {
-      displayText: lockedText,
-      speechText: lockedText,
-      speechKey: `${targetHold.id}:locked`,
-    };
-  }
-
-  if (distancePct <= targetThreshold * 1.3) {
-    const closeText = correctionCall
-      ? `${limbLabel(limb)}. ${correctionCall}. ${targetDescriptor}, ${heightDescriptor}.`
-      : `${limbLabel(limb)}. Hold steady on the ${targetDescriptor}.`;
-    return {
-      displayText: closeText,
-      speechText: closeText,
-      speechKey: `${targetHold.id}:close:${horizontalBucket}:${verticalBucket}`,
-    };
-  }
-
-  if (isFootLimb(limb)) {
-    const footDirection = getLiveFootDirection(limb, targetHold, activeAnchor, poseFrame);
-    const speechText =
-      `${limbLabel(limb)}. ${footDirection}. ${distanceBand.label}. ${heightDescriptor}. ` +
-      `${targetDescriptor}. Search for ${targetHold.label}.`;
-    return {
-      displayText: speechText,
-      speechText,
-      speechKey: `${targetHold.id}:${distanceBand.key}:${footDirection}:${verticalBucket}`,
-    };
-  }
-
-  const speechText =
-    `${limbLabel(limb)}. ${clock}. ${distanceBand.label}. ${heightDescriptor}. ` +
-    `${targetDescriptor}. Search for ${targetHold.label}.`;
+  const speechText = buildChestCenteredCue(clock, distanceBand);
   return {
     displayText: speechText,
     speechText,
-    speechKey: `${targetHold.id}:${distanceBand.key}:${horizontalBucket}:${verticalBucket}`,
+    speechKey: `${targetHold.id}:chest:${distanceBand.key}:${clock}`,
   };
 }
 

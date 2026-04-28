@@ -1,27 +1,11 @@
 import type {
   ClimbScan,
-  GuidanceCue,
-  GuidanceLimb,
   Hold,
-  HoldColor,
 } from '../../../shared/types/climb';
 import type { Language } from '../../../shared/i18n/translations';
 import type { LivePoseState } from '../hooks/useLivePoseTracker';
 import type { LiveWallAlignmentState } from '../hooks/useLiveWallAlignment';
 import type { AssistSafetyDecision } from './safetyState.service';
-
-const HOLD_COLOR_LABELS_ZH: Record<HoldColor, string> = {
-  blue: '蓝色',
-  red: '红色',
-  green: '绿色',
-  yellow: '黄色',
-  pink: '粉色',
-  purple: '紫色',
-  orange: '橙色',
-  black: '黑色',
-  white: '白色',
-  unknown: '当前颜色',
-};
 
 const CLOCK_LABELS_ZH = [
   '12点钟',
@@ -38,73 +22,6 @@ const CLOCK_LABELS_ZH = [
   '11点钟',
 ] as const;
 
-function limbLabelZh(limb: GuidanceLimb | undefined) {
-  switch (limb) {
-    case 'leftHand':
-      return '左手';
-    case 'rightHand':
-      return '右手';
-    case 'leftFoot':
-      return '左脚';
-    case 'rightFoot':
-      return '右脚';
-    default:
-      return '双手';
-  }
-}
-
-function isFootLimb(limb: GuidanceLimb | undefined) {
-  return limb === 'leftFoot' || limb === 'rightFoot';
-}
-
-function holdDescriptorZh(hold: Hold, limb: GuidanceLimb | undefined) {
-  const color = HOLD_COLOR_LABELS_ZH[hold.color] ?? HOLD_COLOR_LABELS_ZH.unknown;
-
-  if (hold.role === 'finish') {
-    return `${color}终点点`;
-  }
-
-  if (isFootLimb(limb) || hold.role === 'foot') {
-    if (hold.size === 's') return `${color}小脚点`;
-    if (hold.size === 'l') return `${color}大脚点`;
-    return `${color}脚点`;
-  }
-
-  if (hold.role === 'start') {
-    return `${color}起始点`;
-  }
-
-  if (hold.size === 'l') return `${color}大手点`;
-  if (hold.size === 's') return `${color}小手点`;
-  return `${color}手点`;
-}
-
-function holdRegionZh(hold: Hold) {
-  const horizontal =
-    hold.xPct < 34 ? '左侧' : hold.xPct > 66 ? '右侧' : '中间';
-  const vertical =
-    hold.yPct < 28 ? '上方' : hold.yPct > 72 ? '下方' : '中间';
-
-  if (horizontal === '中间' && vertical === '中间') {
-    return '中间';
-  }
-
-  if (horizontal === '中间') {
-    return vertical;
-  }
-
-  if (vertical === '中间') {
-    return horizontal;
-  }
-
-  return `${horizontal}${vertical}`;
-}
-
-function holdTargetLabelZh(hold: Hold | null) {
-  if (!hold) return '目标点';
-  return `${holdRegionZh(hold)}的${holdDescriptorZh(hold, hold.role === 'foot' ? 'leftFoot' : 'leftHand')}`;
-}
-
 function getDistanceBandZh(distancePct: number) {
   if (distancePct < 4.5) return { key: 'very-close', label: '很近' };
   if (distancePct < 9) return { key: 'close', label: '较近' };
@@ -120,81 +37,14 @@ function getClockDirectionZh(dx: number, dy: number) {
   return CLOCK_LABELS_ZH[index];
 }
 
-function buildCorrectionZh(dx: number, dy: number) {
-  const parts: string[] = [];
-
-  if (Math.abs(dx) >= 2.2) {
-    if (Math.abs(dx) < 6) {
-      parts.push(dx > 0 ? '向右一点' : '向左一点');
-    } else {
-      parts.push(dx > 0 ? '向右移动' : '向左移动');
-    }
-  }
-
-  if (Math.abs(dy) >= 2.2) {
-    if (Math.abs(dy) < 6) {
-      parts.push(dy > 0 ? '向上一点' : '向下一点');
-    } else {
-      parts.push(dy > 0 ? '向上找' : '向下找');
-    }
-  }
-
-  return parts;
-}
-
-export function buildGuidanceCueSpeechZh({
-  cueIndex,
-  totalCues,
-  cue,
-  targetHold,
-}: {
-  cueIndex: number;
-  totalCues: number;
-  cue: GuidanceCue;
-  targetHold: Hold | null;
-}) {
-  const prefix =
-    cueIndex === 0
-      ? '起步。'
-      : targetHold?.role === 'finish'
-        ? '最后一步。'
-        : `第${cueIndex + 1}步。`;
-
-  if (!targetHold) {
-    return `${prefix}请准备下一步目标点。`;
-  }
-
-  const limb = cue.limb;
-  const limbLabel = limbLabelZh(limb);
-  const targetLabel = holdTargetLabelZh(targetHold);
-
-  if (cueIndex === 0 || targetHold.role === 'start') {
-    return `${prefix}双手先到${targetLabel}，身体稳住再继续。`;
-  }
-
-  if (targetHold.role === 'finish') {
-    return `${prefix}${limbLabel}去找${targetLabel}，抓稳以后先别着急动。`;
-  }
-
-  if (isFootLimb(limb) || targetHold.role === 'foot') {
-    return `${prefix}${limbLabel}去找${targetLabel}，脚先踩稳，再起身。`;
-  }
-
-  return `${prefix}${limbLabel}去找${targetLabel}，动作放慢，先稳再伸。`;
-}
-
 export function buildLivePositionSpeechZh({
-  limb,
   targetHold,
   activeAnchor,
   distancePct,
-  targetThreshold,
 }: {
-  limb: GuidanceLimb | undefined;
   targetHold: Hold | null;
   activeAnchor: { xPct: number; yPct: number } | null | undefined;
   distancePct: number | null;
-  targetThreshold: number;
 }) {
   if (!targetHold) {
     return {
@@ -203,40 +53,20 @@ export function buildLivePositionSpeechZh({
     };
   }
 
-  const limbLabel = limbLabelZh(limb);
   if (!activeAnchor || distancePct === null) {
     return {
-      speechText: `${limbLabel}没有清楚进入画面，请把${limbLabel}重新放回镜头里。`,
-      speechKey: `${targetHold.id}:limb-hidden-zh:${limb ?? 'match'}`,
-    };
-  }
-
-  if (distancePct <= targetThreshold * 0.72) {
-    return {
-      speechText: `${limbLabel}到位了，先稳住，不急着做下一步。`,
-      speechKey: `${targetHold.id}:locked-zh`,
+      speechText: '胸口位置不清楚，请让上半身回到镜头中央。',
+      speechKey: `${targetHold.id}:chest-hidden-zh`,
     };
   }
 
   const dx = targetHold.xPct - activeAnchor.xPct;
   const dy = activeAnchor.yPct - targetHold.yPct;
-  const correction = buildCorrectionZh(dx, dy);
-
-  if (distancePct <= targetThreshold * 1.3) {
-    return {
-      speechText:
-        correction.length > 0
-          ? `${limbLabel}，${correction.join('，')}。快到${holdTargetLabelZh(targetHold)}了。`
-          : `${limbLabel}，先稳住，目标就在附近。`,
-      speechKey: `${targetHold.id}:close-zh:${correction.join('|') || 'steady'}`,
-    };
-  }
-
   const distanceBand = getDistanceBandZh(distancePct);
   const direction = getClockDirectionZh(dx, dy);
   return {
-    speechText: `${limbLabel}去找${holdTargetLabelZh(targetHold)}。方向在${direction}，距离${distanceBand.label}。`,
-    speechKey: `${targetHold.id}:${distanceBand.key}-zh:${direction}`,
+    speechText: `下一个岩点：${direction}方向，距离${distanceBand.label}。`,
+    speechKey: `${targetHold.id}:chest-zh:${distanceBand.key}:${direction}`,
   };
 }
 
@@ -286,29 +116,6 @@ export function buildLiveSafetyPauseSpeechZh({
   }
 
   return '请暂停，当前实时引导条件还没有稳定下来。';
-}
-
-export function buildTargetReachedSpeechZh({
-  nextCueIndex,
-  totalCues,
-  nextCue,
-  nextHold,
-}: {
-  nextCueIndex: number;
-  totalCues: number;
-  nextCue: GuidanceCue | undefined;
-  nextHold: Hold | null;
-}) {
-  if (!nextCue || !nextHold) {
-    return '目标已到，继续下一步。';
-  }
-
-  return `这个点已经到了。${buildGuidanceCueSpeechZh({
-    cueIndex: nextCueIndex,
-    totalCues,
-    cue: nextCue,
-    targetHold: nextHold,
-  })}`;
 }
 
 export function buildRecalibrationSpeechZh() {
