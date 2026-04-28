@@ -18,6 +18,7 @@ interface CameraPreviewProps {
   className?: string;
   plainLiveView?: boolean;
   syncAspectRatio?: boolean;
+  fixedAspectRatio?: string;
   fallbackAspectRatio?: string;
   fitWithinContainer?: boolean;
   showMask?: boolean;
@@ -95,6 +96,7 @@ export default function CameraPreview({
   className = '',
   plainLiveView = false,
   syncAspectRatio = false,
+  fixedAspectRatio,
   fallbackAspectRatio = '4 / 3',
   fitWithinContainer = false,
   showMask,
@@ -111,8 +113,9 @@ export default function CameraPreview({
   const [fitSize, setFitSize] = useState<{ width: number; height: number } | null>(null);
 
   const showPreviewMask = showMask ?? !plainLiveView;
-  const shouldFitWithinContainer = syncAspectRatio && (plainLiveView || fitWithinContainer);
-  const effectiveAspectRatio = syncAspectRatio ? aspectRatio ?? fallbackAspectRatio : undefined;
+  const shouldUseAspectRatio = syncAspectRatio || Boolean(fixedAspectRatio);
+  const shouldFitWithinContainer = shouldUseAspectRatio && (plainLiveView || fitWithinContainer);
+  const effectiveAspectRatio = shouldUseAspectRatio ? fixedAspectRatio ?? aspectRatio ?? fallbackAspectRatio : undefined;
   const effectiveAspectRatioValue = parseAspectRatioValue(effectiveAspectRatio);
 
   useEffect(() => {
@@ -327,7 +330,7 @@ export default function CameraPreview({
       }
     : fitWithinContainer
       ? fittedShellStyle
-    : syncAspectRatio
+    : shouldUseAspectRatio
       ? {
           width: '100%',
           aspectRatio: effectiveAspectRatio,
@@ -345,7 +348,7 @@ export default function CameraPreview({
         transition: 'opacity 140ms linear',
         aspectRatio: effectiveAspectRatio,
       }
-    : syncAspectRatio
+    : shouldUseAspectRatio
       ? {
           width: '100%',
           height: '100%',

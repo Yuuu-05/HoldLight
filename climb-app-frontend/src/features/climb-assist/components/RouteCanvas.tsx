@@ -16,6 +16,7 @@ interface RouteCanvasProps {
   backgroundImageUrl?: string;
   plainImagePreview?: boolean;
   fitContainer?: boolean;
+  fixedAspectRatio?: number;
   holdOverlayStyle?: 'default' | 'subtle';
   highlightHoldIds?: string[];
   completedHoldIds?: string[];
@@ -84,6 +85,7 @@ export default function RouteCanvas({
   backgroundImageUrl,
   plainImagePreview = false,
   fitContainer = false,
+  fixedAspectRatio,
   holdOverlayStyle = 'default',
   highlightHoldIds = [],
   completedHoldIds = [],
@@ -108,9 +110,12 @@ export default function RouteCanvas({
   const wallHeight = Math.max(1, wallMap?.height ?? 1);
   const aspectRatioValue = wallWidth / wallHeight;
   const useStableOverlayPreview = plainImagePreview && Boolean(backgroundImageUrl);
-  const effectiveAspectRatioValue = useStableOverlayPreview && previewAspectRatioValue
+  const fixedAspectRatioValue = fixedAspectRatio && Number.isFinite(fixedAspectRatio) && fixedAspectRatio > 0
+    ? fixedAspectRatio
+    : null;
+  const effectiveAspectRatioValue = fixedAspectRatioValue ?? (useStableOverlayPreview && previewAspectRatioValue
     ? previewAspectRatioValue
-    : aspectRatioValue;
+    : aspectRatioValue);
 
   useEffect(() => {
     if (!useStableOverlayPreview || !backgroundImageUrl) {
