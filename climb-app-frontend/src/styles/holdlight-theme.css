@@ -7955,3 +7955,1083 @@ body,
     min-height: 20rem;
   }
 }
+
+/* Shared iPhone rear-camera viewport for scan, route selection, and live guidance. */
+:root {
+  --assist-phone-camera-aspect-ratio: 3 / 4;
+  --assist-phone-frame-width: min(100%, 24rem, 44svh);
+  --assist-phone-frame-radius: 8px;
+}
+
+body:has(.assist-scan-console),
+body:has(.assist-route-builder-page),
+body:has(.assist-shell-review-mode),
+body:has(.assist-live-page) {
+  overflow: hidden;
+}
+
+.app-viewport-immersive:has(.assist-scan-console),
+.app-viewport-immersive:has(.assist-route-builder-page),
+.app-viewport-immersive:has(.assist-shell-review-mode),
+.app-viewport-immersive:has(.assist-live-page),
+.page-shell-immersive:has(.assist-scan-console),
+.page-shell-immersive:has(.assist-route-builder-page),
+.page-shell-immersive:has(.assist-shell-review-mode),
+.page-shell-immersive:has(.assist-live-page),
+.page-shell-immersive:has(.assist-scan-console) .page-transition,
+.page-shell-immersive:has(.assist-route-builder-page) .page-transition,
+.page-shell-immersive:has(.assist-shell-review-mode) .page-transition,
+.page-shell-immersive:has(.assist-live-page) .page-transition {
+  height: var(--app-visual-viewport-height, 100dvh);
+  min-height: 0;
+  overflow: hidden;
+}
+
+.assist-scan-camera-shell,
+.assist-camera-permission-target,
+.assist-upload-dropzone,
+.assist-scan-console .assist-upload-preview-frame,
+.assist-route-builder-canvas > .stack-sm,
+.assist-review-phone-stage > .stack-sm,
+.assist-live-page .assist-live-plain-shell {
+  width: var(--assist-phone-frame-width) !important;
+  max-width: 100% !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: 100% !important;
+  aspect-ratio: var(--assist-phone-camera-aspect-ratio) !important;
+  justify-self: center !important;
+  align-self: center !important;
+  border-radius: var(--assist-phone-frame-radius) !important;
+}
+
+.assist-scan-camera-shell .assist-camera-stage,
+.assist-scan-camera-shell .assist-camera-stage > .camera-preview-shell,
+.assist-scan-camera-shell .camera-preview,
+.assist-scan-console .assist-upload-preview-frame .camera-preview,
+.assist-route-builder-canvas .assist-route-canvas,
+.assist-review-phone-stage .assist-route-canvas,
+.assist-live-page .assist-live-plain-shell .camera-preview {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: 100% !important;
+  aspect-ratio: var(--assist-phone-camera-aspect-ratio) !important;
+  border-radius: var(--assist-phone-frame-radius) !important;
+}
+
+.assist-scan-camera-shell .camera-preview,
+.assist-scan-console .assist-upload-preview-frame .camera-preview,
+.assist-live-page .assist-live-plain-shell .camera-preview {
+  object-fit: cover !important;
+}
+
+.assist-route-builder-page,
+.assist-shell-review-mode,
+.assist-live-page,
+.app-shell-immersive .assist-shell:not(.assist-shell-review-mode):has(.assist-scan-console) {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.assist-route-builder-card,
+.assist-scan-review-card,
+.assist-live-camera-card.card {
+  min-height: 0;
+  overflow: hidden;
+}
+
+@media (max-width: 720px) {
+  :root {
+    --assist-phone-frame-width: min(100%, 23.25rem, 43svh);
+  }
+
+  .assist-scan-console {
+    height: 100%;
+    min-height: 0;
+    align-content: stretch;
+    grid-template-rows: auto auto minmax(0, 1fr);
+    overflow: hidden;
+  }
+
+  .assist-scan-method-grid,
+  .assist-scan-flow-panel.is-active,
+  .assist-scan-method {
+    min-height: 0;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .assist-scan-method {
+    align-content: start;
+  }
+
+  .assist-scan-steps span {
+    min-height: 2.2rem;
+    padding-block: 0.24rem;
+  }
+
+  .assist-route-builder-card {
+    grid-template-rows: minmax(0, 1fr) minmax(10.8rem, auto);
+  }
+
+  .assist-route-builder-panel {
+    max-height: 34svh;
+    overflow: hidden;
+  }
+
+  .assist-shell-review-mode .assist-color-review-layout {
+    grid-template-rows: minmax(0, 1fr) minmax(12.2rem, 28svh);
+  }
+
+  .voice-cue-panel.assist-live-controls {
+    max-height: min(34svh, 13rem);
+    overflow: hidden;
+  }
+}
+
+@media (max-width: 390px), (max-height: 720px) {
+  :root {
+    --assist-phone-frame-width: min(100%, 21.75rem, 40svh);
+  }
+
+  .assist-scan-console-head {
+    display: none;
+  }
+
+  .assist-route-builder-panel {
+    max-height: 32svh;
+  }
+}
+
+/* Camera/image frame correction: one centered 3:4 phone viewport on scan, route review, and live guidance. */
+:root {
+  --assist-phone-camera-aspect-ratio: 3 / 4;
+  --assist-phone-frame-radius: 8px;
+  --assist-scan-frame-width: min(calc(100vw - 1rem), 45rem, 54svh);
+  --assist-route-frame-width: min(calc(100vw - 1rem), 45rem, 55svh);
+  --assist-live-frame-width: min(calc(100vw - 0.5rem), 52rem, 74svh);
+}
+
+html:has(.assist-scan-console),
+html:has(.assist-route-builder-page),
+html:has(.assist-shell-review-mode),
+html:has(.assist-live-page),
+body:has(.assist-scan-console),
+body:has(.assist-route-builder-page),
+body:has(.assist-shell-review-mode),
+body:has(.assist-live-page) {
+  overflow: hidden;
+}
+
+.app-viewport-immersive:has(.assist-scan-console),
+.app-viewport-immersive:has(.assist-route-builder-page),
+.app-viewport-immersive:has(.assist-shell-review-mode),
+.app-viewport-immersive:has(.assist-live-page),
+.page-shell-immersive:has(.assist-scan-console),
+.page-shell-immersive:has(.assist-route-builder-page),
+.page-shell-immersive:has(.assist-shell-review-mode),
+.page-shell-immersive:has(.assist-live-page),
+.page-shell-immersive:has(.assist-scan-console) .page-transition,
+.page-shell-immersive:has(.assist-route-builder-page) .page-transition,
+.page-shell-immersive:has(.assist-shell-review-mode) .page-transition,
+.page-shell-immersive:has(.assist-live-page) .page-transition {
+  height: var(--app-visual-viewport-height, 100dvh);
+  min-height: 0;
+  overflow: hidden;
+}
+
+.page-shell-immersive:has(.assist-scan-console),
+.page-shell-immersive:has(.assist-route-builder-page),
+.page-shell-immersive:has(.assist-shell-review-mode),
+.page-shell-immersive:has(.assist-live-page) {
+  padding: 0.25rem 0.35rem calc(0.25rem + env(safe-area-inset-bottom, 0px));
+  padding-left: max(0.35rem, env(safe-area-inset-left, 0px));
+  padding-right: max(0.35rem, env(safe-area-inset-right, 0px));
+}
+
+.app-shell-immersive .assist-shell:not(.assist-shell-review-mode):has(.assist-scan-console),
+.assist-route-builder-page,
+.assist-shell-review-mode,
+.assist-live-page {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.assist-scan-console,
+.assist-route-builder-card,
+.assist-scan-review-card,
+.assist-live-camera-card.card {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.assist-scan-console {
+  width: 100%;
+  max-width: none;
+  grid-template-rows: auto minmax(0, 1fr);
+  align-content: stretch;
+}
+
+.assist-scan-console-head {
+  display: none;
+}
+
+.assist-scan-method-grid,
+.assist-scan-flow-panel.is-active {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.assist-scan-camera-card.assist-scan-flow-panel.is-active {
+  grid-template-rows: minmax(0, 1fr) auto auto;
+  align-content: stretch;
+  justify-items: center;
+  gap: 0.42rem;
+  padding: 0.24rem;
+  background: transparent;
+  box-shadow: none;
+}
+
+.assist-scan-camera-card .assist-scan-method-head,
+.assist-scan-camera-card .assist-scan-steps {
+  display: none;
+}
+
+.assist-scan-camera-shell,
+.assist-camera-permission-target {
+  width: var(--assist-scan-frame-width) !important;
+  max-width: 100% !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: 100% !important;
+  aspect-ratio: var(--assist-phone-camera-aspect-ratio) !important;
+  justify-self: center !important;
+  align-self: center !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: var(--assist-phone-frame-radius) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.assist-scan-camera-shell .assist-camera-stage,
+.assist-scan-camera-shell .assist-camera-stage > .camera-preview-shell,
+.assist-scan-camera-shell .camera-preview-shell,
+.assist-scan-camera-shell .camera-preview,
+.assist-scan-console .assist-upload-preview-frame,
+.assist-scan-console .assist-upload-preview-frame .camera-preview {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: 100% !important;
+  aspect-ratio: var(--assist-phone-camera-aspect-ratio) !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: var(--assist-phone-frame-radius) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.assist-scan-camera-shell .camera-preview,
+.assist-scan-console .assist-upload-preview-frame .camera-preview {
+  display: block;
+  object-fit: cover !important;
+}
+
+.assist-scan-camera-shell .camera-preview-mask,
+.assist-scan-camera-shell .camera-preview-mask-frame,
+.assist-scan-camera-shell .camera-preview-mask-pill {
+  display: none !important;
+}
+
+.assist-scan-primary-actions {
+  width: min(100%, var(--assist-scan-frame-width));
+  justify-self: center;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.42rem;
+}
+
+.assist-scan-primary-actions .assist-scan-confirm-button {
+  grid-column: 1 / -1;
+}
+
+.assist-route-builder-card {
+  grid-template-columns: minmax(0, 1fr) minmax(17rem, 22rem);
+  gap: 0.35rem;
+  padding: 0.2rem;
+}
+
+.assist-route-builder-canvas,
+.assist-route-builder-canvas > .stack-sm,
+.assist-review-phone-stage,
+.assist-review-phone-stage > .stack-sm {
+  display: grid;
+  place-items: center !important;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.assist-route-builder-canvas > .stack-sm,
+.assist-review-phone-stage > .stack-sm {
+  width: var(--assist-route-frame-width) !important;
+  max-width: 100% !important;
+  height: auto !important;
+  max-height: 100% !important;
+  aspect-ratio: var(--assist-phone-camera-aspect-ratio) !important;
+}
+
+.assist-route-builder-canvas .assist-route-canvas,
+.assist-review-phone-stage .assist-route-canvas {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  min-height: 0 !important;
+  aspect-ratio: var(--assist-phone-camera-aspect-ratio) !important;
+  align-self: center !important;
+  justify-self: center !important;
+  border-radius: var(--assist-phone-frame-radius) !important;
+}
+
+.assist-route-canvas-preview,
+.assist-route-canvas-preview .assist-route-canvas-content,
+.assist-route-canvas-preview img {
+  border-radius: var(--assist-phone-frame-radius) !important;
+}
+
+.assist-live-page {
+  background: #020407;
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.assist-live-camera-card.card,
+.assist-live-camera-card .card-body,
+.assist-live-camera-preview {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.assist-live-camera-card .card-body {
+  display: grid;
+  place-items: start center;
+}
+
+.assist-live-camera-preview {
+  align-items: start !important;
+  justify-items: center !important;
+}
+
+.assist-live-page .assist-live-plain-shell {
+  width: var(--assist-live-frame-width) !important;
+  max-width: 100% !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: 100% !important;
+  aspect-ratio: var(--assist-phone-camera-aspect-ratio) !important;
+  justify-self: center !important;
+  align-self: start !important;
+  border-radius: var(--assist-phone-frame-radius) !important;
+  background: #020407 !important;
+  box-shadow: none !important;
+}
+
+.assist-live-page .assist-live-plain-shell .camera-preview {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  aspect-ratio: var(--assist-phone-camera-aspect-ratio) !important;
+  border-radius: var(--assist-phone-frame-radius) !important;
+  object-fit: cover !important;
+  background: #020407 !important;
+}
+
+@media (max-width: 720px) {
+  :root {
+    --assist-scan-frame-width: min(calc(100vw - 0.7rem), 54svh);
+    --assist-route-frame-width: min(calc(100vw - 0.7rem), 54svh);
+    --assist-live-frame-width: min(calc(100vw - 0.45rem), 73svh);
+  }
+
+  .assist-scan-console {
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 0.36rem;
+  }
+
+  .assist-scan-mode-selector {
+    width: min(100%, var(--assist-scan-frame-width));
+    justify-self: center;
+  }
+
+  .assist-scan-mode-option {
+    min-height: 2.7rem;
+    padding: 0.34rem 0.42rem;
+  }
+
+  .assist-route-builder-card {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1fr) auto;
+    gap: 0.26rem;
+    padding: 0.08rem;
+  }
+
+  .assist-route-builder-panel {
+    max-height: 27svh;
+    gap: 0.28rem;
+    padding: 0.36rem;
+    overflow: hidden;
+  }
+
+  .assist-shell-review-mode .assist-color-review-layout {
+    grid-template-rows: minmax(0, 1fr) minmax(11.8rem, 26svh);
+    gap: 0.14rem;
+  }
+
+  .voice-cue-panel.assist-live-controls {
+    width: min(calc(100% - 0.7rem), 52rem);
+    max-height: min(31svh, 12.5rem);
+    overflow: hidden;
+  }
+}
+
+@media (max-width: 390px), (max-height: 720px) {
+  :root {
+    --assist-scan-frame-width: min(calc(100vw - 0.6rem), 50svh);
+    --assist-route-frame-width: min(calc(100vw - 0.6rem), 48svh);
+    --assist-live-frame-width: min(calc(100vw - 0.4rem), 70svh);
+  }
+
+  .assist-route-builder-panel {
+    max-height: 30svh;
+  }
+
+  .assist-shell-review-mode .assist-color-review-layout {
+    grid-template-rows: minmax(0, 1fr) minmax(11.4rem, 29svh);
+  }
+}
+
+/* Second pass: center the live scan frame itself and compress hold-review controls. */
+.assist-scan-camera-card.assist-scan-flow-panel.is-active {
+  justify-content: center;
+  justify-items: center;
+}
+
+.assist-scan-camera-shell {
+  display: grid !important;
+  place-items: center !important;
+  margin-inline: auto !important;
+}
+
+.assist-scan-camera-shell .assist-camera-stage,
+.assist-scan-camera-shell .assist-camera-stage > .camera-preview-shell,
+.assist-scan-camera-shell .camera-preview-shell {
+  justify-self: center !important;
+  align-self: center !important;
+  margin-inline: auto !important;
+  object-position: center center !important;
+}
+
+.assist-scan-camera-shell .assist-camera-stage {
+  display: grid !important;
+  place-items: center !important;
+}
+
+.assist-scan-camera-shell .camera-preview {
+  object-position: center center !important;
+}
+
+.assist-color-review-panel {
+  --assist-review-title-size: 0.8rem;
+  --assist-review-copy-size: 0.68rem;
+  --assist-review-control-size: 0.68rem;
+  --assist-review-pill-size: 0.66rem;
+  gap: 0.22rem !important;
+  padding: 0.32rem !important;
+  overflow: hidden !important;
+}
+
+.assist-review-title-row {
+  gap: 0.26rem !important;
+}
+
+.assist-review-kicker {
+  min-height: 1.42rem !important;
+  padding: 0.14rem 0.44rem !important;
+  border-radius: 8px !important;
+  font-size: 0.62rem !important;
+}
+
+.assist-color-review-head strong {
+  font-size: 0.78rem !important;
+  line-height: 1.08 !important;
+}
+
+.assist-review-tool-shell,
+.assist-color-picker-shell {
+  gap: 0.2rem !important;
+  padding: 0.28rem !important;
+  border-radius: 10px !important;
+}
+
+.assist-review-tool-toggle {
+  gap: 0.22rem !important;
+}
+
+.assist-review-tool-button {
+  min-height: 2.02rem !important;
+  padding: 0.25rem 0.28rem !important;
+  border-radius: 10px !important;
+  font-size: 0.72rem !important;
+  line-height: 1.06 !important;
+}
+
+.assist-color-selection-summary strong {
+  font-size: 0.76rem !important;
+  line-height: 1.05 !important;
+}
+
+.assist-color-swatch-grid {
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  gap: 0.24rem !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+.assist-shell-review-mode .assist-color-swatch-grid {
+  display: flex !important;
+  grid-template-columns: none !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  padding: 0.02rem 1.9rem 0.28rem 0.02rem !important;
+  scroll-padding-inline: 0.02rem 1.9rem;
+  scroll-snap-type: x proximity !important;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: none;
+  touch-action: pan-x;
+  -webkit-overflow-scrolling: touch;
+}
+
+.assist-shell-review-mode .assist-color-swatch-grid::-webkit-scrollbar {
+  display: none;
+}
+
+.assist-color-swatch {
+  min-height: 2.06rem !important;
+  padding: 0.22rem 0.24rem !important;
+  gap: 0.22rem !important;
+  border-radius: 9px !important;
+}
+
+.assist-color-swatch-mark {
+  width: 1.04rem !important;
+  height: 1.04rem !important;
+}
+
+.assist-color-swatch-label {
+  font-size: 0.66rem !important;
+  line-height: 1.04 !important;
+}
+
+.assist-color-apply-button,
+.assist-color-action-row .btn {
+  min-height: 2.16rem !important;
+  padding: 0.22rem 0.34rem !important;
+  border-radius: 10px !important;
+  font-size: 0.72rem !important;
+  line-height: 1.05 !important;
+}
+
+.assist-review-confirm-button {
+  min-height: 2.42rem !important;
+}
+
+.assist-color-action-row {
+  gap: 0.28rem !important;
+}
+
+@media (max-width: 720px) {
+  .assist-shell-review-mode .assist-color-review-layout {
+    grid-template-rows: minmax(0, 1fr) minmax(10.4rem, 25svh);
+  }
+
+  .assist-color-review-panel {
+    padding: 0.26rem !important;
+  }
+
+  .assist-review-tool-shell,
+  .assist-color-picker-shell {
+    padding: 0.24rem !important;
+  }
+}
+
+@media (max-width: 390px), (max-height: 720px) {
+  .assist-shell-review-mode .assist-color-review-layout {
+    grid-template-rows: minmax(0, 1fr) minmax(10.2rem, 28svh);
+  }
+
+  .assist-review-tool-button,
+  .assist-color-apply-button,
+  .assist-color-action-row .btn {
+    min-height: 1.96rem !important;
+    font-size: 0.68rem !important;
+  }
+}
+
+/* Final media polish: no visible frame lines, and all camera/photo stages sit higher. */
+:root {
+  --assist-phone-frame-radius: 8px;
+  --assist-shared-camera-frame-width: min(calc(100vw - 0.7rem), 45rem, 54svh);
+  --assist-scan-frame-width: var(--assist-shared-camera-frame-width);
+  --assist-route-frame-width: var(--assist-shared-camera-frame-width);
+  --assist-live-frame-width: var(--assist-shared-camera-frame-width);
+}
+
+.page-shell-immersive:has(.assist-scan-console),
+.page-shell-immersive:has(.assist-route-builder-page),
+.page-shell-immersive:has(.assist-shell-review-mode),
+.page-shell-immersive:has(.assist-live-page) {
+  padding-top: 0.08rem !important;
+}
+
+.assist-scan-console {
+  gap: 0.24rem !important;
+}
+
+.assist-scan-camera-card.assist-scan-flow-panel.is-active {
+  grid-template-rows: auto auto auto !important;
+  align-content: start !important;
+  align-items: start !important;
+  padding-top: 0 !important;
+  gap: 0.18rem !important;
+}
+
+.assist-scan-camera-shell,
+.assist-camera-permission-target,
+.assist-scan-camera-shell .assist-camera-stage,
+.assist-scan-camera-shell .assist-camera-stage > .camera-preview-shell,
+.assist-scan-camera-shell .camera-preview-shell,
+.assist-scan-camera-shell .camera-preview,
+.assist-route-builder-canvas > .stack-sm,
+.assist-review-phone-stage > .stack-sm,
+.assist-route-builder-canvas .assist-route-canvas,
+.assist-review-phone-stage .assist-route-canvas,
+.assist-route-canvas-preview,
+.assist-route-canvas-preview .assist-route-canvas-content,
+.assist-route-canvas-preview img,
+.assist-live-page .assist-live-plain-shell,
+.assist-live-page .assist-live-plain-shell .camera-preview {
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+  border-radius: var(--assist-phone-frame-radius) !important;
+  background: #020407 !important;
+  overflow: hidden !important;
+}
+
+.assist-scan-camera-shell,
+.assist-camera-permission-target,
+.assist-route-builder-canvas > .stack-sm,
+.assist-review-phone-stage > .stack-sm {
+  align-self: start !important;
+}
+
+.assist-scan-camera-shell {
+  margin-top: 0 !important;
+}
+
+.assist-route-builder-canvas,
+.assist-live-camera-card .card-body,
+.assist-live-camera-preview {
+  align-items: start !important;
+  justify-items: center !important;
+  place-items: start center !important;
+}
+
+.assist-color-review-canvas,
+.assist-review-phone-stage {
+  align-items: end !important;
+  justify-items: center !important;
+  place-items: end center !important;
+}
+
+.assist-review-phone-stage > .stack-sm {
+  align-self: end !important;
+}
+
+.assist-scan-camera-shell .camera-preview,
+.assist-scan-console .assist-upload-preview-frame .camera-preview,
+.assist-live-page .assist-live-plain-shell .camera-preview,
+.assist-route-canvas-preview .assist-route-canvas-content,
+.assist-route-canvas-preview img {
+  transform: scale(1.004);
+  transform-origin: center center;
+}
+
+.assist-route-builder-canvas .assist-route-canvas,
+.assist-review-phone-stage .assist-route-canvas {
+  align-self: start !important;
+}
+
+@media (max-width: 720px) {
+  :root {
+    --assist-shared-camera-frame-width: min(calc(100vw - 0.55rem), 54svh);
+  }
+
+  .assist-scan-console {
+    gap: 0.2rem !important;
+  }
+
+  .assist-scan-mode-selector {
+    margin-bottom: 0.05rem !important;
+  }
+
+  .assist-route-builder-card {
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+
+  .assist-route-builder-panel {
+    max-height: 29svh;
+  }
+
+  .assist-shell-review-mode .assist-color-review-layout {
+    grid-template-rows: minmax(0, 1fr) minmax(10.4rem, 27svh);
+    gap: 0.02rem !important;
+  }
+}
+
+@media (max-width: 390px), (max-height: 720px) {
+  :root {
+    --assist-shared-camera-frame-width: min(calc(100vw - 0.45rem), 50svh);
+  }
+
+  .assist-scan-mode-option {
+    min-height: 2.52rem !important;
+  }
+
+  .assist-shell-review-mode .assist-color-review-layout {
+    grid-template-rows: minmax(0, 1fr) minmax(10rem, 28svh);
+  }
+}
+
+/* Align the scan camera block with the later route/live media position. */
+.assist-scan-console {
+  grid-template-rows: auto auto !important;
+  align-content: start !important;
+}
+
+.assist-scan-mode-selector {
+  min-height: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+.assist-scan-mode-option {
+  min-height: 2.5rem !important;
+  padding-block: 0.26rem !important;
+}
+
+.assist-scan-method-grid {
+  align-self: start !important;
+  margin-top: -0.58rem !important;
+}
+
+.assist-scan-camera-card.assist-scan-flow-panel.is-active {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+  gap: 0.1rem !important;
+}
+
+.assist-scan-primary-actions {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
+@media (max-width: 720px) {
+  .assist-scan-method-grid {
+    margin-top: -0.64rem !important;
+  }
+
+  .assist-scan-mode-option {
+    min-height: 2.36rem !important;
+    padding-block: 0.22rem !important;
+  }
+}
+
+@media (max-width: 390px), (max-height: 720px) {
+  .assist-scan-method-grid {
+    margin-top: -0.72rem !important;
+  }
+
+  .assist-scan-mode-option {
+    min-height: 2.24rem !important;
+  }
+}
+
+/* Put scan mode tabs at the bottom so the camera frame starts like route review/live media. */
+.assist-scan-console {
+  grid-template-rows: minmax(0, 1fr) auto !important;
+  align-content: stretch !important;
+}
+
+.assist-scan-method-grid {
+  order: 1;
+  align-self: start !important;
+  height: 100% !important;
+  margin-top: 0 !important;
+}
+
+.assist-scan-mode-selector {
+  order: 2;
+  align-self: end !important;
+  width: min(100%, var(--assist-shared-camera-frame-width)) !important;
+  margin: 0.18rem auto 0 !important;
+}
+
+.assist-scan-camera-card.assist-scan-flow-panel.is-active {
+  align-content: start !important;
+  justify-content: center !important;
+}
+
+.assist-scan-camera-shell,
+.assist-camera-permission-target {
+  align-self: start !important;
+  margin-top: 0 !important;
+}
+
+.assist-scan-primary-actions {
+  margin-top: 0.08rem !important;
+}
+
+@media (max-width: 720px) {
+  .assist-scan-mode-selector {
+    margin-top: 0.14rem !important;
+  }
+}
+
+@media (max-width: 390px), (max-height: 720px) {
+  .assist-scan-mode-selector {
+    margin-top: 0.1rem !important;
+  }
+}
+
+/* Keep route selection and hold correction media aligned with scan/live frames. */
+.assist-route-builder-canvas,
+.assist-color-review-canvas,
+.assist-review-phone-stage {
+  align-content: start !important;
+  align-items: start !important;
+  justify-items: center !important;
+  place-items: start center !important;
+}
+
+.assist-route-builder-canvas > .stack-sm,
+.assist-review-phone-stage > .stack-sm {
+  width: var(--assist-shared-camera-frame-width) !important;
+  max-width: 100% !important;
+  height: auto !important;
+  max-height: 100% !important;
+  aspect-ratio: var(--assist-phone-camera-aspect-ratio) !important;
+  align-self: start !important;
+  justify-self: center !important;
+}
+
+.assist-route-builder-canvas .assist-route-canvas,
+.assist-review-phone-stage .assist-route-canvas {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: 100% !important;
+  aspect-ratio: var(--assist-phone-camera-aspect-ratio) !important;
+  align-self: start !important;
+  justify-self: center !important;
+}
+
+.assist-shell-review-mode .assist-color-review-layout {
+  align-content: start !important;
+  grid-template-rows: auto auto !important;
+}
+
+.assist-shell-review-mode .assist-color-review-canvas {
+  display: grid !important;
+  min-height: 0 !important;
+}
+
+.assist-shell-review-mode .assist-color-review-panel {
+  align-self: start !important;
+  max-height: 30svh !important;
+  overflow: hidden !important;
+}
+
+@media (max-width: 720px) {
+  .assist-route-builder-card {
+    align-content: start !important;
+    grid-template-rows: auto auto !important;
+  }
+
+  .assist-route-builder-panel {
+    align-self: start !important;
+  }
+
+  .assist-shell-review-mode .assist-color-review-layout {
+    gap: 0.1rem !important;
+  }
+
+  .assist-shell-review-mode .assist-color-review-panel {
+    gap: 0.2rem !important;
+    padding: 0.28rem 0.32rem calc(0.34rem + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .assist-shell-review-mode .assist-review-tool-shell,
+  .assist-shell-review-mode .assist-color-picker-shell {
+    padding: 0.24rem !important;
+  }
+
+  .assist-shell-review-mode .assist-color-action-row {
+    gap: 0.26rem !important;
+  }
+}
+
+@media (max-width: 390px), (max-height: 720px) {
+  .assist-shell-review-mode .assist-color-review-layout {
+    gap: 0.06rem !important;
+  }
+
+  .assist-shell-review-mode .assist-color-review-panel {
+    padding: 0.24rem 0.28rem calc(0.28rem + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .assist-shell-review-mode .assist-color-action-row .btn {
+    min-height: 2.18rem !important;
+  }
+}
+
+/* Shared mobile camera/photo placement: keep review and route frames pinned to the top like scan/live. */
+@media (max-width: 720px) {
+  .assist-route-builder-card,
+  .assist-shell-review-mode .assist-color-review-layout {
+    align-content: start !important;
+    align-items: start !important;
+    grid-template-rows: auto auto !important;
+  }
+
+  .assist-route-builder-canvas,
+  .assist-color-review-canvas,
+  .assist-review-phone-stage {
+    height: auto !important;
+    min-height: 0 !important;
+    align-self: start !important;
+    justify-self: stretch !important;
+    align-content: start !important;
+    align-items: start !important;
+    justify-items: center !important;
+    place-items: start center !important;
+  }
+
+  .assist-route-builder-canvas > .stack-sm,
+  .assist-review-phone-stage > .stack-sm {
+    width: var(--assist-shared-camera-frame-width) !important;
+    max-width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    aspect-ratio: var(--assist-phone-camera-aspect-ratio) !important;
+    align-self: start !important;
+    justify-self: center !important;
+    place-self: start center !important;
+  }
+
+  .assist-route-builder-canvas .assist-route-canvas,
+  .assist-review-phone-stage .assist-route-canvas {
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    aspect-ratio: var(--assist-phone-camera-aspect-ratio) !important;
+    align-self: start !important;
+    justify-self: center !important;
+    place-self: start center !important;
+  }
+}
+
+/* Live guidance mobile layout: keep the controls directly under the camera frame. */
+@media (max-width: 720px) {
+  .assist-live-page {
+    grid-template-rows: auto auto !important;
+    align-content: start !important;
+    align-items: start !important;
+    gap: 0.16rem !important;
+  }
+
+  .assist-live-camera-card.card,
+  .assist-live-camera-card .card-body,
+  .assist-live-camera-preview {
+    height: auto !important;
+    min-height: 0 !important;
+    align-self: start !important;
+    justify-self: center !important;
+  }
+
+  .assist-live-camera-card.card {
+    padding: 0 !important;
+  }
+
+  .assist-live-camera-card .card-body,
+  .assist-live-camera-preview {
+    display: grid !important;
+    place-items: start center !important;
+  }
+
+  .assist-live-page .assist-live-plain-shell {
+    width: var(--assist-shared-camera-frame-width) !important;
+    max-width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    aspect-ratio: var(--assist-phone-camera-aspect-ratio) !important;
+    align-self: start !important;
+    justify-self: center !important;
+    place-self: start center !important;
+  }
+
+  .voice-cue-panel.assist-live-controls {
+    width: min(100%, var(--assist-shared-camera-frame-width)) !important;
+    align-self: start !important;
+    justify-self: center !important;
+    margin-top: 0.08rem !important;
+    gap: 0.34rem !important;
+    padding: 0.48rem !important;
+  }
+
+  .assist-live-controls-copy {
+    line-height: 1.25 !important;
+  }
+
+  .voice-cue-panel.assist-live-controls .btn {
+    min-height: 2.32rem !important;
+  }
+
+  .assist-live-utility-actions,
+  .assist-live-primary-actions {
+    gap: 0.34rem !important;
+  }
+}
+
+@media (max-width: 390px), (max-height: 720px) {
+  .assist-live-page {
+    gap: 0.1rem !important;
+  }
+
+  .voice-cue-panel.assist-live-controls {
+    margin-top: 0.04rem !important;
+    padding: 0.42rem !important;
+  }
+}
