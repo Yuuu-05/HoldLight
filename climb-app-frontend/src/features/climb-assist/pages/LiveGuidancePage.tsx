@@ -14,7 +14,7 @@ import Card from '../../../shared/components/ui/Card';
 import { routes } from '../../../shared/constants/routes';
 import { usePageTitle } from '../../../shared/hooks/usePageTitle';
 import { playProximityBeep } from '../../../shared/lib/audioCue';
-import { isSpeechPlaying } from '../../../shared/lib/speech';
+import { isSpeechPlaying, type SpeechLanguage } from '../../../shared/lib/speech';
 import type { ClimbScan, ClimbSession, GuidanceLimb, Hold } from '../../../shared/types/climb';
 import CameraPreview from '../components/CameraPreview';
 import LiveGuidanceOverlay from '../components/LiveGuidanceOverlay';
@@ -37,6 +37,14 @@ import {
   formatHoldTarget,
   localizeAssistText,
 } from '../utils/localizedAssistText';
+import type { PoseFrame, PoseJointName, PosePoint } from '../services/poseTracker.service';
+
+const LIVE_GUIDANCE_FRAME_ASPECT_RATIO = 3 / 4;
+const INITIAL_LIVE_CUE_DELAY_MS = 550;
+const LIVE_CUE_RETRY_INTERVAL_MS = 700;
+const LIVE_CUE_RETRY_WINDOW_MS = 5000;
+const LIVE_CUE_CLOSE_SPACING_MS = 4200;
+const LIVE_CUE_DEFAULT_SPACING_MS = 7000;
 
 function isFootLimb(limb?: GuidanceLimb) {
   return limb === 'leftFoot' || limb === 'rightFoot';
@@ -69,55 +77,6 @@ function getCueAnchor(
   }
 }
 
-function averageVisibleCorePoints(
-  points: Array<{ xPct: number; yPct: number; visibility: number } | undefined>,
-) {
-  const visiblePoints = points.filter(
-    (point): point is { xPct: number; yPct: number; visibility: number } =>
-      Boolean(point && point.visibility >= 0.35),
-  );
-
-  if (visiblePoints.length === 0) return null;
-
-  return {
-    xPct: visiblePoints.reduce((sum, point) => sum + point.xPct, 0) / visiblePoints.length,
-    yPct: visiblePoints.reduce((sum, point) => sum + point.yPct, 0) / visiblePoints.length,
-    visibility: visiblePoints.reduce((sum, point) => sum + point.visibility, 0) / visiblePoints.length,
-  };
-}
-
-function getChestAnchor(poseState: ReturnType<typeof useLivePoseTracker>) {
-  const joints = poseState.poseFrame?.joints;
-  const shoulders = averageVisibleCorePoints([joints?.leftShoulder, joints?.rightShoulder]);
-  const hips = averageVisibleCorePoints([joints?.leftHip, joints?.rightHip]);
-
-  if (shoulders && hips) {
-    return {
-      xPct: Number(((shoulders.xPct * 0.68) + (hips.xPct * 0.32)).toFixed(2)),
-      yPct: Number(((shoulders.yPct * 0.68) + (hips.yPct * 0.32)).toFixed(2)),
-      visibility: Number(Math.min(shoulders.visibility, hips.visibility).toFixed(2)),
-    };
-  }
-
-  if (shoulders) {
-    return {
-      xPct: Number(shoulders.xPct.toFixed(2)),
-      yPct: Number(Math.min(100, shoulders.yPct + 6).toFixed(2)),
-      visibility: Number(shoulders.visibility.toFixed(2)),
-    };
-  }
-
-  if (hips) {
-    return {
-      xPct: Number(hips.xPct.toFixed(2)),
-      yPct: Number(Math.max(0, hips.yPct - 12).toFixed(2)),
-      visibility: Number(hips.visibility.toFixed(2)),
-    };
-  }
-
-  return poseState.anchors.center;
-}
-
 function getDistancePct(anchor: { xPct: number; yPct: number } | undefined, hold: Hold | null) {
   if (!anchor || !hold) return null;
   const dx = anchor.xPct - hold.xPct;
@@ -129,6 +88,103 @@ function getTargetThreshold(hold: Hold | null, limb?: GuidanceLimb) {
   if (!hold) return 7;
   const base = Math.max(2.8, (hold.radiusPct ?? 3.2) * 0.9) + (isFootLimb(limb) ? 4.4 : 3.6);
   return Number(base.toFixed(2));
+}
+
+function clampPct(value: number) {
+  return Math.min(100, Math.max(0, value));
+}
+
+function getCenteredSourceCrop(sourceWidth: number, sourceHeight: number, targetAspectRatio: number) {
+  const sourceAspectRatio = sourceWidth / sourceHeight;
+
+  if (sourceAspectRatio > targetAspectRatio) {
+    const cropWidth = sourceHeight * targetAspectRatio;
+    return {
+      sx: (sourceWidth - cropWidth) / 2,
+      sy: 0,
+      sw: cropWidth,
+      sh: sourceHeight,
+    };
+  }
+
+  const cropHeight = sourceWidth / targetAspectRatio;
+  return {
+    sx: 0,
+    sy: (sourceHeight - cropHeight) / 2,
+    sw: sourceWidth,
+    sh: cropHeight,
+  };
+}
+
+function transformPosePointToLiveFrame(
+  point: PosePoint | undefined,
+  crop: ReturnType<typeof getCenteredSourceCrop>,
+  sourceWidth: number,
+  sourceHeight: number,
+) {
+  if (!point) return undefined;
+
+  const xPct = ((point.xPct / 100 * sourceWidth) - crop.sx) / crop.sw * 100;
+  const yPct = ((point.yPct / 100 * sourceHeight) - crop.sy) / crop.sh * 100;
+  const insideFrame = xPct >= 0 && xPct <= 100 && yPct >= 0 && yPct <= 100;
+
+  return {
+    xPct: Number(clampPct(xPct).toFixed(2)),
+    yPct: Number(clampPct(yPct).toFixed(2)),
+    visibility: insideFrame ? point.visibility : 0,
+  };
+}
+
+function transformPoseFrameToLiveFrame(
+  poseFrame: PoseFrame | null,
+  crop: ReturnType<typeof getCenteredSourceCrop>,
+  sourceWidth: number,
+  sourceHeight: number,
+) {
+  if (!poseFrame) return null;
+
+  const joints: PoseFrame['joints'] = {};
+  (Object.entries(poseFrame.joints) as Array<[PoseJointName, PosePoint | undefined]>).forEach(([jointName, point]) => {
+    const transformedPoint = transformPosePointToLiveFrame(point, crop, sourceWidth, sourceHeight);
+    if (transformedPoint) {
+      joints[jointName] = transformedPoint;
+    }
+  });
+
+  return {
+    ...poseFrame,
+    joints,
+  };
+}
+
+function normalizePoseStateToLiveFrame(
+  poseState: ReturnType<typeof useLivePoseTracker>,
+  videoElement: HTMLVideoElement | null,
+) {
+  const sourceWidth = videoElement?.videoWidth ?? 0;
+  const sourceHeight = videoElement?.videoHeight ?? 0;
+
+  if (!sourceWidth || !sourceHeight) {
+    return poseState;
+  }
+
+  const crop = getCenteredSourceCrop(sourceWidth, sourceHeight, LIVE_GUIDANCE_FRAME_ASPECT_RATIO);
+  const transformAnchor = (anchor: { xPct: number; yPct: number; visibility: number } | undefined) => {
+    const transformedAnchor = transformPosePointToLiveFrame(anchor, crop, sourceWidth, sourceHeight);
+    return transformedAnchor && transformedAnchor.visibility >= 0.35 ? transformedAnchor : undefined;
+  };
+
+  return {
+    ...poseState,
+    anchors: {
+      leftHand: transformAnchor(poseState.anchors.leftHand),
+      rightHand: transformAnchor(poseState.anchors.rightHand),
+      leftFoot: transformAnchor(poseState.anchors.leftFoot),
+      rightFoot: transformAnchor(poseState.anchors.rightFoot),
+      center: transformAnchor(poseState.anchors.center),
+    },
+    poseFrame: transformPoseFrameToLiveFrame(poseState.poseFrame, crop, sourceWidth, sourceHeight),
+  };
 }
 
 export default function LiveGuidancePage() {
@@ -151,8 +207,15 @@ export default function LiveGuidancePage() {
   const guidance = useGuidanceEngine(session?.plannedRoute, session?.cueIndex ?? 0);
   const poseState = useLivePoseTracker(videoElement, Boolean(stream && session?.plannedRoute));
 
-  const lastLiveSpeechKeyRef = useRef('');
   const lastLiveSpeechAtRef = useRef(0);
+  const lastLiveSpeechStepRef = useRef('');
+  const liveCueRetryTimerRef = useRef<number | null>(null);
+  const pendingLiveSpeechStepRef = useRef('');
+  const latestLiveSpeechRef = useRef<{
+    stepKey: string;
+    speechText: string;
+    language: SpeechLanguage;
+  } | null>(null);
   const reachedSinceRef = useRef<number | null>(null);
   const lastAutoAdvanceRef = useRef(0);
   const lastBeepRef = useRef(0);
@@ -160,6 +223,14 @@ export default function LiveGuidancePage() {
   const lastSafetyAnnouncementRef = useRef('');
 
   usePageTitle('Live guidance');
+
+  const clearLiveCueRetryTimer = useCallback(() => {
+    if (liveCueRetryTimerRef.current !== null) {
+      window.clearTimeout(liveCueRetryTimerRef.current);
+      liveCueRetryTimerRef.current = null;
+    }
+    pendingLiveSpeechStepRef.current = '';
+  }, []);
 
   const speakLocalized = useCallback((text: string, languageOverride?: 'ZH' | 'EN') => {
     const localizedText = language === 'zh' ? localizeAssistText(text, language) : text;
@@ -169,6 +240,13 @@ export default function LiveGuidancePage() {
   useEffect(() => {
     warm(speechLanguage);
   }, [speechLanguage, warm]);
+
+  useEffect(
+    () => () => {
+      clearLiveCueRetryTimer();
+    },
+    [clearLiveCueRetryTimer],
+  );
 
   useEffect(
     () => () => {
@@ -270,25 +348,19 @@ export default function LiveGuidancePage() {
 
   const liveRoutePlan = alignedRoutePlan ?? session?.plannedRoute ?? null;
   const liveCurrentHold = alignedCurrentHold ?? currentHold;
-
-  const reachAnchor = useMemo(
-    () => getCueAnchor(guidance.currentCue?.limb, poseState),
-    [guidance.currentCue?.limb, poseState],
+  const livePoseState = useMemo(
+    () => normalizePoseStateToLiveFrame(poseState, videoElement),
+    [poseState, videoElement],
   );
 
-  const chestAnchor = useMemo(
-    () => getChestAnchor(poseState),
-    [poseState],
+  const reachAnchor = useMemo(
+    () => getCueAnchor(guidance.currentCue?.limb, livePoseState),
+    [guidance.currentCue?.limb, livePoseState],
   );
 
   const reachDistancePct = useMemo(
     () => getDistancePct(reachAnchor, liveCurrentHold),
     [reachAnchor, liveCurrentHold],
-  );
-
-  const chestDistancePct = useMemo(
-    () => getDistancePct(chestAnchor, liveCurrentHold),
-    [chestAnchor, liveCurrentHold],
   );
 
   const targetThreshold = useMemo(
@@ -302,28 +374,30 @@ export default function LiveGuidancePage() {
   }, [reachDistancePct]);
 
   const liveSafetyDecision = useMemo(
-    () => buildLiveGuidanceSafetyDecision({ scan, poseState, alignmentState }),
-    [alignmentState, poseState, scan],
+    () => buildLiveGuidanceSafetyDecision({ scan, poseState: livePoseState, alignmentState }),
+    [alignmentState, livePoseState, scan],
   );
 
   const livePositionGuidance = useMemo(
     () =>
       buildLivePositionGuidance({
         targetHold: liveCurrentHold,
-        activeAnchor: chestAnchor,
-        distancePct: chestDistancePct,
+        activeAnchor: reachAnchor,
+        distancePct: reachDistancePct,
+        activeLimb: guidance.currentCue?.limb,
       }),
-    [chestAnchor, chestDistancePct, liveCurrentHold],
+    [guidance.currentCue?.limb, liveCurrentHold, reachAnchor, reachDistancePct],
   );
 
   const livePositionSpeechZh = useMemo(
     () =>
       buildLivePositionSpeechZh({
         targetHold: liveCurrentHold,
-        activeAnchor: chestAnchor,
-        distancePct: chestDistancePct,
+        activeAnchor: reachAnchor,
+        distancePct: reachDistancePct,
+        activeLimb: guidance.currentCue?.limb,
       }),
-    [chestAnchor, chestDistancePct, liveCurrentHold],
+    [guidance.currentCue?.limb, liveCurrentHold, reachAnchor, reachDistancePct],
   );
 
   const trackerHint = useMemo(() => livePositionGuidance.displayText, [livePositionGuidance.displayText]);
@@ -332,14 +406,14 @@ export default function LiveGuidancePage() {
     () =>
       buildLiveSafetyPauseSpeechZh({
         decision: liveSafetyDecision,
-        poseState,
+        poseState: livePoseState,
         alignmentState,
         scan,
       }),
-    [alignmentState, liveSafetyDecision, poseState, scan],
+    [alignmentState, livePoseState, liveSafetyDecision, scan],
   );
 
-  const trackerStatus = useMemo(() => buildPoseTrackerStatus(poseState, language), [language, poseState]);
+  const trackerStatus = useMemo(() => buildPoseTrackerStatus(livePoseState, language), [language, livePoseState]);
   const localizedSafetyHeadline = localizeAssistText(liveSafetyDecision.headline, language);
   const localizedSafetyDetail = localizeAssistText(liveSafetyDecision.detail, language);
   const trackerStatusText = controlError
@@ -368,9 +442,6 @@ export default function LiveGuidancePage() {
   const livePositionSpeechText = language === 'zh'
     ? livePositionSpeechZh.speechText
     : livePositionGuidance.speechText;
-  const livePositionSpeechKey = language === 'zh'
-    ? livePositionSpeechZh.speechKey
-    : livePositionGuidance.speechKey;
 
   const completedHoldIds = useMemo(
     () => session?.plannedRoute?.holds.slice(0, guidance.cueIndex).map((hold) => hold.id) ?? [],
@@ -386,7 +457,9 @@ export default function LiveGuidancePage() {
 
     if (liveSafetyDecision.status !== 'ready') {
       reachedSinceRef.current = null;
-      lastLiveSpeechKeyRef.current = '';
+      lastLiveSpeechStepRef.current = '';
+      latestLiveSpeechRef.current = null;
+      clearLiveCueRetryTimer();
     }
 
     void saveGuidanceLogsApi([
@@ -404,7 +477,7 @@ export default function LiveGuidancePage() {
     ]).catch((error) => {
       setControlError(error instanceof Error ? error.message : 'Failed to save the safety state.');
     });
-  }, [liveSafetyDecision.detail, liveSafetyDecision.headline, liveSafetyDecision.reasons, liveSafetyDecision.status, session]);
+  }, [clearLiveCueRetryTimer, liveSafetyDecision.detail, liveSafetyDecision.headline, liveSafetyDecision.reasons, liveSafetyDecision.status, session]);
 
   useEffect(() => {
     if (!session?.plannedRoute) return;
@@ -476,8 +549,10 @@ export default function LiveGuidancePage() {
           },
         ]);
 
-        lastLiveSpeechKeyRef.current = '';
+        lastLiveSpeechStepRef.current = '';
         lastLiveSpeechAtRef.current = 0;
+        latestLiveSpeechRef.current = null;
+        clearLiveCueRetryTimer();
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Unable to advance the live guidance cue.';
         setControlError(message);
@@ -488,7 +563,7 @@ export default function LiveGuidancePage() {
         setSyncing(false);
       }
     },
-    [guidance.cueIndex, guidance.cues.length, liveCurrentHold, liveSafetyDecision.canAutoAdvance, liveSafetyDecision.detail, safetyPauseSpeech, session, speakLocalized, speechLanguage, syncing],
+    [clearLiveCueRetryTimer, guidance.cueIndex, guidance.cues.length, liveCurrentHold, liveSafetyDecision.canAutoAdvance, liveSafetyDecision.detail, safetyPauseSpeech, session, speakLocalized, speechLanguage, syncing],
   );
 
   const handleFinish = useCallback(async () => {
@@ -572,8 +647,8 @@ export default function LiveGuidancePage() {
       reachDistancePct === null ||
       !liveCurrentHold ||
       syncing ||
-      poseState.poseQualityPct < 45 ||
-      poseState.visibleLimbCount < 1
+      livePoseState.poseQualityPct < 45 ||
+      livePoseState.visibleLimbCount < 1
     ) {
       reachedSinceRef.current = null;
       return;
@@ -605,8 +680,8 @@ export default function LiveGuidancePage() {
     guidance.isLastCue,
     handleAdvance,
     liveCurrentHold,
-    poseState.poseQualityPct,
-    poseState.visibleLimbCount,
+    livePoseState.poseQualityPct,
+    livePoseState.visibleLimbCount,
     syncing,
     reachDistancePct,
     targetThreshold,
@@ -634,36 +709,90 @@ export default function LiveGuidancePage() {
   }, [liveSafetyDecision.canPlayProximityCue, reachDistancePct, targetThreshold]);
 
   useEffect(() => {
-    if (!liveSafetyDecision.canSpeakLiveCue) return;
-    if (!guidance.currentCue || !liveCurrentHold || !livePositionSpeechText) return;
-    if (!poseState.active && chestDistancePct === null) return;
-    if (poseState.poseQualityPct <= 0 && chestDistancePct === null) return;
+    if (!liveSafetyDecision.canSpeakLiveCue) {
+      latestLiveSpeechRef.current = null;
+      clearLiveCueRetryTimer();
+      return;
+    }
+    if (!guidance.currentCue || !liveCurrentHold || !livePositionSpeechText) {
+      latestLiveSpeechRef.current = null;
+      clearLiveCueRetryTimer();
+      return;
+    }
+    if (!livePoseState.active && reachDistancePct === null) {
+      latestLiveSpeechRef.current = null;
+      clearLiveCueRetryTimer();
+      return;
+    }
+    if (livePoseState.poseQualityPct <= 0 && reachDistancePct === null) {
+      latestLiveSpeechRef.current = null;
+      clearLiveCueRetryTimer();
+      return;
+    }
 
     const now = Date.now();
-    const minSpacing = chestDistancePct !== null && chestDistancePct <= 9 ? 1200 : 1800;
-    const isNewSpeechKey = lastLiveSpeechKeyRef.current !== livePositionSpeechKey;
+    const stepKey = `${guidance.cueIndex}:${liveCurrentHold.id}`;
+    const isNewStep = lastLiveSpeechStepRef.current !== stepKey;
+    const closeToTarget = reachDistancePct !== null && reachDistancePct <= targetThreshold * 1.35;
+    const minSpacing = isNewStep ? 0 : closeToTarget ? LIVE_CUE_CLOSE_SPACING_MS : LIVE_CUE_DEFAULT_SPACING_MS;
 
-    if (!isNewSpeechKey && now - lastLiveSpeechAtRef.current < minSpacing) {
+    latestLiveSpeechRef.current = {
+      stepKey,
+      speechText: livePositionSpeechText,
+      language: speechLanguage,
+    };
+
+    if (!isNewStep && now - lastLiveSpeechAtRef.current < minSpacing) {
       return;
     }
 
-    if (isSpeechPlaying()) {
+    if (pendingLiveSpeechStepRef.current === stepKey) {
       return;
     }
 
-    lastLiveSpeechKeyRef.current = livePositionSpeechKey;
-    lastLiveSpeechAtRef.current = now;
-    speak(livePositionSpeechText, { language: speechLanguage });
+    clearLiveCueRetryTimer();
+    pendingLiveSpeechStepRef.current = stepKey;
+
+    const retryStartedAt = now;
+    const speakWhenCalm = () => {
+      const latestLiveSpeech = latestLiveSpeechRef.current;
+      if (!latestLiveSpeech || latestLiveSpeech.stepKey !== stepKey) {
+        if (pendingLiveSpeechStepRef.current === stepKey) {
+          pendingLiveSpeechStepRef.current = '';
+        }
+        return;
+      }
+
+      if (isSpeechPlaying()) {
+        if (Date.now() - retryStartedAt < LIVE_CUE_RETRY_WINDOW_MS) {
+          liveCueRetryTimerRef.current = window.setTimeout(speakWhenCalm, LIVE_CUE_RETRY_INTERVAL_MS);
+        }
+        return;
+      }
+
+      lastLiveSpeechStepRef.current = stepKey;
+      pendingLiveSpeechStepRef.current = '';
+      liveCueRetryTimerRef.current = null;
+      lastLiveSpeechAtRef.current = Date.now();
+      speak(latestLiveSpeech.speechText, { language: latestLiveSpeech.language });
+    };
+
+    liveCueRetryTimerRef.current = window.setTimeout(
+      speakWhenCalm,
+      isNewStep ? INITIAL_LIVE_CUE_DELAY_MS : 0,
+    );
   }, [
-    chestDistancePct,
+    clearLiveCueRetryTimer,
+    guidance.cueIndex,
     guidance.currentCue,
     liveCurrentHold,
-    livePositionSpeechKey,
     livePositionSpeechText,
-    poseState.active,
-    poseState.poseQualityPct,
+    livePoseState.active,
+    livePoseState.poseQualityPct,
+    reachDistancePct,
     speak,
     speechLanguage,
+    targetThreshold,
     liveSafetyDecision.canSpeakLiveCue,
   ]);
 
@@ -723,7 +852,7 @@ export default function LiveGuidancePage() {
             routePlan={liveRoutePlan}
             currentHold={liveCurrentHold}
             completedHoldIds={completedHoldIds}
-            poseState={poseState}
+            poseState={livePoseState}
             activeLimb={guidance.currentCue?.limb}
           />
         </CameraPreview>

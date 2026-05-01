@@ -1,5 +1,6 @@
 import type {
   ClimbScan,
+  GuidanceLimb,
   Hold,
 } from '../../../shared/types/climb';
 import type { Language } from '../../../shared/i18n/translations';
@@ -37,14 +38,33 @@ function getClockDirectionZh(dx: number, dy: number) {
   return CLOCK_LABELS_ZH[index];
 }
 
+function getLimbLabelZh(limb: GuidanceLimb | undefined) {
+  switch (limb) {
+    case 'leftHand':
+      return '\u5de6\u624b';
+    case 'rightHand':
+      return '\u53f3\u624b';
+    case 'leftFoot':
+      return '\u5de6\u811a';
+    case 'rightFoot':
+      return '\u53f3\u811a';
+    case 'match':
+      return '\u53cc\u624b';
+    default:
+      return '\u8eab\u4f53';
+  }
+}
+
 export function buildLivePositionSpeechZh({
   targetHold,
   activeAnchor,
   distancePct,
+  activeLimb,
 }: {
   targetHold: Hold | null;
   activeAnchor: { xPct: number; yPct: number } | null | undefined;
   distancePct: number | null;
+  activeLimb?: GuidanceLimb;
 }) {
   if (!targetHold) {
     return {
@@ -54,9 +74,10 @@ export function buildLivePositionSpeechZh({
   }
 
   if (!activeAnchor || distancePct === null) {
+    const limbLabel = getLimbLabelZh(activeLimb);
     return {
-      speechText: '胸口位置不清楚，请让上半身回到镜头中央。',
-      speechKey: `${targetHold.id}:chest-hidden-zh`,
+      speechText: `\u770b\u4e0d\u6e05${limbLabel}\u4f4d\u7f6e\uff0c\u8bf7\u628a${limbLabel}\u5e26\u56de\u955c\u5934\u91cc\u3002`,
+      speechKey: `${targetHold.id}:${activeLimb ?? 'unknown'}:hidden-zh`,
     };
   }
 
@@ -64,9 +85,10 @@ export function buildLivePositionSpeechZh({
   const dy = activeAnchor.yPct - targetHold.yPct;
   const distanceBand = getDistanceBandZh(distancePct);
   const direction = getClockDirectionZh(dx, dy);
+  const limbLabel = getLimbLabelZh(activeLimb);
   return {
-    speechText: `下一个岩点：${direction}方向，距离${distanceBand.label}。`,
-    speechKey: `${targetHold.id}:chest-zh:${distanceBand.key}:${direction}`,
+    speechText: `${limbLabel}\uff1a${direction}\u65b9\u5411\uff0c\u8ddd\u79bb${distanceBand.label}\u3002`,
+    speechKey: `${targetHold.id}:${activeLimb ?? 'unknown'}:${distanceBand.key}:${direction}-zh`,
   };
 }
 
