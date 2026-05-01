@@ -133,6 +133,25 @@ function getDistancePct(anchor: { xPct: number; yPct: number } | undefined, hold
   return Math.sqrt(dx * dx + dy * dy);
 }
 
+function getNearestLimbDistancePct(
+  poseState: ReturnType<typeof useLivePoseTracker>,
+  hold: Hold | null,
+) {
+  if (!hold) return null;
+
+  const distances = [
+    poseState.anchors.leftHand,
+    poseState.anchors.rightHand,
+    poseState.anchors.leftFoot,
+    poseState.anchors.rightFoot,
+  ].flatMap((anchor) => {
+    const distance = getDistancePct(anchor, hold);
+    return typeof distance === 'number' ? [distance] : [];
+  });
+
+  return distances.length > 0 ? Math.min(...distances) : null;
+}
+
 function getTargetThreshold(hold: Hold | null, limb?: GuidanceLimb) {
   if (!hold) return 7;
   const base = Math.max(2.8, (hold.radiusPct ?? 3.2) * 0.9) + (isFootLimb(limb) ? 4.4 : 3.6);
@@ -428,9 +447,9 @@ export default function LiveGuidancePage() {
     [reachAnchor, liveCurrentHold],
   );
 
-  const chestDistancePct = useMemo(
-    () => getDistancePct(chestAnchor, liveCurrentHold),
-    [chestAnchor, liveCurrentHold],
+  const nearestLimbDistancePct = useMemo(
+    () => getNearestLimbDistancePct(livePoseState, liveCurrentHold),
+    [liveCurrentHold, livePoseState],
   );
 
   const targetThreshold = useMemo(
@@ -453,9 +472,9 @@ export default function LiveGuidancePage() {
       buildLivePositionGuidance({
         targetHold: liveCurrentHold,
         activeAnchor: chestAnchor,
-        distancePct: chestDistancePct,
+        distancePct: nearestLimbDistancePct,
       }),
-    [chestAnchor, chestDistancePct, liveCurrentHold],
+    [chestAnchor, liveCurrentHold, nearestLimbDistancePct],
   );
 
   const livePositionSpeechZh = useMemo(
@@ -463,9 +482,9 @@ export default function LiveGuidancePage() {
       buildLivePositionSpeechZh({
         targetHold: liveCurrentHold,
         activeAnchor: chestAnchor,
-        distancePct: chestDistancePct,
+        distancePct: nearestLimbDistancePct,
       }),
-    [chestAnchor, chestDistancePct, liveCurrentHold],
+    [chestAnchor, liveCurrentHold, nearestLimbDistancePct],
   );
 
   const trackerHint = useMemo(() => livePositionGuidance.displayText, [livePositionGuidance.displayText]);
@@ -597,11 +616,7 @@ export default function LiveGuidancePage() {
   const handleAdvance = useCallback(
     async (reason: 'manual' | 'auto' = 'manual') => {
       if (!session || !session.plannedRoute || syncing) return;
-      if (!liveSafetyDecision.canAutoAdvance) {
-        if (reason === 'manual') {
-          setControlError(liveSafetyDecision.detail);
-          speak(safetyPauseSpeech, { language: speechLanguage });
-        }
+      if (reason === 'auto' && !liveSafetyDecision.canAutoAdvance) {
         return;
       }
 
@@ -613,7 +628,7 @@ export default function LiveGuidancePage() {
           guidance.cueIndex + 1,
           Math.max(0, guidance.cues.length - 1),
         );
-        const nextTarget = session.plannedRoute.holds[nextCueIndex] ?? liveCurrentHold;
+        const nextTarget = liveRoutePlan?.holds[nextCueIndex] ?? session.plannedRoute.holds[nextCueIndex] ?? liveCurrentHold;
 
         const nextSession = await updateClimbSessionApi(session.id, {
           cueIndex: nextCueIndex,
@@ -646,10 +661,34 @@ export default function LiveGuidancePage() {
           },
         ]);
 
-        lastLiveSpeechStepRef.current = '';
-        lastLiveSpeechAtRef.current = 0;
         latestLiveSpeechRef.current = null;
         clearLiveCueRetryTimer();
+        if (reason === 'manual' && nextTarget) {
+          const nextDistancePct = getNearestLimbDistancePct(livePoseState, nextTarget);
+          const nextSpeech = language === 'zh'
+            ? buildLivePositionSpeechZh({
+                targetHold: nextTarget,
+                activeAnchor: chestAnchor,
+                distancePct: nextDistancePct,
+              }).speechText
+            : buildLivePositionGuidance({
+                targetHold: nextTarget,
+                activeAnchor: chestAnchor,
+                distancePct: nextDistancePct,
+              }).speechText;
+
+          if (nextSpeech) {
+            lastLiveSpeechStepRef.current = `${nextCueIndex}:${nextTarget.id}`;
+            lastLiveSpeechAtRef.current = Date.now();
+            void speak(nextSpeech, { language: speechLanguage });
+          } else {
+            lastLiveSpeechStepRef.current = '';
+            lastLiveSpeechAtRef.current = 0;
+          }
+        } else {
+          lastLiveSpeechStepRef.current = '';
+          lastLiveSpeechAtRef.current = 0;
+        }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Unable to advance the live guidance cue.';
         setControlError(message);
@@ -660,7 +699,22 @@ export default function LiveGuidancePage() {
         setSyncing(false);
       }
     },
-    [clearLiveCueRetryTimer, guidance.cueIndex, guidance.cues.length, liveCurrentHold, liveSafetyDecision.canAutoAdvance, liveSafetyDecision.detail, safetyPauseSpeech, session, speakLocalized, speechLanguage, syncing],
+    [
+      chestAnchor,
+      clearLiveCueRetryTimer,
+      guidance.cueIndex,
+      guidance.cues.length,
+      language,
+      liveCurrentHold,
+      livePoseState,
+      liveRoutePlan,
+      liveSafetyDecision.canAutoAdvance,
+      session,
+      speak,
+      speakLocalized,
+      speechLanguage,
+      syncing,
+    ],
   );
 
   const handleFinish = useCallback(async () => {
@@ -816,12 +870,12 @@ export default function LiveGuidancePage() {
       clearLiveCueRetryTimer();
       return;
     }
-    if (!livePoseState.active && chestDistancePct === null) {
+    if (!livePoseState.active && nearestLimbDistancePct === null) {
       latestLiveSpeechRef.current = null;
       clearLiveCueRetryTimer();
       return;
     }
-    if (livePoseState.poseQualityPct <= 0 && chestDistancePct === null) {
+    if (livePoseState.poseQualityPct <= 0 && nearestLimbDistancePct === null) {
       latestLiveSpeechRef.current = null;
       clearLiveCueRetryTimer();
       return;
@@ -830,7 +884,7 @@ export default function LiveGuidancePage() {
     const now = Date.now();
     const stepKey = `${guidance.cueIndex}:${liveCurrentHold.id}`;
     const isNewStep = lastLiveSpeechStepRef.current !== stepKey;
-    const closeToTarget = chestDistancePct !== null && chestDistancePct <= targetThreshold * 1.35;
+    const closeToTarget = nearestLimbDistancePct !== null && nearestLimbDistancePct <= targetThreshold * 1.35;
     const minSpacing = isNewStep ? 0 : closeToTarget ? LIVE_CUE_CLOSE_SPACING_MS : LIVE_CUE_DEFAULT_SPACING_MS;
 
     latestLiveSpeechRef.current = {
@@ -882,11 +936,11 @@ export default function LiveGuidancePage() {
     clearLiveCueRetryTimer,
     guidance.cueIndex,
     guidance.currentCue,
-    chestDistancePct,
     liveCurrentHold,
     livePositionSpeechText,
     livePoseState.active,
     livePoseState.poseQualityPct,
+    nearestLimbDistancePct,
     speak,
     speechLanguage,
     targetThreshold,

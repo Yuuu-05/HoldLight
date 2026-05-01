@@ -65,7 +65,7 @@ export function buildLivePositionSpeechZh({
   const distanceBand = getDistanceBandZh(distancePct);
   const direction = getClockDirectionZh(dx, dy);
   return {
-    speechText: `\u4e0b\u4e00\u4e2a\u5ca9\u70b9\uff1a${direction}\u65b9\u5411\uff0c\u8ddd\u79bb${distanceBand.label}\u3002`,
+    speechText: `${direction}\u65b9\u5411\uff0c\u8ddd\u79bb${distanceBand.label}\u3002`,
     speechKey: `${targetHold.id}:chest-zh:${distanceBand.key}:${direction}`,
   };
 }

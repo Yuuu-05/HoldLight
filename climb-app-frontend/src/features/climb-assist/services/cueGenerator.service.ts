@@ -239,7 +239,7 @@ function formatLiveDistanceLabel(distanceBand: DistanceBand) {
 }
 
 function buildChestCenteredCue(clock: string, distanceBand: DistanceBand) {
-  return `Next hold: ${clock}, ${formatLiveDistanceLabel(distanceBand)}.`;
+  return `${clock}, ${formatLiveDistanceLabel(distanceBand)}.`;
 }
 
 export function buildLivePositionGuidance({
