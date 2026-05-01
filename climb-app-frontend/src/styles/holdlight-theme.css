@@ -8616,7 +8616,6 @@ body:has(.assist-live-page) {
 }
 
 .assist-scan-camera-shell,
-.assist-camera-permission-target,
 .assist-scan-camera-shell .assist-camera-stage,
 .assist-scan-camera-shell .assist-camera-stage > .camera-preview-shell,
 .assist-scan-camera-shell .camera-preview-shell,
@@ -9033,5 +9032,71 @@ body:has(.assist-live-page) {
   .voice-cue-panel.assist-live-controls {
     margin-top: 0.04rem !important;
     padding: 0.42rem !important;
+  }
+}
+
+/* Scan entry and hold review fixes. */
+.assist-camera-permission-target {
+  border: 1px solid rgba(217, 255, 56, 0.16) !important;
+  background:
+    radial-gradient(circle at 50% 16%, rgba(217, 255, 56, 0.18), transparent 7rem),
+    linear-gradient(180deg, rgba(246, 255, 233, 0.96), rgba(222, 241, 190, 0.9)) !important;
+  color: var(--hl-ink) !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.42) !important;
+}
+
+.assist-camera-permission-target:disabled {
+  opacity: 1 !important;
+}
+
+.assist-camera-permission-target span:last-child {
+  color: rgba(11, 23, 18, 0.68) !important;
+}
+
+.assist-scan-primary-actions .assist-scan-confirm-button.btn-primary,
+.assist-scan-primary-actions .assist-scan-confirm-button.btn-primary[disabled] {
+  border-color: transparent !important;
+  background: linear-gradient(180deg, rgba(217, 255, 56, 0.96), rgba(185, 231, 12, 0.94)) !important;
+  color: var(--hl-ink) !important;
+}
+
+.assist-scan-primary-actions .assist-scan-confirm-button.btn-primary[disabled] {
+  opacity: 0.78;
+}
+
+.assist-shell-review-mode .assist-review-tool-shell {
+  gap: 0 !important;
+}
+
+.assist-shell-review-mode .assist-color-picker-shell {
+  gap: 0.18rem !important;
+}
+
+.assist-shell-review-mode .assist-color-swatch-grid {
+  padding-bottom: 0.18rem !important;
+}
+
+.assist-shell-review-mode .assist-color-action-row {
+  margin-top: 0 !important;
+}
+
+@media (max-width: 720px) {
+  .assist-shell-review-mode .assist-color-review-panel {
+    max-height: 32svh !important;
+  }
+
+  .assist-shell-review-mode .assist-review-tool-shell,
+  .assist-shell-review-mode .assist-color-picker-shell {
+    padding: 0.18rem !important;
+  }
+}
+
+@media (max-width: 390px), (max-height: 720px) {
+  .assist-shell-review-mode .assist-color-review-panel {
+    max-height: 33svh !important;
+  }
+
+  .assist-shell-review-mode .assist-color-swatch {
+    min-height: 1.92rem !important;
   }
 }

@@ -295,6 +295,7 @@ export default function ScanWallPage() {
   const [cameraRequestFailed, setCameraRequestFailed] = useState(false);
   const [scanRetryPrompt, setScanRetryPrompt] = useState<string | null>(null);
   const shouldRestoreCameraOnVisibleRef = useRef(false);
+  const autoRequestedCameraRef = useRef(false);
   const canOpenCameraPermission = supported && hasSecureContext;
   const cameraStatusTone = !supported || !hasSecureContext || (cameraErrorReason && !stream)
     ? 'blocked'
@@ -851,21 +852,23 @@ export default function ScanWallPage() {
   const activeReviewColor = reviewMode === 'add'
     ? pendingAddColor
     : pendingEditColor ?? selectedCorrectionHold?.color ?? null;
-  const reviewCanvasHelperText = reviewMode === 'add'
-    ? t('Tap the wall photo to place a missing hold.')
-    : reviewMode === 'delete'
-      ? t('Tap holds to select or unselect them, then delete selected holds.')
-      : t('Tap holds to select or unselect them, then choose a target color.');
-  const reviewModeTitle = reviewMode === 'add'
-    ? t('Add missing holds')
-    : reviewMode === 'delete'
-      ? t('Delete false holds')
-      : t('Edit hold colors');
-  const reviewModeDescription = reviewMode === 'add'
-    ? t('Choose a color, then tap the wall photo to place a missing hold.')
-    : reviewMode === 'delete'
-      ? t('Select one or more detected holds, then remove them if the scan marked false holds.')
-      : t('Select one or more holds, choose a target color, then apply it to the selection.');
+
+  useEffect(() => {
+    if (
+      autoRequestedCameraRef.current ||
+      reviewScan ||
+      scanMode !== 'live' ||
+      stream ||
+      !canOpenCameraPermission ||
+      scanBusy ||
+      cameraRequesting
+    ) {
+      return;
+    }
+
+    autoRequestedCameraRef.current = true;
+    void handleRequestCameraAccess();
+  }, [cameraRequesting, canOpenCameraPermission, reviewScan, scanBusy, scanMode, stream]);
 
   useEffect(() => {
     setCorrectedWallMap(null);
@@ -989,6 +992,14 @@ export default function ScanWallPage() {
               {scanAnnouncement}
             </div>
 
+            <input
+              ref={mediaInputRef}
+              type="file"
+              accept="image/*,video/*"
+              className="sr-only"
+              onChange={handleUploadSelected}
+            />
+
             <div className="assist-scan-mode-selector" role="group" aria-label={t('Choose scan method')}>
               <button
                 type="button"
@@ -1024,8 +1035,8 @@ export default function ScanWallPage() {
 
             <div className="assist-scan-method-grid">
               <section
-                className={`assist-scan-method assist-scan-camera-card assist-scan-flow-panel is-${cameraStatusTone} ${scanMode === 'live' ? 'is-active' : 'is-inactive'}`.trim()}
-                aria-hidden={scanMode !== 'live'}
+                className={`assist-scan-method assist-scan-camera-card assist-scan-flow-panel is-${cameraStatusTone} is-active`.trim()}
+                aria-hidden={false}
                 aria-busy={cameraRequesting || scanBusy}
               >
                 <div className="assist-scan-method-head">
@@ -1044,7 +1055,20 @@ export default function ScanWallPage() {
                 </div>
 
                 <div className="assist-scan-camera-shell">
-                  {stream ? (
+                  {scanMode === 'upload' && uploadType && uploadPreviewUrl ? (
+                    <div className="assist-upload-preview-frame assist-unified-upload-preview">
+                      {uploadType === 'image' ? (
+                        <img ref={uploadImageRef} className="camera-preview" src={uploadPreviewUrl} alt={t('Uploaded wall preview')} />
+                      ) : (
+                        <video ref={uploadVideoRef} className="camera-preview" src={uploadPreviewUrl} controls playsInline muted />
+                      )}
+                      {scanBusy ? (
+                        <div className="assist-upload-progress-bar" aria-hidden="true">
+                          <span style={{ width: `${scanProgress.progress}%` }} />
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : stream ? (
                     <CameraPreview
                       stream={stream}
                       videoRef={videoRef}
@@ -1099,7 +1123,21 @@ export default function ScanWallPage() {
                 </div>
 
                 <div className="assist-scan-primary-actions">
-                  {stream ? (
+                  {scanMode === 'upload' && uploadType ? (
+                    <>
+                      <Button
+                        className="assist-scan-confirm-button"
+                        onClick={() => void handleUploadScan()}
+                        disabled={scanBusy}
+                        fullWidth
+                      >
+                        {t('Scan uploaded media')}
+                      </Button>
+                      <Button variant="secondary" onClick={() => mediaInputRef.current?.click()} disabled={scanBusy}>
+                        {uploadType ? t('Replace media') : t('Choose media')}
+                      </Button>
+                    </>
+                  ) : stream ? (
                     <>
                       <Button
                         className="assist-scan-confirm-button"
@@ -1149,66 +1187,6 @@ export default function ScanWallPage() {
                 ) : null}
               </section>
 
-              <section
-                className={`assist-scan-method assist-scan-upload-card assist-scan-flow-panel ${scanMode === 'upload' ? 'is-active' : 'is-inactive'}`.trim()}
-                aria-hidden={scanMode !== 'upload'}
-              >
-                <div className="assist-scan-method-head">
-                  <div className="assist-scan-method-title">
-                    <span className="assist-scan-method-number">2</span>
-                    <div>
-                      <strong>{t('Upload')}</strong>
-                      <p>{t('Upload a wall photo or video to test recognition without the live camera.')}</p>
-                    </div>
-                  </div>
-                  <span className="assist-camera-status-pill is-idle">{t('Optional')}</span>
-                </div>
-
-                <input
-                  ref={mediaInputRef}
-                  type="file"
-                  accept="image/*,video/*"
-                  className="sr-only"
-                  onChange={handleUploadSelected}
-                />
-
-                {uploadType && uploadPreviewUrl ? (
-                  <div className="stack-sm">
-                    <p className="subtle-text">{t('Selected file:')} {uploadName}</p>
-                    <div className="assist-upload-preview-frame">
-                      {uploadType === 'image' ? (
-                        <img ref={uploadImageRef} className="camera-preview" src={uploadPreviewUrl} alt={t('Uploaded wall preview')} />
-                      ) : (
-                        <video ref={uploadVideoRef} className="camera-preview" src={uploadPreviewUrl} controls playsInline muted />
-                      )}
-                      {scanBusy ? (
-                        <div className="assist-upload-progress-bar" aria-hidden="true">
-                          <span style={{ width: `${scanProgress.progress}%` }} />
-                        </div>
-                      ) : null}
-                    </div>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    className="assist-upload-dropzone"
-                    onClick={() => mediaInputRef.current?.click()}
-                    disabled={scanBusy}
-                  >
-                    <strong>{t('Photo or video file')}</strong>
-                    <span>{t('No file selected yet')}</span>
-                  </button>
-                )}
-
-                <div className="assist-upload-card-actions">
-                  <Button variant="secondary" onClick={() => mediaInputRef.current?.click()} disabled={scanBusy}>
-                    {uploadType ? t('Replace media') : t('Choose media')}
-                  </Button>
-                  <Button onClick={() => void handleUploadScan()} disabled={!uploadType || scanBusy}>
-                    {t('Scan uploaded media')}
-                  </Button>
-                </div>
-              </section>
             </div>
 
             {showScanRetryOverlay ? (
@@ -1256,7 +1234,6 @@ export default function ScanWallPage() {
                   selectedHoldColor={reviewMode === 'select' && pendingEditColor ? pendingEditColor : undefined}
                   onHoldSelect={reviewMode === 'add' ? undefined : handleCorrectionHoldSelect}
                   onCanvasSelect={reviewMode === 'add' ? handleAddHoldAtPosition : undefined}
-                  helperText={reviewCanvasHelperText}
                 />
               </div>
             </div>
@@ -1286,10 +1263,6 @@ export default function ScanWallPage() {
                     </button>
                   ))}
                 </div>
-                <div className="assist-review-tool-copy">
-                  <strong>{reviewModeTitle}</strong>
-                  {simplifiedMode ? null : <p className="subtle-text">{reviewModeDescription}</p>}
-                </div>
               </div>
 
               <div className="assist-color-picker-shell">
@@ -1306,9 +1279,6 @@ export default function ScanWallPage() {
                   </div>
                 ) : (
                   <>
-                    <div className="assist-color-selection-summary">
-                      <strong>{reviewMode === 'add' ? t('Color for new holds') : t('Target hold color')}</strong>
-                    </div>
                     <div className="assist-color-swatch-grid" role="group" aria-label={t('Choose corrected hold color')}>
                       {HOLD_COLOR_OPTIONS.map((color) => (
                         <button
@@ -1337,9 +1307,6 @@ export default function ScanWallPage() {
                           ? t('Apply color to selected holds')
                           : t('Apply color')}
                       </Button>
-                    ) : null}
-                    {reviewMode === 'select' && selectedCorrectionHoldCount === 0 ? (
-                      <p className="subtle-text">{t('Tap holds to select them, then choose a target color.')}</p>
                     ) : null}
                   </>
                 )}
