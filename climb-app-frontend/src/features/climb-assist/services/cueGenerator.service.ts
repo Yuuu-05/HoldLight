@@ -238,20 +238,18 @@ function formatLiveDistanceLabel(distanceBand: DistanceBand) {
   }
 }
 
-function buildLiveCue(limb: GuidanceLimb | undefined, clock: string, distanceBand: DistanceBand) {
-  return `${limbLabel(limb)}: ${clock}, ${formatLiveDistanceLabel(distanceBand)}.`;
+function buildChestCenteredCue(clock: string, distanceBand: DistanceBand) {
+  return `Next hold: ${clock}, ${formatLiveDistanceLabel(distanceBand)}.`;
 }
 
 export function buildLivePositionGuidance({
   targetHold,
   activeAnchor,
   distancePct,
-  activeLimb,
 }: {
   targetHold: Hold | null;
   activeAnchor: { xPct: number; yPct: number } | null | undefined;
   distancePct: number | null;
-  activeLimb?: GuidanceLimb;
 }): LivePositionGuidance {
   if (!targetHold) {
     return {
@@ -262,11 +260,11 @@ export function buildLivePositionGuidance({
   }
 
   if (!activeAnchor || distancePct === null) {
-    const hiddenLimbText = `${limbLabel(activeLimb)} not clear. Bring it back into the camera view.`;
+    const hiddenLimbText = 'Chest not clear. Center the upper body in the camera.';
     return {
       displayText: hiddenLimbText,
       speechText: hiddenLimbText,
-      speechKey: `${targetHold.id}:${activeLimb ?? 'unknown'}:hidden`,
+      speechKey: `${targetHold.id}:chest-hidden`,
     };
   }
 
@@ -274,11 +272,11 @@ export function buildLivePositionGuidance({
   const dy = activeAnchor.yPct - targetHold.yPct;
   const distanceBand = getDistanceBand(distancePct);
   const clock = getClockDirectionFromDelta(dx, dy);
-  const speechText = buildLiveCue(activeLimb, clock, distanceBand);
+  const speechText = buildChestCenteredCue(clock, distanceBand);
   return {
     displayText: speechText,
     speechText,
-    speechKey: `${targetHold.id}:${activeLimb ?? 'unknown'}:${distanceBand.key}:${clock}`,
+    speechKey: `${targetHold.id}:chest:${distanceBand.key}:${clock}`,
   };
 }
 

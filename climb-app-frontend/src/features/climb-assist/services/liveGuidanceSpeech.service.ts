@@ -1,6 +1,5 @@
 import type {
   ClimbScan,
-  GuidanceLimb,
   Hold,
 } from '../../../shared/types/climb';
 import type { Language } from '../../../shared/i18n/translations';
@@ -38,33 +37,14 @@ function getClockDirectionZh(dx: number, dy: number) {
   return CLOCK_LABELS_ZH[index];
 }
 
-function getLimbLabelZh(limb: GuidanceLimb | undefined) {
-  switch (limb) {
-    case 'leftHand':
-      return '\u5de6\u624b';
-    case 'rightHand':
-      return '\u53f3\u624b';
-    case 'leftFoot':
-      return '\u5de6\u811a';
-    case 'rightFoot':
-      return '\u53f3\u811a';
-    case 'match':
-      return '\u53cc\u624b';
-    default:
-      return '\u8eab\u4f53';
-  }
-}
-
 export function buildLivePositionSpeechZh({
   targetHold,
   activeAnchor,
   distancePct,
-  activeLimb,
 }: {
   targetHold: Hold | null;
   activeAnchor: { xPct: number; yPct: number } | null | undefined;
   distancePct: number | null;
-  activeLimb?: GuidanceLimb;
 }) {
   if (!targetHold) {
     return {
@@ -74,10 +54,9 @@ export function buildLivePositionSpeechZh({
   }
 
   if (!activeAnchor || distancePct === null) {
-    const limbLabel = getLimbLabelZh(activeLimb);
     return {
-      speechText: `\u770b\u4e0d\u6e05${limbLabel}\u4f4d\u7f6e\uff0c\u8bf7\u628a${limbLabel}\u5e26\u56de\u955c\u5934\u91cc\u3002`,
-      speechKey: `${targetHold.id}:${activeLimb ?? 'unknown'}:hidden-zh`,
+      speechText: '\u80f8\u53e3\u4f4d\u7f6e\u4e0d\u6e05\u695a\uff0c\u8bf7\u8ba9\u4e0a\u534a\u8eab\u56de\u5230\u955c\u5934\u4e2d\u592e\u3002',
+      speechKey: `${targetHold.id}:chest-hidden-zh`,
     };
   }
 
@@ -85,10 +64,9 @@ export function buildLivePositionSpeechZh({
   const dy = activeAnchor.yPct - targetHold.yPct;
   const distanceBand = getDistanceBandZh(distancePct);
   const direction = getClockDirectionZh(dx, dy);
-  const limbLabel = getLimbLabelZh(activeLimb);
   return {
-    speechText: `${limbLabel}\uff1a${direction}\u65b9\u5411\uff0c\u8ddd\u79bb${distanceBand.label}\u3002`,
-    speechKey: `${targetHold.id}:${activeLimb ?? 'unknown'}:${distanceBand.key}:${direction}-zh`,
+    speechText: `\u4e0b\u4e00\u4e2a\u5ca9\u70b9\uff1a${direction}\u65b9\u5411\uff0c\u8ddd\u79bb${distanceBand.label}\u3002`,
+    speechKey: `${targetHold.id}:chest-zh:${distanceBand.key}:${direction}`,
   };
 }
 
