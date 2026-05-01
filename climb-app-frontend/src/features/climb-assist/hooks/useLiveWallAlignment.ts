@@ -35,6 +35,7 @@ const REFERENCE_QUALITY = 0.62;
 const REFERENCE_MAX_DATA_URL_LENGTH = 260_000;
 const HOLD_BLEND_ALPHA = 0.4;
 const HOLD_STALE_GRACE_MS = 9000;
+const LIVE_ALIGNMENT_ASPECT_RATIO = 3 / 4;
 
 const EMPTY_ALIGNMENT_STATE: LiveWallAlignmentState = {
   status: 'idle',
@@ -50,6 +51,28 @@ const EMPTY_ALIGNMENT_STATE: LiveWallAlignmentState = {
   alignedHoldMap: {},
 };
 
+function getCenteredSourceCrop(sourceWidth: number, sourceHeight: number, targetAspectRatio: number) {
+  const sourceAspectRatio = sourceWidth / sourceHeight;
+
+  if (sourceAspectRatio > targetAspectRatio) {
+    const cropWidth = sourceHeight * targetAspectRatio;
+    return {
+      sx: (sourceWidth - cropWidth) / 2,
+      sy: 0,
+      sw: cropWidth,
+      sh: sourceHeight,
+    };
+  }
+
+  const cropHeight = sourceWidth / targetAspectRatio;
+  return {
+    sx: 0,
+    sy: (sourceHeight - cropHeight) / 2,
+    sw: sourceWidth,
+    sh: cropHeight,
+  };
+}
+
 function captureElementPreview(
   element: HTMLVideoElement | HTMLImageElement,
   maxDimension: number,
@@ -61,16 +84,17 @@ function captureElementPreview(
 
   if (!sourceWidth || !sourceHeight) return null;
 
-  const scale = Math.min(1, maxDimension / Math.max(sourceWidth, sourceHeight));
-  const width = Math.max(1, Math.round(sourceWidth * scale));
-  const height = Math.max(1, Math.round(sourceHeight * scale));
+  const crop = getCenteredSourceCrop(sourceWidth, sourceHeight, LIVE_ALIGNMENT_ASPECT_RATIO);
+  const scale = Math.min(1, maxDimension / Math.max(crop.sw, crop.sh));
+  const width = Math.max(1, Math.round(crop.sw * scale));
+  const height = Math.max(1, Math.round(crop.sh * scale));
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
   const context = canvas.getContext('2d');
   if (!context) return null;
 
-  context.drawImage(element, 0, 0, sourceWidth, sourceHeight, 0, 0, width, height);
+  context.drawImage(element, crop.sx, crop.sy, crop.sw, crop.sh, 0, 0, width, height);
   let nextQuality = quality;
   let output = canvas.toDataURL('image/jpeg', nextQuality);
 
