@@ -7,8 +7,12 @@ ENV DEBIAN_FRONTEND=noninteractive \
     VIRTUAL_ENV=/opt/venv \
     PATH="/opt/venv/bin:$PATH"
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
+RUN set -eux; \
+    echo 'Acquire::Retries "5";' > /etc/apt/apt.conf.d/80-retries; \
+    echo 'Acquire::http::Timeout "120";' >> /etc/apt/apt.conf.d/80-retries; \
+    echo 'Acquire::https::Timeout "120";' >> /etc/apt/apt.conf.d/80-retries; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends \
       build-essential \
       ffmpeg \
       git \
@@ -19,8 +23,8 @@ RUN apt-get update \
       python-is-python3 \
       python3 \
       python3-pip \
-      python3-venv \
-    && rm -rf /var/lib/apt/lists/*
+      python3-venv; \
+    rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
