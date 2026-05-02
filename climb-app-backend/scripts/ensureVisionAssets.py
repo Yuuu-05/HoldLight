@@ -23,10 +23,12 @@ DOWNLOADABLE_ASSETS = (
     },
 )
 
-REQUIRED_LOCAL_ASSETS = (
+OPTIONAL_DOWNLOADABLE_ASSETS = (
     {
         "path": "vision_service/models/xiaoxiae/color_classifier/neutral_hold_classifier.pt",
         "minimum_size": 64 * 1024,
+        "url_env": "VISION_NEUTRAL_COLOR_MODEL_URL",
+        "fallback": "HSV color fallback",
     },
 )
 
@@ -116,23 +118,48 @@ def ensure_downloaded_asset(asset, headers: Dict[str, str]) -> None:
     raise SystemExit(f"Failed to prepare {asset['path']}: {last_error}")
 
 
-def ensure_local_asset(asset) -> None:
+def ensure_optional_downloaded_asset(asset, headers: Dict[str, str]) -> None:
     destination = BASE_DIR / str(asset["path"])
     minimum_size = int(asset["minimum_size"])
-    problem = validate_asset(destination, minimum_size)
-    if problem is not None:
-        raise SystemExit(f"{asset['path']} {problem} Bundle this file with the image or restore it in the project.")
-    print(f"{asset['path']} is ready.")
+    current_problem = validate_asset(destination, minimum_size)
+    if current_problem is None:
+        print(f"{asset['path']} is already present.")
+        return
+
+    url_env = str(asset["url_env"])
+    fallback = str(asset["fallback"])
+    url = os.environ.get(url_env, "").strip()
+    if not url:
+        print(f"{asset['path']} {current_problem} Continuing with {fallback}.")
+        return
+
+    last_error = None
+    for attempt in range(1, DOWNLOAD_RETRIES + 1):
+        try:
+            print(f"Downloading optional {asset['path']} from {url_env} (attempt {attempt}/{DOWNLOAD_RETRIES})...")
+            download_asset(url, destination, headers)
+            refreshed_problem = validate_asset(destination, minimum_size)
+            if refreshed_problem is not None:
+                raise RuntimeError(f"Downloaded file {refreshed_problem}")
+            print(f"Prepared optional {asset['path']}.")
+            return
+        except Exception as error:  # pragma: no cover - defensive container boot path
+            last_error = error
+            if attempt == DOWNLOAD_RETRIES:
+                break
+            time.sleep(min(2 ** attempt, 10))
+
+    print(f"Failed to prepare optional {asset['path']}: {last_error}. Continuing with {fallback}.")
 
 
 def main() -> None:
     headers = build_headers()
 
-    for asset in REQUIRED_LOCAL_ASSETS:
-        ensure_local_asset(asset)
-
     for asset in DOWNLOADABLE_ASSETS:
         ensure_downloaded_asset(asset, headers)
+
+    for asset in OPTIONAL_DOWNLOADABLE_ASSETS:
+        ensure_optional_downloaded_asset(asset, headers)
 
     print("Vision assets are ready.")
 

@@ -17,7 +17,8 @@ REQUIRED_ASSETS = {
     },
     "vision_service/models/xiaoxiae/color_classifier/neutral_hold_classifier.pt": {
         "minimum_size": 64 * 1024,
-        "downloadable": False,
+        "downloadable": True,
+        "fallback": "HSV color fallback will be used if it remains unavailable.",
     },
 }
 
@@ -36,10 +37,12 @@ def main() -> None:
     for relative_path, config in REQUIRED_ASSETS.items():
         minimum_size = config["minimum_size"]
         downloadable = config["downloadable"]
+        fallback = config.get("fallback")
         asset_path = BASE_DIR / relative_path
         if not asset_path.exists():
             if args.allow_missing_downloadable and downloadable:
-                print(f"{relative_path} is missing in this environment and will be prepared at runtime.")
+                suffix = f" {fallback}" if fallback else " It will be prepared at runtime."
+                print(f"{relative_path} is missing in this environment.{suffix}")
                 continue
             problems.append(f"{relative_path} is missing.")
             continue
@@ -47,8 +50,9 @@ def main() -> None:
         size = asset_path.stat().st_size
         if size < minimum_size:
             if args.allow_missing_downloadable and downloadable:
+                suffix = f" {fallback}" if fallback else " It will be refreshed at runtime."
                 print(
-                    f"{relative_path} is below the expected size in this environment and will be refreshed at runtime."
+                    f"{relative_path} is below the expected size in this environment.{suffix}"
                 )
                 continue
             problems.append(
@@ -60,7 +64,8 @@ def main() -> None:
             header = handle.read(256)
         if LFS_SIGNATURE in header:
             if args.allow_missing_downloadable and downloadable:
-                print(f"{relative_path} is still a Git LFS pointer and will be replaced at runtime.")
+                suffix = f" {fallback}" if fallback else " It will be replaced at runtime."
+                print(f"{relative_path} is still a Git LFS pointer.{suffix}")
                 continue
             problems.append(
                 f"{relative_path} is still a Git LFS pointer. "
