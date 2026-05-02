@@ -5028,7 +5028,7 @@ textarea.field-input,
 .landing-hero-screen h1 {
   display: grid;
   gap: 0.1em;
-  max-width: 7.1ch;
+  max-width: min(100%, 9.8ch);
   color: var(--hl-cream);
   font-size: 4rem;
   font-weight: 310;
@@ -5043,7 +5043,7 @@ textarea.field-input,
 }
 
 .landing-hero-screen h1 span:last-child {
-  max-width: 12ch;
+  max-width: min(100%, 17rem);
   margin-top: 0.16rem;
   color: rgba(246, 255, 233, 0.78);
   font-size: 0.34em;
@@ -5491,13 +5491,13 @@ textarea.field-input,
 }
 
 .onboarding-landing[data-language="en"] .landing-hero-screen h1 {
-  max-width: 9.2ch;
-  font-size: 3.45rem;
+  max-width: min(100%, 18rem);
+  font-size: 3.08rem;
 }
 
 .onboarding-landing[data-language="en"] .landing-hero-screen h1 span:last-child {
-  max-width: 14ch;
-  font-size: 0.33em;
+  max-width: min(100%, 18rem);
+  font-size: 0.36em;
 }
 
 .onboarding-landing[data-language="en"] .landing-feature-orbit span {
@@ -5522,7 +5522,7 @@ textarea.field-input,
   }
 
   .onboarding-landing[data-language="en"] .landing-hero-screen h1 {
-    font-size: 4.35rem;
+    font-size: 3.82rem;
   }
 
   .landing-hero-actions {
@@ -5819,8 +5819,8 @@ textarea.field-input,
 
 .landing-hero-info .landing-feature-panel {
   display: grid;
-  grid-template-rows: auto auto;
-  gap: var(--landing-feature-panel-gap, 0.18rem);
+  grid-template-rows: auto;
+  gap: 0;
 }
 
 .landing-hero-info .landing-feature-heading {

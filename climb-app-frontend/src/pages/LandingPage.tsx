@@ -11,12 +11,12 @@ type LandingVisualStyle = CSSProperties & Record<string, string | number>;
 
 // Tune hero feature layout here: sizes use rem, positions use %, vw, or calc().
 const LANDING_HERO_PARAMS = {
-  heroInfoTop: 'calc(4.55rem + env(safe-area-inset-top))',
+  heroInfoTop: 'calc(3.82rem + env(safe-area-inset-top))',
   heroInfoRight: 'calc(var(--landing-side-pad) + 0.52rem)',
   heroInfoWidth: 'min(63vw, 17.35rem)',
   heroInfoMaxHeight: '54svh',
   heroInfoGap: '0.32rem',
-  compactHeroInfoTop: 'calc(4.18rem + env(safe-area-inset-top))',
+  compactHeroInfoTop: 'calc(3.56rem + env(safe-area-inset-top))',
   compactHeroInfoWidth: 'min(64vw, 14rem)',
   compactHeroInfoGap: '0.28rem',
 };
@@ -133,13 +133,11 @@ export default function LandingPage() {
   const copy = {
     eyebrow: t('Climbing guidance'),
     titleLines: [
-      t('Hear the route.'),
-      t('Move with calm.'),
+      `${t('Hear the route.')} ${t('Move with calm.')}`,
       t('Everyone can hold the light'),
     ],
     primary: t('Start'),
     secondary: t('Sign in'),
-    featureTitle: t('Feature'),
   };
 
   const features = [
@@ -226,12 +224,8 @@ export default function LandingPage() {
           </h1>
         </div>
 
-        <div className="landing-hero-info" aria-labelledby="landing-feature-title" style={LANDING_HERO_INFO_STYLE}>
+        <div className="landing-hero-info" aria-label={t('Core capabilities')} style={LANDING_HERO_INFO_STYLE}>
           <div className="landing-feature-panel">
-            <div className="landing-section-heading landing-feature-heading">
-              <h2 id="landing-feature-title">{copy.featureTitle}</h2>
-            </div>
-
             <div className="landing-feature-map" aria-label={t('Core capabilities')}>
               <svg className="landing-feature-path" viewBox="0 0 100 100" aria-hidden="true" focusable="false">
                 <path className="landing-feature-track landing-feature-track-outer" d="M13 42 C8 24 23 12 41 18 C59 24 59 7 69 13 C81 21 74 36 85 47 C95 58 86 76 72 84 C55 95 43 83 31 89 C18 95 10 78 18 66 C26 54 18 50 13 42Z" />
