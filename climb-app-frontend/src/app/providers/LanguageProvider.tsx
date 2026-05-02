@@ -11,12 +11,35 @@ type LanguageContextValue = {
 };
 
 const LANGUAGE_STORAGE_KEY = 'climbAppLanguage';
+const LANGUAGE_SELECTION_STORAGE_KEY = 'climbAppLanguageSelected';
+const DEFAULT_LANGUAGE: Language = 'en';
 const LanguageContext = createContext<LanguageContextValue | undefined>(undefined);
 
-function getInitialLanguage(): Language {
-  if (typeof window === 'undefined') return 'zh';
+function isSupportedLanguage(language: string | null): language is Language {
+  return language === 'zh' || language === 'en';
+}
+
+function getExplicitStoredLanguage(): Language | null {
+  if (typeof window === 'undefined') return null;
+
+  const hasExplicitSelection = window.localStorage.getItem(LANGUAGE_SELECTION_STORAGE_KEY) === 'true';
+  if (!hasExplicitSelection) return null;
+
   const stored = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
-  return stored === 'zh' || stored === 'en' ? stored : 'zh';
+  return isSupportedLanguage(stored) ? stored : null;
+}
+
+function persistLanguage(language: Language, explicitSelection = false) {
+  if (typeof window === 'undefined') return;
+
+  window.localStorage.setItem(LANGUAGE_STORAGE_KEY, language);
+  if (explicitSelection) {
+    window.localStorage.setItem(LANGUAGE_SELECTION_STORAGE_KEY, 'true');
+  }
+}
+
+function getInitialLanguage(): Language {
+  return getExplicitStoredLanguage() ?? DEFAULT_LANGUAGE;
 }
 
 export default function LanguageProvider({ children }: { children: React.ReactNode }) {
@@ -25,7 +48,7 @@ export default function LanguageProvider({ children }: { children: React.ReactNo
   const hydratedRef = useRef(false);
 
   useEffect(() => {
-    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, language);
+    persistLanguage(language);
     document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en';
   }, [language]);
 
@@ -41,8 +64,14 @@ export default function LanguageProvider({ children }: { children: React.ReactNo
     getUserPreferencesApi()
       .then((preferences) => {
         if (!active) return;
-        setLanguageState(preferences.language);
+        const explicitStoredLanguage = getExplicitStoredLanguage();
+        const nextLanguage = explicitStoredLanguage ?? DEFAULT_LANGUAGE;
+        setLanguageState(nextLanguage);
+        if (preferences.language !== nextLanguage) {
+          void updateUserPreferencesApi({ language: nextLanguage });
+        }
       })
+      .catch(() => undefined)
       .finally(() => {
         if (active) {
           hydratedRef.current = true;
@@ -58,6 +87,7 @@ export default function LanguageProvider({ children }: { children: React.ReactNo
     () => ({
       language,
       setLanguage: (nextLanguage) => {
+        persistLanguage(nextLanguage, true);
         setLanguageState(nextLanguage);
         if (hydratedRef.current && isAuthenticated && !isUsingDevAuth) {
           void updateUserPreferencesApi({ language: nextLanguage });
@@ -66,6 +96,7 @@ export default function LanguageProvider({ children }: { children: React.ReactNo
       toggleLanguage: () =>
         setLanguageState((current) => {
           const next = current === 'en' ? 'zh' : 'en';
+          persistLanguage(next, true);
           if (hydratedRef.current && isAuthenticated && !isUsingDevAuth) {
             void updateUserPreferencesApi({ language: next });
           }

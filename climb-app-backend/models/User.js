@@ -61,7 +61,7 @@ const preferencesSchema = new mongoose.Schema(
     language: {
       type: String,
       enum: ['en', 'zh'],
-      default: 'zh',
+      default: 'en',
     },
     accessibility: {
       type: accessibilityPreferenceSchema,

@@ -93,7 +93,7 @@ function buildDefaultPreferences(role: RoleValue = 'new_user', completed = false
       : {};
 
   return {
-    language: 'zh',
+    language: 'en',
     accessibility: {
       speechEnabled: true,
       feedbackEnabled: true,
