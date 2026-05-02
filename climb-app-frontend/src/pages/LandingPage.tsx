@@ -3,41 +3,22 @@ import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../app/providers/AuthProvider';
 import { useLanguage } from '../app/providers/LanguageProvider';
 import AppBrand from '../shared/components/brand/AppBrand';
-import {
-  ProfileIcon,
-  ScanIcon,
-  SpeechIcon,
-  VoiceCommandIcon,
-} from '../shared/components/icons/AppIcons';
 import LanguageSwitcher from '../shared/components/layout/LanguageSwitcher';
 import { routes } from '../shared/constants/routes';
 import { usePageTitle } from '../shared/hooks/usePageTitle';
 
 type LandingVisualStyle = CSSProperties & Record<string, string | number>;
 
-// Tune Flow and Feature layout here: sizes use rem, positions use %, vw, or calc().
-const LANDING_FLOW_PARAMS = {
-  heroInfoTop: 'calc(1.18rem + env(safe-area-inset-top))',
+// Tune hero feature layout here: sizes use rem, positions use %, vw, or calc().
+const LANDING_HERO_PARAMS = {
+  heroInfoTop: 'calc(4.55rem + env(safe-area-inset-top))',
   heroInfoRight: 'calc(var(--landing-side-pad) + 0.52rem)',
   heroInfoWidth: 'min(63vw, 17.35rem)',
   heroInfoMaxHeight: '54svh',
-  heroInfoGap: '0.56rem',
-  panelGap: '0.36rem',
-  stripGap: '0.32rem',
-  itemMinHeight: '4.12rem',
-  itemPadding: '0.34rem 0.24rem',
-  itemGap: '0.24rem',
-  iconSize: '2.24rem',
-  iconGlyphSize: '1.48rem',
-  labelFontSize: '0.72rem',
-  compactHeroInfoTop: 'calc(0.98rem + env(safe-area-inset-top))',
+  heroInfoGap: '0.32rem',
+  compactHeroInfoTop: 'calc(4.18rem + env(safe-area-inset-top))',
   compactHeroInfoWidth: 'min(64vw, 14rem)',
-  compactHeroInfoGap: '0.44rem',
-  compactItemMinHeight: '3.34rem',
-  compactItemPadding: '0.24rem 0.16rem',
-  compactIconSize: '1.82rem',
-  compactIconGlyphSize: '1.2rem',
-  compactLabelFontSize: '0.6rem',
+  compactHeroInfoGap: '0.28rem',
 };
 
 const LANDING_FEATURE_PARAMS = {
@@ -71,27 +52,14 @@ const LANDING_FEATURE_PARAMS = {
 };
 
 const LANDING_HERO_INFO_STYLE = {
-  '--landing-hero-info-top': LANDING_FLOW_PARAMS.heroInfoTop,
-  '--landing-hero-info-right': LANDING_FLOW_PARAMS.heroInfoRight,
-  '--landing-hero-info-width': LANDING_FLOW_PARAMS.heroInfoWidth,
-  '--landing-hero-info-max-height': LANDING_FLOW_PARAMS.heroInfoMaxHeight,
-  '--landing-hero-info-gap': LANDING_FLOW_PARAMS.heroInfoGap,
-  '--landing-flow-panel-gap': LANDING_FLOW_PARAMS.panelGap,
-  '--landing-flow-strip-gap': LANDING_FLOW_PARAMS.stripGap,
-  '--landing-flow-item-min-height': LANDING_FLOW_PARAMS.itemMinHeight,
-  '--landing-flow-item-padding': LANDING_FLOW_PARAMS.itemPadding,
-  '--landing-flow-item-gap': LANDING_FLOW_PARAMS.itemGap,
-  '--landing-flow-icon-size': LANDING_FLOW_PARAMS.iconSize,
-  '--landing-flow-icon-glyph-size': LANDING_FLOW_PARAMS.iconGlyphSize,
-  '--landing-flow-label-font-size': LANDING_FLOW_PARAMS.labelFontSize,
-  '--landing-hero-info-compact-top': LANDING_FLOW_PARAMS.compactHeroInfoTop,
-  '--landing-hero-info-compact-width': LANDING_FLOW_PARAMS.compactHeroInfoWidth,
-  '--landing-hero-info-compact-gap': LANDING_FLOW_PARAMS.compactHeroInfoGap,
-  '--landing-flow-compact-item-min-height': LANDING_FLOW_PARAMS.compactItemMinHeight,
-  '--landing-flow-compact-item-padding': LANDING_FLOW_PARAMS.compactItemPadding,
-  '--landing-flow-compact-icon-size': LANDING_FLOW_PARAMS.compactIconSize,
-  '--landing-flow-compact-icon-glyph-size': LANDING_FLOW_PARAMS.compactIconGlyphSize,
-  '--landing-flow-compact-label-font-size': LANDING_FLOW_PARAMS.compactLabelFontSize,
+  '--landing-hero-info-top': LANDING_HERO_PARAMS.heroInfoTop,
+  '--landing-hero-info-right': LANDING_HERO_PARAMS.heroInfoRight,
+  '--landing-hero-info-width': LANDING_HERO_PARAMS.heroInfoWidth,
+  '--landing-hero-info-max-height': LANDING_HERO_PARAMS.heroInfoMaxHeight,
+  '--landing-hero-info-gap': LANDING_HERO_PARAMS.heroInfoGap,
+  '--landing-hero-info-compact-top': LANDING_HERO_PARAMS.compactHeroInfoTop,
+  '--landing-hero-info-compact-width': LANDING_HERO_PARAMS.compactHeroInfoWidth,
+  '--landing-hero-info-compact-gap': LANDING_HERO_PARAMS.compactHeroInfoGap,
   '--landing-feature-panel-gap': LANDING_FEATURE_PARAMS.panelGap,
   '--landing-feature-map-width': LANDING_FEATURE_PARAMS.mapWidth,
   '--landing-feature-map-height': LANDING_FEATURE_PARAMS.mapHeight,
@@ -171,7 +139,6 @@ export default function LandingPage() {
     ],
     primary: t('Start'),
     secondary: t('Sign in'),
-    flowTitle: t('Flow'),
     featureTitle: t('Feature'),
   };
 
@@ -238,25 +205,6 @@ export default function LandingPage() {
     },
   ];
 
-  const flow = [
-    {
-      icon: <ProfileIcon />,
-      title: t('Setup'),
-    },
-    {
-      icon: <ScanIcon active />,
-      title: t('Scan'),
-    },
-    {
-      icon: <SpeechIcon />,
-      title: t('Review'),
-    },
-    {
-      icon: <VoiceCommandIcon />,
-      title: t('Guide'),
-    },
-  ];
-
   return (
     <div
       ref={landingShellRef}
@@ -279,29 +227,6 @@ export default function LandingPage() {
         </div>
 
         <div className="landing-hero-info" aria-labelledby="landing-feature-title" style={LANDING_HERO_INFO_STYLE}>
-          <div className="landing-flow-panel">
-            <div className="landing-section-heading landing-flow-heading">
-              <span>{copy.flowTitle}</span>
-            </div>
-            <div className="landing-flow-strip">
-              {flow.map((item, index) => (
-                <article
-                  key={item.title}
-                  className="landing-flow-item"
-                  style={{ '--reveal-delay': `${index * 55}ms` } as CSSProperties}
-                >
-                  <span className="landing-flow-index">{index + 1}</span>
-                  <span className="landing-flow-icon" aria-hidden="true">
-                    {item.icon}
-                  </span>
-                  <span>
-                    <strong>{item.title}</strong>
-                  </span>
-                </article>
-              ))}
-            </div>
-          </div>
-
           <div className="landing-feature-panel">
             <div className="landing-section-heading landing-feature-heading">
               <h2 id="landing-feature-title">{copy.featureTitle}</h2>
@@ -319,7 +244,7 @@ export default function LandingPage() {
                   key={feature.className}
                   className={`landing-feature-orbit landing-feature-${feature.tier} ${feature.className}`}
                   style={{
-                    '--reveal-delay': `${(index + flow.length) * 55}ms`,
+                    '--reveal-delay': `${index * 55}ms`,
                     '--node-x': feature.visual.x,
                     '--node-y': feature.visual.y,
                     '--node-size': feature.visual.size,

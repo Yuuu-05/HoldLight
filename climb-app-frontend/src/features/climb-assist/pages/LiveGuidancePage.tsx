@@ -265,6 +265,7 @@ export default function LiveGuidancePage() {
   const [loadingLiveData, setLoadingLiveData] = useState(true);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [finishPending, setFinishPending] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [controlError, setControlError] = useState<string | null>(null);
 
@@ -291,6 +292,7 @@ export default function LiveGuidancePage() {
   const lastSafetyAnnouncementRef = useRef('');
   const pendingSafetyAnnouncementRef = useRef('');
   const safetyAnnouncementRetryTimerRef = useRef<number | null>(null);
+  const finishPendingRef = useRef(false);
 
   usePageTitle('Live guidance');
 
@@ -718,7 +720,9 @@ export default function LiveGuidancePage() {
   );
 
   const handleFinish = useCallback(async () => {
-    if (!session) return;
+    if (!session || finishPendingRef.current) return;
+    finishPendingRef.current = true;
+    setFinishPending(true);
 
     const elapsedSeconds = Math.max(
       1,
@@ -753,8 +757,10 @@ export default function LiveGuidancePage() {
         },
       ]);
 
-      navigate(routes.climbSummary);
+      navigate(routes.climbSummary, { replace: true, state: { completedSession: nextSession } });
     } catch (error) {
+      finishPendingRef.current = false;
+      setFinishPending(false);
       const message = error instanceof Error ? error.message : 'Unable to finish the session.';
       setControlError(message);
       speakLocalized(message);
@@ -1060,6 +1066,7 @@ export default function LiveGuidancePage() {
         onNext={() => void handleAdvance('manual')}
         onRecalibrate={() => void handleRecalibrate()}
         onFinish={() => void handleFinish()}
+        finishDisabled={finishPending}
       />
     </div>
   );

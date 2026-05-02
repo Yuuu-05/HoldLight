@@ -12,6 +12,7 @@ interface VoiceCuePanelProps {
   onAdvance?: () => void;
   onRecalibrate?: () => void;
   isSpeaking?: boolean;
+  finishDisabled?: boolean;
 }
 
 export default function VoiceCuePanel({
@@ -24,6 +25,7 @@ export default function VoiceCuePanel({
   onAdvance,
   onRecalibrate,
   isSpeaking = false,
+  finishDisabled = false,
 }: VoiceCuePanelProps) {
   const { simplifiedMode } = useAccessibility();
   const { t } = useLanguage();
@@ -51,7 +53,11 @@ export default function VoiceCuePanel({
       </div>
       <div className="assist-live-primary-actions">
         {onNext ? <Button variant="primary" className="assist-live-primary-button" onClick={onNext}>{t('Next')}</Button> : null}
-        {onFinish ? <Button variant="danger" className="assist-live-primary-button" onClick={onFinish}>{t('End')}</Button> : null}
+        {onFinish ? (
+          <Button variant="danger" className="assist-live-primary-button" onClick={onFinish} disabled={finishDisabled}>
+            {t('End')}
+          </Button>
+        ) : null}
       </div>
     </section>
   );

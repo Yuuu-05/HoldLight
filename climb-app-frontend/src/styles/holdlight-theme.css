@@ -4985,8 +4985,8 @@ textarea.field-input,
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto auto;
   align-items: stretch;
-  gap: 1.28rem;
-  padding: 1rem var(--landing-side-pad) calc(0.82rem + env(safe-area-inset-bottom));
+  gap: 1.12rem;
+  padding: 0.86rem var(--landing-side-pad) calc(1.08rem + env(safe-area-inset-bottom));
 }
 
 .landing-hero-screen .landing-cover-copy {
@@ -4994,7 +4994,7 @@ textarea.field-input,
   align-content: end;
   gap: 0.72rem;
   width: min(100%, 28rem);
-  padding: 0 0 0.9rem;
+  padding: 0 0 1.45rem;
 }
 
 .landing-hero-screen .app-brand {
@@ -5056,7 +5056,7 @@ textarea.field-input,
   grid-template-columns: minmax(0, 0.82fr) minmax(0, 1fr);
   gap: 0.62rem;
   width: 100%;
-  margin: 0 auto;
+  margin: 0 auto 0.28rem;
 }
 
 .landing-hero-actions .landing-action-link {
@@ -9113,6 +9113,29 @@ body:has(.assist-live-page) {
 
 .assist-shell-review-mode .assist-color-picker-shell {
   gap: 0.18rem !important;
+}
+
+.assist-summary-page {
+  display: grid;
+  width: 100%;
+  min-height: 100%;
+  place-items: center;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+.assist-summary-page .assist-summary-card {
+  width: min(100%, 760px) !important;
+  max-width: 760px;
+  min-height: auto !important;
+  margin: 0 auto !important;
+  box-sizing: border-box;
+}
+
+@media (max-width: 640px) {
+  .assist-summary-page {
+    padding: 0.7rem;
+  }
 }
 
 .assist-shell-review-mode .assist-color-swatch-grid {
