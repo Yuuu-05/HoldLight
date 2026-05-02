@@ -6,6 +6,7 @@ import type { Language } from '../../../shared/i18n/translations';
 import type { LivePoseState } from '../hooks/useLivePoseTracker';
 import type { LiveWallAlignmentState } from '../hooks/useLiveWallAlignment';
 import type { AssistSafetyDecision } from './safetyState.service';
+import { localizeAssistText } from '../utils/localizedAssistText';
 
 const CLOCK_LABELS_ZH = [
   '12点钟',
@@ -85,11 +86,11 @@ export function buildLiveSafetyPauseSpeechZh({
     return '实时引导已准备好。';
   }
 
-  const requiresAlignment = Boolean(scan);
-
-  if (poseState.error) {
-    return '请暂停，姿态识别暂时不可用。请检查镜头，并让全身重新进入画面。';
+  if (decision.status !== 'pause-live-guidance') {
+    return localizeAssistText(decision.detail, 'zh') || '实时引导暂时不可用，请先完成前一步检查。';
   }
+
+  const requiresAlignment = Boolean(scan);
 
   if (requiresAlignment && (!alignmentState.active || alignmentState.status === 'unavailable')) {
     return '请暂停，墙面对齐还不稳定。请把整面墙重新放进画面，再继续。';
@@ -97,6 +98,14 @@ export function buildLiveSafetyPauseSpeechZh({
 
   if (requiresAlignment && alignmentState.status === 'partial' && alignmentState.qualityPct < 58) {
     return '请暂停，墙面对齐还在稳定中。先保持镜头不动，再继续。';
+  }
+
+  if (poseState.error) {
+    return '请暂停，姿态识别暂时不可用。请检查镜头，并让全身重新进入画面。';
+  }
+
+  if (!poseState.active || poseState.poseQualityPct < 48 || poseState.visibleLimbCount < 1) {
+    return `请暂停，姿态识别还不够稳定。当前识别质量 ${poseState.poseQualityPct}% ，请让全身进入画面。`;
   }
 
   if (poseState.subjectLockStatus === 'searching') {
@@ -109,10 +118,6 @@ export function buildLiveSafetyPauseSpeechZh({
 
   if (poseState.interferenceRiskPct >= 62) {
     return '请暂停，画面里有其他人正在干扰识别。尽量让镜头里只保留攀爬者。';
-  }
-
-  if (!poseState.active || poseState.poseQualityPct < 48 || poseState.visibleLimbCount < 1) {
-    return `请暂停，姿态识别还不够稳定。当前识别质量 ${poseState.poseQualityPct}% ，请让全身进入画面。`;
   }
 
   return '请暂停，当前实时引导条件还没有稳定下来。';
