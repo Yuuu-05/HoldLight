@@ -9064,6 +9064,49 @@ body:has(.assist-live-page) {
   opacity: 0.78;
 }
 
+/* Keep the scan camera frame fixed, but remove the empty spacer above the mode tabs. */
+.assist-scan-console {
+  grid-template-rows: auto auto !important;
+  align-content: start !important;
+  gap: 0.1rem !important;
+}
+
+.assist-scan-method-grid {
+  height: auto !important;
+  align-self: start !important;
+}
+
+.assist-scan-camera-card.assist-scan-flow-panel.is-active {
+  grid-template-rows: auto auto auto !important;
+  align-content: start !important;
+  gap: 0.08rem !important;
+}
+
+.assist-scan-mode-selector {
+  align-self: start !important;
+  margin: 0.08rem auto 0 !important;
+}
+
+@media (max-width: 720px) {
+  .assist-scan-console {
+    gap: 0.08rem !important;
+  }
+
+  .assist-scan-mode-selector {
+    margin-top: 0.06rem !important;
+  }
+}
+
+@media (max-width: 390px), (max-height: 720px) {
+  .assist-scan-console {
+    gap: 0.06rem !important;
+  }
+
+  .assist-scan-mode-selector {
+    margin-top: 0.04rem !important;
+  }
+}
+
 .assist-shell-review-mode .assist-review-tool-shell {
   gap: 0 !important;
 }
