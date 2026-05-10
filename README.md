@@ -1,81 +1,160 @@
-# CPT208 Climb App
+# HoldLight Climb App
 
-Private team repository for the CPT208 climbing app project.
+HoldLight is a full-stack climbing assistance web application for CPT208. It helps users scan a climbing wall, review detected holds, choose a route, and receive live guidance during a climb.
 
-This repo contains:
+## Source Code Repository
 
-- `climb-app-frontend`: Vite + React frontend
-- `climb-app-backend`: Express + MongoDB backend
-- shared team `.env` files for the current private development workflow
-- xiaoxiae vision model weights tracked with Git LFS
+GitHub repository: <https://github.com/Yuuu-05/CPT208-ClimbApp>
 
-## Keep this repo private
+## Technologies Used
 
-The current team workflow tracks shared development `.env` files in Git so teammates can clone and run quickly.
-If this repository is ever made public, remove the committed `.env` files and rotate the affected secrets immediately.
+- Frontend: React 18, TypeScript, Vite, React Router
+- Styling: CSS, Tailwind CSS tooling, PostCSS, Autoprefixer
+- Camera and guidance: Browser MediaDevices API, Web Speech API, Web Audio API, MediaPipe Pose
+- Backend: Node.js, Express.js
+- Database: MongoDB with Mongoose
+- Authentication: JSON Web Tokens, bcrypt
+- Computer vision service: Python, OpenCV, Pillow, NumPy, PyTorch, TorchVision, Detectron2
+- Deployment: Docker, Nginx, Render Blueprint, GitHub Actions, Git LFS
 
-## Quick start
+## Project Structure
 
-1. Install Node.js 20+, Python 3.8+, Git, and Git LFS.
-2. Enable Git LFS once on your machine:
+```text
+CPT208-ClimbApp/
+|-- climb-app-frontend/   # Vite + React frontend
+|-- climb-app-backend/    # Express API and Python vision runtime
+|-- deploy/               # Deployment examples and scripts
+|-- render.yaml           # Render full-stack deployment blueprint
+`-- package.json          # Root helper scripts
+```
 
-   ```bash
-   git lfs install
-   ```
+## Setup Instructions
 
-3. Clone the repo and pull LFS model files:
+### 1. Prerequisites
 
-   ```bash
-   git clone https://github.com/Yuuu-05/CPT208-ClimbApp.git
-   cd CPT208-ClimbApp
-   git lfs pull
-   ```
+Install these tools before running the project:
 
-4. Install JavaScript dependencies from the repo root:
+- Git
+- Git LFS
+- Node.js 20+
+- Python 3.10+
+- MongoDB connection string, for example MongoDB Atlas or a local MongoDB server
 
-   ```bash
-   npm run install:all
-   ```
+### 2. Clone the Repository
 
-5. Install Python dependencies for the supported xiaoxiae vision pipeline:
+```bash
+git lfs install
+git clone https://github.com/Yuuu-05/CPT208-ClimbApp.git
+cd CPT208-ClimbApp
+git lfs pull
+```
 
-   ```bash
-   cd climb-app-backend
-   .venv/bin/python -m pip install -r requirements-xiaoxiae.txt
-   ```
+`git lfs pull` is required because the vision pipeline uses large model files.
 
-   Set `VISION_PYTHON_COMMAND=.venv/bin/python` in `climb-app-backend/.env` for the local bundled venv. `VISION_PROVIDER=heuristic` is no longer supported.
+### 3. Configure Environment Variables
 
-6. Start the backend and frontend in separate terminals:
+Create the backend environment file:
 
-   ```bash
-   npm run dev:backend
-   npm run dev:frontend
-   ```
+```bash
+cp climb-app-backend/.env.example climb-app-backend/.env
+```
 
-## Shared environment
+Set at least these backend values in `climb-app-backend/.env`:
 
-For the current private team workflow, the repo already includes:
+```env
+MONGO_URI=your_mongodb_connection_string
+JWT_SECRET=replace_with_a_long_random_secret
+PORT=5000
+VISION_PROVIDER=xiaoxiae
+```
 
-- `climb-app-backend/.env`
-- `climb-app-frontend/.env`
+Create the frontend environment file:
 
-If you want to stop tracking secrets later, remove them from Git and fall back to the `.env.example` files.
+```bash
+cp climb-app-frontend/.env.example climb-app-frontend/.env
+```
 
-## Vision models
+For local development, set:
 
-The full xiaoxiae vision mode requires these two files:
+```env
+VITE_API_BASE_URL=http://localhost:5000/api
+VITE_ENABLE_DEV_AUTH_BYPASS=false
+```
 
-- `climb-app-backend/vision_service/models/xiaoxiae/hold_detector/model_final.pth`
-- `climb-app-backend/vision_service/models/xiaoxiae/route_triplet/triplet_network_final.pt`
+### 4. Install JavaScript Dependencies
 
-They are configured for Git LFS so teammates can clone the repo and fetch them directly with `git lfs pull`.
+From the repository root:
 
-## More detail
+```bash
+npm run install:all
+```
 
-See `TEAM_SETUP.md` for the full teammate setup guide and troubleshooting notes.
-See `DEPLOYMENT.md` and `deploy/northflank/README.md` for cloud deployment paths.
+### 5. Install Python Vision Dependencies
 
-## Spoken guidance
+From the repository root:
 
-Spoken guidance now uses the browser `speechSynthesis` voice directly. No extra backend TTS service or MeloTTS environment is required.
+```bash
+cd climb-app-backend
+python -m venv .venv
+```
+
+Windows PowerShell:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install --upgrade pip
+.\.venv\Scripts\python.exe -m pip install -r requirements-xiaoxiae.txt
+```
+
+macOS/Linux:
+
+```bash
+.venv/bin/python -m pip install --upgrade pip
+.venv/bin/python -m pip install -r requirements-xiaoxiae.txt
+```
+
+Then set `VISION_PYTHON_COMMAND` in `climb-app-backend/.env`:
+
+```env
+# Windows
+VISION_PYTHON_COMMAND=.venv\Scripts\python.exe
+
+# macOS/Linux
+VISION_PYTHON_COMMAND=.venv/bin/python
+```
+
+### 6. Run the Application
+
+Open two terminals from the repository root.
+
+Terminal 1:
+
+```bash
+npm run dev:backend
+```
+
+Terminal 2:
+
+```bash
+npm run dev:frontend
+```
+
+Default local URLs:
+
+- Frontend: <http://localhost:5173>
+- Backend API: <http://localhost:5000>
+- Backend health check: <http://localhost:5000/api/health>
+
+## Build
+
+Build the frontend production bundle:
+
+```bash
+npm run build:frontend
+```
+
+## Notes
+
+- The backend requires a valid `MONGO_URI`; it will not start without a database connection.
+- The full wall-scanning feature requires the Git LFS model files and Python vision dependencies.
+- Browser camera access requires HTTPS in production. Localhost works for development.
+- Deployment details are available in `DEPLOYMENT.md`.
