@@ -1,10 +1,12 @@
-# HoldLight Climb App
+# HoldLight
 
-HoldLight is a full-stack climbing assistance web application for CPT208. It helps users scan a climbing wall, review detected holds, choose a route, and receive live guidance during a climb.
+A mobile-first climbing assistance application for blind and low-vision climbers, featuring layered route previews and real-time next-hold guidance.
 
-## Source Code Repository
+[Project Website](https://yuuu-05.github.io/CPT208-ClimbProject-C2-4/) · [Demo Video](https://github.com/Yuuu-05/HoldLight/releases/tag/project-demo) · [Poster](https://yuuu-05.github.io/CPT208-ClimbProject-C2-4/assets/documents/HoldLight-Poster.pdf)
 
-GitHub repository: <https://github.com/Yuuu-05/CPT208-ClimbApp>
+## Research
+
+HoldLight: Making Indoor Climbing More Accessible for Blind and Low-Vision Climbers through Layered Route Preview and Real-Time Next-Hold Guidance.
 
 ## Technologies Used
 
@@ -20,7 +22,7 @@ GitHub repository: <https://github.com/Yuuu-05/CPT208-ClimbApp>
 ## Project Structure
 
 ```text
-CPT208-ClimbApp/
+HoldLight/
 |-- climb-app-frontend/   # Vite + React frontend
 |-- climb-app-backend/    # Express API and Python vision runtime
 |-- deploy/               # Deployment examples and scripts
@@ -35,7 +37,6 @@ CPT208-ClimbApp/
 Install these tools before running the project:
 
 - Git
-- Git LFS
 - Node.js 20+
 - Python 3.10+
 - MongoDB connection string, for example MongoDB Atlas or a local MongoDB server
@@ -43,13 +44,11 @@ Install these tools before running the project:
 ### 2. Clone the Repository
 
 ```bash
-git lfs install
-git clone https://github.com/Yuuu-05/CPT208-ClimbApp.git
-cd CPT208-ClimbApp
-git lfs pull
+git clone https://github.com/Yuuu-05/HoldLight.git
+cd HoldLight
 ```
 
-`git lfs pull` is required because the vision pipeline uses large model files.
+Vision model weights are distributed separately in [Model Assets](https://github.com/Yuuu-05/climb-model-assets/releases/tag/v1). See [Deployment](DEPLOYMENT.md) for model configuration.
 
 ### 3. Configure Environment Variables
 
@@ -155,6 +154,6 @@ npm run build:frontend
 ## Notes
 
 - The backend requires a valid `MONGO_URI`; it will not start without a database connection.
-- The full wall-scanning feature requires the Git LFS model files and Python vision dependencies.
+- The full wall-scanning feature requires model weights and Python vision dependencies.
 - Browser camera access requires HTTPS in production. Localhost works for development.
 - Deployment details are available in `DEPLOYMENT.md`.
