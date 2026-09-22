@@ -2,7 +2,7 @@
 
 A mobile-first climbing assistance application for blind and low-vision climbers, featuring layered route previews and real-time next-hold guidance.
 
-[Project Website](https://yuuu-05.github.io/CPT208-ClimbProject-C2-4/) · [Demo Video](https://github.com/Yuuu-05/HoldLight/releases/tag/project-demo) · [Poster](https://yuuu-05.github.io/CPT208-ClimbProject-C2-4/assets/documents/HoldLight-Poster.pdf)
+[Project Portfolio](https://yuuu-05.github.io/CPT208-ClimbProject-C2-4/) · [Demo Video](https://github.com/Yuuu-05/HoldLight/releases/tag/project-demo) · [Poster](https://yuuu-05.github.io/CPT208-ClimbProject-C2-4/assets/documents/HoldLight-Poster.pdf)
 
 ## Research
 
